@@ -1,0 +1,23 @@
+{
+  "name": "modern-punch",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Modern punch dashboard prototype (NestJS + Next.js + Prisma)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node ./node_modules/concurrently/dist/bin/concurrently.js -n api,web -c cyan,green \"npm run dev --workspace @modern-punch/api\" \"npm run dev --workspace @modern-punch/web\"",
+    "dev:api": "npm run dev --workspace @modern-punch/api",
+    "dev:web": "npm run dev --workspace @modern-punch/web",
+    "build": "npm run build --workspace @modern-punch/core && npm run build --workspace @modern-punch/api && npm run build --workspace @modern-punch/web",
+    "lint": "npm run lint --workspace @modern-punch/web",
+    "prisma:generate": "npm run prisma:generate --workspace @modern-punch/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace @modern-punch/api",
+    "prisma:studio": "npm run prisma:studio --workspace @modern-punch/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

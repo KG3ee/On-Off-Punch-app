@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: modern-punch-api
+    env: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm install && npm run prisma:generate && npm run build --workspace @modern-punch/core && npm run build --workspace @modern-punch/api
+    startCommand: node apps/api/dist/main.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PORT
+        value: 10000
+      - key: APP_TIMEZONE
+        value: Asia/Dubai

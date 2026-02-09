@@ -1,0 +1,338 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum AssignmentTargetType {
+  TEAM
+  USER
+}
+
+enum DutySessionStatus {
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum BreakSessionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  AUTO_CLOSED
+}
+
+enum BreakDeductionMode {
+  NONE
+  UNPAID_ALL_BREAKS
+  UNPAID_OVERTIME_ONLY
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  FINALIZED
+}
+
+model Team {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  shiftPresets  ShiftPreset[]
+  dutySessions  DutySession[]
+  payrollRuns   PayrollRun[]
+  monthlyReports MonthlyReport[]
+}
+
+model User {
+  id         String   @id @default(cuid())
+  username   String   @unique
+  passwordHash String
+  mustChangePassword Boolean @default(true)
+  firstName  String
+  lastName   String?
+  displayName String
+  role       Role     @default(EMPLOYEE)
+  isActive   Boolean  @default(true)
+  teamId     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  team Team? @relation(fields: [teamId], references: [id])
+
+  createdDutySessions  DutySession[] @relation("CreatedDutySessions")
+  createdBreakSessions BreakSession[] @relation("CreatedBreakSessions")
+  cancelledBreakSessions BreakSession[] @relation("CancelledBreakSessions")
+  auditEvents AuditEvent[]
+
+  salaryRulesCreated SalaryRule[] @relation("SalaryRulesCreatedBy")
+  payrollRunsCreated PayrollRun[] @relation("PayrollRunsCreatedBy")
+  payrollRunsFinalized PayrollRun[] @relation("PayrollRunsFinalizedBy")
+  monthlyReportsGenerated MonthlyReport[] @relation("MonthlyReportsGeneratedBy")
+
+  dutySessions DutySession[]
+  breakSessions BreakSession[]
+  payrollItems PayrollItem[]
+
+  @@index([teamId])
+  @@index([role])
+}
+
+model ShiftPreset {
+  id          String   @id @default(cuid())
+  name        String
+  timezone    String   @default("Asia/Dubai")
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  teamId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team Team? @relation(fields: [teamId], references: [id])
+
+  segments     ShiftPresetSegment[]
+  assignments  ShiftAssignment[]
+  overrides    ShiftOverride[]
+  dutySessions DutySession[]
+
+  @@index([teamId, isDefault])
+}
+
+model ShiftPresetSegment {
+  id               String  @id @default(cuid())
+  shiftPresetId    String
+  segmentNo        Int
+  startTime        String
+  endTime          String
+  crossesMidnight  Boolean @default(false)
+  lateGraceMinutes Int     @default(10)
+
+  shiftPreset ShiftPreset @relation(fields: [shiftPresetId], references: [id], onDelete: Cascade)
+  dutySessions DutySession[]
+
+  @@unique([shiftPresetId, segmentNo])
+  @@index([shiftPresetId])
+}
+
+model ShiftAssignment {
+  id            String               @id @default(cuid())
+  targetType    AssignmentTargetType
+  targetId      String
+  shiftPresetId String
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  isActive      Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shiftPreset ShiftPreset @relation(fields: [shiftPresetId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId, effectiveFrom])
+  @@index([shiftPresetId])
+}
+
+model ShiftOverride {
+  id            String               @id @default(cuid())
+  targetType    AssignmentTargetType
+  targetId      String
+  shiftPresetId String
+  overrideDate  DateTime
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  shiftPreset ShiftPreset @relation(fields: [shiftPresetId], references: [id], onDelete: Cascade)
+
+  @@unique([targetType, targetId, overrideDate])
+  @@index([shiftPresetId])
+}
+
+model DutySession {
+  id                   String            @id @default(cuid())
+  userId               String
+  teamId               String?
+  shiftPresetId        String?
+  shiftPresetSegmentId String?
+  shiftDate            String
+  localDate            String
+  scheduledStartLocal  String?
+  scheduledEndLocal    String?
+  punchedOnAt          DateTime
+  punchedOffAt         DateTime?
+  status               DutySessionStatus @default(ACTIVE)
+  isLate               Boolean           @default(false)
+  lateMinutes          Int               @default(0)
+  note                 String?
+  createdById          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  team Team? @relation(fields: [teamId], references: [id])
+  shiftPreset ShiftPreset? @relation(fields: [shiftPresetId], references: [id])
+  shiftPresetSegment ShiftPresetSegment? @relation(fields: [shiftPresetSegmentId], references: [id])
+  createdBy User? @relation("CreatedDutySessions", fields: [createdById], references: [id])
+
+  breakSessions BreakSession[]
+
+  @@index([userId, localDate])
+  @@index([status])
+  @@index([teamId, localDate])
+}
+
+model BreakPolicy {
+  id                      String  @id @default(cuid())
+  code                    String  @unique
+  name                    String
+  expectedDurationMinutes Int
+  dailyLimit              Int
+  isActive                Boolean @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  breakSessions BreakSession[]
+}
+
+model BreakSession {
+  id                     String             @id @default(cuid())
+  userId                 String
+  dutySessionId          String?
+  breakPolicyId          String
+  localDate              String
+  startedAt              DateTime
+  endedAt                DateTime?
+  expectedDurationMinutes Int
+  actualMinutes          Int?
+  status                 BreakSessionStatus @default(ACTIVE)
+  isOvertime             Boolean            @default(false)
+  autoClosed             Boolean            @default(false)
+  cancelledAt            DateTime?
+  createdById            String?
+  cancelledById          String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  dutySession DutySession? @relation(fields: [dutySessionId], references: [id])
+  breakPolicy BreakPolicy @relation(fields: [breakPolicyId], references: [id])
+  createdBy User? @relation("CreatedBreakSessions", fields: [createdById], references: [id])
+  cancelledBy User? @relation("CancelledBreakSessions", fields: [cancelledById], references: [id])
+
+  @@index([userId, localDate])
+  @@index([status])
+}
+
+model SalaryRule {
+  id                    String            @id @default(cuid())
+  name                  String
+  baseHourlyRate        Decimal           @db.Decimal(12, 2)
+  overtimeMultiplier    Decimal           @db.Decimal(6, 2)
+  latePenaltyPerMinute  Decimal           @db.Decimal(12, 4)
+  breakDeductionMode    BreakDeductionMode @default(NONE)
+  effectiveFrom         DateTime
+  effectiveTo           DateTime?
+  isActive              Boolean           @default(true)
+  createdById           String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  createdBy User? @relation("SalaryRulesCreatedBy", fields: [createdById], references: [id])
+  payrollRuns PayrollRun[]
+
+  @@index([effectiveFrom, effectiveTo])
+  @@index([isActive])
+}
+
+model PayrollRun {
+  id           String          @id @default(cuid())
+  periodStart  DateTime
+  periodEnd    DateTime
+  localDateFrom String
+  localDateTo   String
+  teamId       String?
+  status       PayrollRunStatus @default(DRAFT)
+  salaryRuleId String
+  notes        String?
+  createdById  String
+  finalizedById String?
+  finalizedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  team Team? @relation(fields: [teamId], references: [id])
+  salaryRule SalaryRule @relation(fields: [salaryRuleId], references: [id])
+  createdBy User @relation("PayrollRunsCreatedBy", fields: [createdById], references: [id])
+  finalizedBy User? @relation("PayrollRunsFinalizedBy", fields: [finalizedById], references: [id])
+
+  items PayrollItem[]
+
+  @@index([periodStart, periodEnd])
+  @@index([teamId])
+  @@index([status])
+}
+
+model PayrollItem {
+  id             String  @id @default(cuid())
+  payrollRunId   String
+  userId         String
+  workedMinutes  Int
+  breakMinutes   Int
+  payableMinutes Int
+  overtimeMinutes Int
+  lateMinutes    Int
+  grossPay       Decimal @db.Decimal(14, 2)
+  latePenalty    Decimal @db.Decimal(14, 2)
+  finalPay       Decimal @db.Decimal(14, 2)
+  details        Json?
+  createdAt      DateTime @default(now())
+
+  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([payrollRunId, userId])
+  @@index([userId])
+}
+
+model MonthlyReport {
+  id           String  @id @default(cuid())
+  scopeKey     String  @unique
+  year         Int
+  month        Int
+  teamId       String?
+  periodStart  DateTime
+  periodEnd    DateTime
+  reportJson   Json
+  generatedById String?
+  generatedAt  DateTime @default(now())
+
+  team Team? @relation(fields: [teamId], references: [id])
+  generatedBy User? @relation("MonthlyReportsGeneratedBy", fields: [generatedById], references: [id])
+
+  @@index([year, month])
+  @@index([teamId])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  actorUserId String?
+  action     String
+  entityType String
+  entityId   String
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([action])
+}
