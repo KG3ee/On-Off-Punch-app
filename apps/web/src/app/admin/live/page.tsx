@@ -40,29 +40,74 @@ type LiveBoard = {
   };
 };
 
+type BreakHistoryItem = {
+  id: string;
+  localDate: string;
+  startedAt: string;
+  endedAt?: string | null;
+  expectedDurationMinutes: number;
+  actualMinutes?: number | null;
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CLOSED';
+  isOvertime: boolean;
+  breakPolicy: {
+    code: string;
+    name: string;
+  };
+  user: {
+    displayName: string;
+    team?: {
+      name: string;
+    } | null;
+  };
+};
+
 export default function AdminLivePage() {
   const [data, setData] = useState<LiveBoard | null>(null);
+  const [breakHistory, setBreakHistory] = useState<BreakHistoryItem[]>([]);
   const [error, setError] = useState('');
+  const [nowTick, setNowTick] = useState(Date.now());
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => {
+    const refreshTimer = window.setInterval(() => {
       void load();
     }, 15000);
+    const tickTimer = window.setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
 
     return () => {
-      window.clearInterval(timer);
+      window.clearInterval(refreshTimer);
+      window.clearInterval(tickTimer);
     };
   }, []);
 
   async function load(): Promise<void> {
     try {
-      const res = await apiFetch<LiveBoard>('/attendance/admin/live');
-      setData(res);
+      const live = await apiFetch<LiveBoard>('/attendance/admin/live');
+      const history = await apiFetch<BreakHistoryItem[]>(
+        `/breaks/admin/history?from=${encodeURIComponent(live.localDate)}&to=${encodeURIComponent(live.localDate)}`
+      );
+      setData(live);
+      setBreakHistory(history);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load live board');
     }
+  }
+
+  function formatHistoryMinutes(item: BreakHistoryItem): string {
+    if (item.actualMinutes !== null && item.actualMinutes !== undefined) {
+      return `${item.actualMinutes}m`;
+    }
+
+    if (item.status === 'ACTIVE') {
+      const startedAt = new Date(item.startedAt).getTime();
+      const elapsed = Math.max(0, Math.round((nowTick - startedAt) / 60000));
+      return `${elapsed}m`;
+    }
+
+    return '-';
   }
 
   return (
@@ -130,6 +175,49 @@ export default function AdminLivePage() {
             {!data?.activeDutySessions.length ? (
               <tr>
                 <td colSpan={6}>No active duty sessions.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="card table-wrap">
+        <h3>Today Break History</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Team</th>
+              <th>Code</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Minutes</th>
+              <th>Status</th>
+              <th>OT</th>
+            </tr>
+          </thead>
+          <tbody>
+            {breakHistory.map((item) => (
+              <tr key={item.id}>
+                <td>{item.user.displayName}</td>
+                <td>{item.user.team?.name || '-'}</td>
+                <td>{item.breakPolicy.code.toUpperCase()}</td>
+                <td className="mono">{new Date(item.startedAt).toLocaleTimeString()}</td>
+                <td className="mono">{item.endedAt ? new Date(item.endedAt).toLocaleTimeString() : '-'}</td>
+                <td>{formatHistoryMinutes(item)}</td>
+                <td>
+                  <span
+                    className={`tag ${item.status === 'ACTIVE' ? 'ok' : item.status === 'CANCELLED' ? 'danger' : ''}`}
+                  >
+                    {item.status}
+                  </span>
+                </td>
+                <td>{item.isOvertime ? 'Yes' : 'No'}</td>
+              </tr>
+            ))}
+            {breakHistory.length === 0 ? (
+              <tr>
+                <td colSpan={8}>No breaks for today.</td>
               </tr>
             ) : null}
           </tbody>

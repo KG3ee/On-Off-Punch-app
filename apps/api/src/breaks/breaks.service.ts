@@ -35,6 +35,100 @@ export class BreaksService {
     });
   }
 
+  async myTodayBreaks(userId: string) {
+    const localDate = formatDateInZone(new Date(), process.env.APP_TIMEZONE || 'Asia/Dubai');
+
+    return this.prisma.breakSession.findMany({
+      where: {
+        userId,
+        localDate
+      },
+      include: {
+        breakPolicy: true,
+        dutySession: {
+          select: {
+            id: true,
+            shiftDate: true,
+            status: true
+          }
+        }
+      },
+      orderBy: {
+        startedAt: 'asc'
+      }
+    });
+  }
+
+  async myActiveBreak(userId: string) {
+    return this.prisma.breakSession.findFirst({
+      where: {
+        userId,
+        status: BreakSessionStatus.ACTIVE
+      },
+      include: {
+        breakPolicy: true,
+        dutySession: {
+          select: {
+            id: true,
+            shiftDate: true,
+            status: true
+          }
+        }
+      },
+      orderBy: {
+        startedAt: 'desc'
+      }
+    });
+  }
+
+  async listBreakHistory(params: {
+    from?: string;
+    to?: string;
+    teamId?: string;
+    userId?: string;
+    status?: BreakSessionStatus;
+  }) {
+    const today = formatDateInZone(new Date(), process.env.APP_TIMEZONE || 'Asia/Dubai');
+    const from = params.from || today;
+    const to = params.to || from;
+
+    return this.prisma.breakSession.findMany({
+      where: {
+        localDate: {
+          gte: from,
+          lte: to
+        },
+        ...(params.teamId ? { user: { teamId: params.teamId } } : {}),
+        ...(params.userId ? { userId: params.userId } : {}),
+        ...(params.status ? { status: params.status } : {})
+      },
+      include: {
+        breakPolicy: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            team: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        },
+        dutySession: {
+          select: {
+            id: true,
+            shiftDate: true,
+            status: true
+          }
+        }
+      },
+      orderBy: [{ localDate: 'desc' }, { startedAt: 'desc' }]
+    });
+  }
+
   async startBreak(user: User, code: string) {
     const normalizedCode = code.toLowerCase().trim();
     const policy = await this.prisma.breakPolicy.findUnique({

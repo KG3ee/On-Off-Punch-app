@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { BreakSessionStatus, Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -23,11 +23,40 @@ export class BreaksController {
     return this.breaksService.listPolicies();
   }
 
+  @Get('me/today')
+  async myTodayBreaks(@CurrentUser() authUser: AuthUser) {
+    return this.breaksService.myTodayBreaks(authUser.sub);
+  }
+
+  @Get('me/active')
+  async myActiveBreak(@CurrentUser() authUser: AuthUser) {
+    return this.breaksService.myActiveBreak(authUser.sub);
+  }
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/policies')
   async createPolicy(@Body() dto: CreateBreakPolicyDto) {
     return this.breaksService.createPolicy(dto);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('admin/history')
+  async listBreakHistory(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('teamId') teamId?: string,
+    @Query('userId') userId?: string,
+    @Query('status') status?: BreakSessionStatus
+  ) {
+    return this.breaksService.listBreakHistory({
+      from,
+      to,
+      teamId,
+      userId,
+      status
+    });
   }
 
   @Post('start')

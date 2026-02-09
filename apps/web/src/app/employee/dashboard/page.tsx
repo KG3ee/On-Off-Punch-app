@@ -37,35 +37,81 @@ type BreakPolicy = {
   dailyLimit: number;
 };
 
+type BreakSession = {
+  id: string;
+  localDate: string;
+  startedAt: string;
+  endedAt?: string | null;
+  expectedDurationMinutes: number;
+  actualMinutes?: number | null;
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CLOSED';
+  isOvertime: boolean;
+  breakPolicy: {
+    code: string;
+    name: string;
+  };
+};
+
 export default function EmployeeDashboardPage() {
   const [me, setMe] = useState<MeUser | null>(null);
   const [currentShift, setCurrentShift] = useState<ShiftCurrent | null>(null);
   const [sessions, setSessions] = useState<DutySession[]>([]);
   const [policies, setPolicies] = useState<BreakPolicy[]>([]);
+  const [breakSessions, setBreakSessions] = useState<BreakSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+  const [nowTick, setNowTick] = useState(Date.now());
 
   const activeSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE'), [sessions]);
+  const activeBreak = useMemo(
+    () => breakSessions.find((session) => session.status === 'ACTIVE'),
+    [breakSessions]
+  );
+
+  const activeBreakMinutes = useMemo(() => {
+    if (!activeBreak) {
+      return 0;
+    }
+
+    const startedAt = new Date(activeBreak.startedAt).getTime();
+    return Math.max(0, Math.round((nowTick - startedAt) / 60000));
+  }, [activeBreak, nowTick]);
 
   useEffect(() => {
     void loadData();
   }, []);
+
+  useEffect(() => {
+    if (!activeBreak) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [activeBreak]);
 
   async function loadData(): Promise<void> {
     setLoading(true);
     setError('');
 
     try {
-      const [meData, sessionsData, policiesData] = await Promise.all([
+      const [meData, sessionsData, policiesData, breakData] = await Promise.all([
         apiFetch<MeUser>('/me'),
         apiFetch<DutySession[]>('/attendance/me/today'),
-        apiFetch<BreakPolicy[]>('/breaks/policies')
+        apiFetch<BreakPolicy[]>('/breaks/policies'),
+        apiFetch<BreakSession[]>('/breaks/me/today')
       ]);
 
       setMe(meData);
       setSessions(sessionsData);
       setPolicies(policiesData);
+      setBreakSessions(breakData);
 
       try {
         const current = await apiFetch<ShiftCurrent>('/shifts/current');
@@ -96,6 +142,20 @@ export default function EmployeeDashboardPage() {
     }
   }
 
+  function formatBreakMinutes(session: BreakSession): string {
+    if (session.actualMinutes !== null && session.actualMinutes !== undefined) {
+      return `${session.actualMinutes}m`;
+    }
+
+    if (session.status === 'ACTIVE') {
+      const startedAt = new Date(session.startedAt).getTime();
+      const elapsed = Math.max(0, Math.round((nowTick - startedAt) / 60000));
+      return `${elapsed}m`;
+    }
+
+    return '-';
+  }
+
   return (
     <AppShell
       title="Employee Dashboard"
@@ -112,6 +172,10 @@ export default function EmployeeDashboardPage() {
         <article className="kpi">
           <p className="kpi-label">Active Duty</p>
           <p className="kpi-value">{activeSession ? 'Yes' : 'No'}</p>
+        </article>
+        <article className="kpi">
+          <p className="kpi-label">Active Break</p>
+          <p className="kpi-value">{activeBreak ? activeBreak.breakPolicy.code.toUpperCase() : 'No'}</p>
         </article>
         <article className="kpi">
           <p className="kpi-label">Current Segment</p>
@@ -160,6 +224,7 @@ export default function EmployeeDashboardPage() {
                   key={policy.id}
                   type="button"
                   className="button button-ghost"
+                  disabled={!activeSession || !!activeBreak}
                   onClick={() => void runAction('/breaks/start', { code: policy.code })}
                 >
                   {policy.code.toUpperCase()} • {policy.expectedDurationMinutes}m • limit {policy.dailyLimit}
@@ -169,6 +234,7 @@ export default function EmployeeDashboardPage() {
                 <button
                   type="button"
                   className="button button-ok"
+                  disabled={!activeBreak}
                   onClick={() => void runAction('/breaks/end')}
                 >
                   End Break
@@ -176,6 +242,7 @@ export default function EmployeeDashboardPage() {
                 <button
                   type="button"
                   className="button button-danger"
+                  disabled={!activeBreak}
                   onClick={() => void runAction('/breaks/cancel')}
                 >
                   Cancel Break
@@ -183,44 +250,107 @@ export default function EmployeeDashboardPage() {
               </div>
             </div>
           </article>
+
+          <article className="card">
+            <h3>Current Break Status</h3>
+            {activeBreak ? (
+              <div className="grid" style={{ gap: '0.45rem' }}>
+                <p>
+                  <span className="tag ok">{activeBreak.breakPolicy.code.toUpperCase()}</span> {activeBreak.breakPolicy.name}
+                </p>
+                <p>
+                  Started: <span className="mono">{new Date(activeBreak.startedAt).toLocaleTimeString()}</span>
+                </p>
+                <p>
+                  Elapsed: <span className="mono">{activeBreakMinutes}m</span> / expected{' '}
+                  <span className="mono">{activeBreak.expectedDurationMinutes}m</span>
+                </p>
+              </div>
+            ) : (
+              <p>No active break right now.</p>
+            )}
+          </article>
         </div>
 
-        <article className="card">
-          <h3>Today Duty History</h3>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Shift Date</th>
-                  <th>On</th>
-                  <th>Off</th>
-                  <th>Status</th>
-                  <th>Late</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((session) => (
-                  <tr key={session.id}>
-                    <td className="mono">{session.shiftDate}</td>
-                    <td className="mono">{new Date(session.punchedOnAt).toLocaleTimeString()}</td>
-                    <td className="mono">
-                      {session.punchedOffAt ? new Date(session.punchedOffAt).toLocaleTimeString() : '-'}
-                    </td>
-                    <td>
-                      <span className={`tag ${session.status === 'ACTIVE' ? 'ok' : ''}`}>{session.status}</span>
-                    </td>
-                    <td>{session.lateMinutes > 0 ? `${session.lateMinutes}m` : '-'}</td>
-                  </tr>
-                ))}
-                {sessions.length === 0 ? (
+        <div className="grid">
+          <article className="card">
+            <h3>Today Duty History</h3>
+            <div className="table-wrap">
+              <table>
+                <thead>
                   <tr>
-                    <td colSpan={5}>No sessions yet.</td>
+                    <th>Shift Date</th>
+                    <th>On</th>
+                    <th>Off</th>
+                    <th>Status</th>
+                    <th>Late</th>
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </article>
+                </thead>
+                <tbody>
+                  {sessions.map((session) => (
+                    <tr key={session.id}>
+                      <td className="mono">{session.shiftDate}</td>
+                      <td className="mono">{new Date(session.punchedOnAt).toLocaleTimeString()}</td>
+                      <td className="mono">
+                        {session.punchedOffAt ? new Date(session.punchedOffAt).toLocaleTimeString() : '-'}
+                      </td>
+                      <td>
+                        <span className={`tag ${session.status === 'ACTIVE' ? 'ok' : ''}`}>{session.status}</span>
+                      </td>
+                      <td>{session.lateMinutes > 0 ? `${session.lateMinutes}m` : '-'}</td>
+                    </tr>
+                  ))}
+                  {sessions.length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>No sessions yet.</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article className="card">
+            <h3>Today Break History</h3>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Minutes</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {breakSessions.map((session) => (
+                    <tr key={session.id}>
+                      <td>{session.breakPolicy.code.toUpperCase()}</td>
+                      <td className="mono">{new Date(session.startedAt).toLocaleTimeString()}</td>
+                      <td className="mono">
+                        {session.endedAt ? new Date(session.endedAt).toLocaleTimeString() : '-'}
+                      </td>
+                      <td>{formatBreakMinutes(session)}</td>
+                      <td>
+                        <span
+                          className={`tag ${session.status === 'ACTIVE' ? 'ok' : session.status === 'CANCELLED' ? 'danger' : ''}`}
+                        >
+                          {session.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {breakSessions.length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>No breaks yet.</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
       </section>
     </AppShell>
   );
