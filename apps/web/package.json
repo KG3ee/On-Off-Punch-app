@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node ../../node_modules/next/dist/bin/next dev",
-    "build": "node ../../node_modules/next/dist/bin/next build",
-    "start": "node ../../node_modules/next/dist/bin/next start",
-    "lint": "node ../../node_modules/next/dist/bin/next lint"
+    "dev": "node \"$(npm root)/next/dist/bin/next\" dev",
+    "build": "node \"$(npm root)/next/dist/bin/next\" build",
+    "start": "node \"$(npm root)/next/dist/bin/next\" start",
+    "lint": "node \"$(npm root)/next/dist/bin/next\" lint"
   },
   "dependencies": {
     "@modern-punch/core": "file:../../packages/core",
