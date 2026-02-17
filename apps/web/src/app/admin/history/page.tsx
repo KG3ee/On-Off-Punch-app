@@ -108,10 +108,29 @@ export default function AdminHistoryPage() {
     const stats = useMemo(() => {
         const totalSessions = attendance.length;
         const totalLateMin = attendance.reduce((sum, r) => sum + r.lateMinutes, 0);
+
+        // Calculate total worked minutes from closed sessions
+        const totalWorkedMin = attendance.reduce((sum, r) => {
+            if (r.punchedOffAt) {
+                const start = new Date(r.punchedOnAt).getTime();
+                const end = new Date(r.punchedOffAt).getTime();
+                return sum + ((end - start) / 1000 / 60);
+            }
+            return sum;
+        }, 0);
+
         const totalBreaks = breaks.length;
         const completedBreaks = breaks.filter(b => b.status === 'COMPLETED' || b.status === 'AUTO_CLOSED');
         const totalBreakMin = completedBreaks.reduce((sum, b) => sum + (b.actualMinutes || 0), 0);
-        return { totalSessions, totalLateMin, totalBreaks, totalBreakMin };
+
+        // Round to nearest minute for display
+        return {
+            totalSessions,
+            totalLateMin,
+            totalWorkedMin: Math.round(totalWorkedMin),
+            totalBreaks,
+            totalBreakMin
+        };
     }, [attendance, breaks]);
 
     // ── CSV Export ──
@@ -192,6 +211,10 @@ export default function AdminHistoryPage() {
                 <article className="kpi">
                     <p className="kpi-label">Duty Sessions</p>
                     <p className="kpi-value">{stats.totalSessions}</p>
+                </article>
+                <article className="kpi">
+                    <p className="kpi-label">Total Worked</p>
+                    <p className="kpi-value">{fmtDuration(stats.totalWorkedMin)}</p>
                 </article>
                 <article className="kpi">
                     <p className="kpi-label">Late Minutes</p>
