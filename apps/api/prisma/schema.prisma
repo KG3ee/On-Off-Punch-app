@@ -42,11 +42,13 @@ enum PayrollRunStatus {
 }
 
 model Team {
-  id        String  @id @default(cuid())
-  name      String  @unique
-  isActive  Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String  @id @default(cuid())
+  name           String  @unique
+  shiftStartTime String? // e.g. "09:00"
+  shiftEndTime   String? // e.g. "18:00"
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   users         User[]
   shiftPresets  ShiftPreset[]
@@ -172,6 +174,7 @@ model DutySession {
   status               DutySessionStatus @default(ACTIVE)
   isLate               Boolean           @default(false)
   lateMinutes          Int               @default(0)
+  overtimeMinutes      Int               @default(0)
   note                 String?
   createdById          String?
   createdAt            DateTime @default(now())

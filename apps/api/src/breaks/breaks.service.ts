@@ -10,7 +10,7 @@ import { CreateBreakPolicyDto } from "./dto/create-break-policy.dto";
 
 @Injectable()
 export class BreaksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async listPolicies() {
     return this.prisma.breakPolicy.findMany({
@@ -135,7 +135,7 @@ export class BreaksService {
     });
   }
 
-  async startBreak(user: User, code: string) {
+  async startBreak(user: User, code: string, clientTimestamp?: string) {
     const normalizedCode = code.toLowerCase().trim();
     const policy = await this.prisma.breakPolicy.findUnique({
       where: {
@@ -174,8 +174,9 @@ export class BreaksService {
       throw new BadRequestException("You already have an active break");
     }
 
+    const now = clientTimestamp ? new Date(clientTimestamp) : new Date();
     const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
-    const localDate = formatDateInZone(new Date(), timezone);
+    const localDate = formatDateInZone(now, timezone);
 
     const usedCount = await this.prisma.breakSession.count({
       where: {
@@ -192,11 +193,8 @@ export class BreaksService {
       },
     });
 
-    if (usedCount >= policy.dailyLimit) {
-      throw new BadRequestException(
-        `Daily limit reached for ${policy.code}. Limit: ${policy.dailyLimit}`,
-      );
-    }
+    // Soft limit: allow override but flag it
+    const isOverLimit = usedCount >= policy.dailyLimit;
 
     const created = await this.prisma.breakSession.create({
       data: {
@@ -204,7 +202,7 @@ export class BreaksService {
         dutySessionId: activeDuty.id,
         breakPolicyId: policy.id,
         localDate,
-        startedAt: new Date(),
+        startedAt: now,
         expectedDurationMinutes: policy.expectedDurationMinutes,
         status: BreakSessionStatus.ACTIVE,
         createdById: user.id,
@@ -217,7 +215,7 @@ export class BreaksService {
     await this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
-        action: "BREAK_START",
+        action: isOverLimit ? "BREAK_START_OVER_LIMIT" : "BREAK_START",
         entityType: "BreakSession",
         entityId: created.id,
         payload: {
@@ -225,14 +223,21 @@ export class BreaksService {
           localDate,
           usedCountAfter: usedCount + 1,
           dailyLimit: policy.dailyLimit,
+          isOverLimit,
+          clientTimestamp: clientTimestamp || null,
         },
       },
     });
 
-    return created;
+    return {
+      ...created,
+      isOverLimit,
+      usedCount: usedCount + 1,
+      dailyLimit: policy.dailyLimit,
+    };
   }
 
-  async endBreak(user: User) {
+  async endBreak(user: User, clientTimestamp?: string) {
     const activeBreak = await this.prisma.breakSession.findFirst({
       where: {
         userId: user.id,
@@ -250,7 +255,7 @@ export class BreaksService {
       throw new NotFoundException("No active break found");
     }
 
-    const endedAt = new Date();
+    const endedAt = clientTimestamp ? new Date(clientTimestamp) : new Date();
     const actualMinutes = Math.max(
       0,
       Math.round((endedAt.getTime() - activeBreak.startedAt.getTime()) / 60000),
@@ -281,6 +286,7 @@ export class BreaksService {
           actualMinutes,
           expectedDuration: activeBreak.expectedDurationMinutes,
           isOvertime,
+          clientTimestamp: clientTimestamp || null,
         },
       },
     });
@@ -288,7 +294,7 @@ export class BreaksService {
     return updated;
   }
 
-  async cancelBreak(user: User) {
+  async cancelBreak(user: User, clientTimestamp?: string) {
     const activeBreak = await this.prisma.breakSession.findFirst({
       where: {
         userId: user.id,
@@ -303,13 +309,15 @@ export class BreaksService {
       throw new NotFoundException("No active break to cancel");
     }
 
+    const cancelledAt = clientTimestamp ? new Date(clientTimestamp) : new Date();
+
     const updated = await this.prisma.breakSession.update({
       where: {
         id: activeBreak.id,
       },
       data: {
         status: BreakSessionStatus.CANCELLED,
-        cancelledAt: new Date(),
+        cancelledAt,
         cancelledById: user.id,
       },
     });
@@ -322,6 +330,7 @@ export class BreaksService {
         entityId: updated.id,
         payload: {
           localDate: activeBreak.localDate,
+          clientTimestamp: clientTimestamp || null,
         },
       },
     });

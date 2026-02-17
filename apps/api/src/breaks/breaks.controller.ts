@@ -9,6 +9,7 @@ import { UsersService } from "../users/users.service";
 import { BreaksService } from "./breaks.service";
 import { CreateBreakPolicyDto } from "./dto/create-break-policy.dto";
 import { StartBreakDto } from "./dto/start-break.dto";
+import { EndBreakDto } from "./dto/end-break.dto";
 
 @Controller("breaks")
 @UseGuards(JwtAuthGuard)
@@ -16,7 +17,7 @@ export class BreaksController {
   constructor(
     private readonly breaksService: BreaksService,
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
   @Get("policies")
   async listPolicies() {
@@ -65,18 +66,24 @@ export class BreaksController {
     @Body() dto: StartBreakDto,
   ) {
     const user = await this.usersService.getOrThrow(authUser.sub);
-    return this.breaksService.startBreak(user, dto.code);
+    return this.breaksService.startBreak(user, dto.code, dto.clientTimestamp);
   }
 
   @Post("end")
-  async endBreak(@CurrentUser() authUser: AuthUser) {
+  async endBreak(
+    @CurrentUser() authUser: AuthUser,
+    @Body() dto: EndBreakDto,
+  ) {
     const user = await this.usersService.getOrThrow(authUser.sub);
-    return this.breaksService.endBreak(user);
+    return this.breaksService.endBreak(user, dto.clientTimestamp);
   }
 
   @Post("cancel")
-  async cancelBreak(@CurrentUser() authUser: AuthUser) {
+  async cancelBreak(
+    @CurrentUser() authUser: AuthUser,
+    @Body() dto: EndBreakDto,
+  ) {
     const user = await this.usersService.getOrThrow(authUser.sub);
-    return this.breaksService.cancelBreak(user);
+    return this.breaksService.cancelBreak(user, dto.clientTimestamp);
   }
 }

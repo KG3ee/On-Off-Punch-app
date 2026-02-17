@@ -5,6 +5,8 @@ import {
 } from "@nestjs/common";
 import {
   formatDateInZone,
+  minutesNowInZone,
+  parseTimeToMinutes,
 } from "../core";
 import { DutySessionStatus, User } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -15,8 +17,8 @@ export class AttendanceService {
     private readonly prisma: PrismaService,
   ) { }
 
-  async punchOn(user: User, note?: string) {
-    const now = new Date();
+  async punchOn(user: User, note?: string, clientTimestamp?: string) {
+    const now = clientTimestamp ? new Date(clientTimestamp) : new Date();
     const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
 
     // Check for existing active session
@@ -33,6 +35,26 @@ export class AttendanceService {
 
     const localDate = formatDateInZone(now, timezone);
 
+    // Get team shift times for late calculation
+    let isLate = false;
+    let lateMinutes = 0;
+
+    if (user.teamId) {
+      const team = await this.prisma.team.findUnique({
+        where: { id: user.teamId },
+      });
+
+      if (team?.shiftStartTime) {
+        const shiftStartMin = parseTimeToMinutes(team.shiftStartTime);
+        const punchMinutes = minutesNowInZone(now, timezone);
+
+        if (punchMinutes > shiftStartMin) {
+          isLate = true;
+          lateMinutes = punchMinutes - shiftStartMin;
+        }
+      }
+    }
+
     const created = await this.prisma.dutySession.create({
       data: {
         userId: user.id,
@@ -45,8 +67,8 @@ export class AttendanceService {
         scheduledEndLocal: null,
         punchedOnAt: now,
         status: DutySessionStatus.ACTIVE,
-        isLate: false,
-        lateMinutes: 0,
+        isLate,
+        lateMinutes,
         note,
         createdById: user.id,
       },
@@ -60,8 +82,9 @@ export class AttendanceService {
         entityId: created.id,
         payload: {
           shiftDate: localDate,
-          segmentNo: null,
-          lateMinutes: 0,
+          isLate,
+          lateMinutes,
+          clientTimestamp: clientTimestamp || null,
         },
       },
     });
@@ -69,7 +92,7 @@ export class AttendanceService {
     return created;
   }
 
-  async punchOff(user: User, note?: string) {
+  async punchOff(user: User, note?: string, clientTimestamp?: string) {
     const active = await this.prisma.dutySession.findFirst({
       where: {
         userId: user.id,
@@ -84,11 +107,34 @@ export class AttendanceService {
       throw new NotFoundException("No active duty session found");
     }
 
-    const now = new Date();
+    const now = clientTimestamp ? new Date(clientTimestamp) : new Date();
+    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
     const workedMinutes = Math.max(
       0,
       Math.round((now.getTime() - active.punchedOnAt.getTime()) / 60000),
     );
+
+    // Calculate overtime
+    let overtimeMinutes = 0;
+
+    if (user.teamId) {
+      const team = await this.prisma.team.findUnique({
+        where: { id: user.teamId },
+      });
+
+      if (team?.shiftStartTime && team?.shiftEndTime) {
+        const shiftStartMin = parseTimeToMinutes(team.shiftStartTime);
+        const shiftEndMin = parseTimeToMinutes(team.shiftEndTime);
+        const punchOnMinutes = minutesNowInZone(active.punchedOnAt, timezone);
+        const punchOffMinutes = minutesNowInZone(now, timezone);
+
+        // Early overtime: punched on before shift start
+        const earlyOT = Math.max(0, shiftStartMin - punchOnMinutes);
+        // Late overtime: punched off after shift end
+        const lateOT = Math.max(0, punchOffMinutes - shiftEndMin);
+        overtimeMinutes = earlyOT + lateOT;
+      }
+    }
 
     const updated = await this.prisma.dutySession.update({
       where: { id: active.id },
@@ -96,6 +142,7 @@ export class AttendanceService {
         punchedOffAt: now,
         status: DutySessionStatus.CLOSED,
         note: note || active.note,
+        overtimeMinutes,
       },
     });
 
@@ -107,6 +154,8 @@ export class AttendanceService {
         entityId: updated.id,
         payload: {
           workedMinutes,
+          overtimeMinutes,
+          clientTimestamp: clientTimestamp || null,
         },
       },
     });

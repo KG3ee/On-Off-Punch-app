@@ -12,6 +12,8 @@ export class TeamsService {
     return this.prisma.team.create({
       data: {
         name: dto.name,
+        shiftStartTime: dto.shiftStartTime || null,
+        shiftEndTime: dto.shiftEndTime || null,
       },
     });
   }
@@ -30,9 +32,15 @@ export class TeamsService {
   async rename(id: string, dto: UpdateTeamDto): Promise<Team> {
     const team = await this.prisma.team.findUnique({ where: { id } });
     if (!team) throw new NotFoundException("Team not found");
+
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.shiftStartTime !== undefined) data.shiftStartTime = dto.shiftStartTime || null;
+    if (dto.shiftEndTime !== undefined) data.shiftEndTime = dto.shiftEndTime || null;
+
     return this.prisma.team.update({
       where: { id },
-      data: { name: dto.name },
+      data,
     });
   }
 

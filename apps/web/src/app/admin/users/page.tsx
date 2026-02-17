@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 
-type Team = { id: string; name: string };
+type Team = { id: string; name: string; shiftStartTime?: string | null; shiftEndTime?: string | null };
 
 type UserRow = {
   id: string;
@@ -43,6 +43,10 @@ export default function AdminUsersPage() {
 
   // Create team form
   const [teamName, setTeamName] = useState('');
+  const [teamShiftStart, setTeamShiftStart] = useState('');
+  const [teamShiftEnd, setTeamShiftEnd] = useState('');
+  const [editShiftStart, setEditShiftStart] = useState('');
+  const [editShiftEnd, setEditShiftEnd] = useState('');
 
   // Action menu
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -95,8 +99,15 @@ export default function AdminUsersPage() {
   async function createTeam(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     try {
-      await apiFetch('/teams/admin', { method: 'POST', body: JSON.stringify({ name: teamName }) });
-      setTeamName('');
+      await apiFetch('/teams/admin', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: teamName,
+          shiftStartTime: teamShiftStart || undefined,
+          shiftEndTime: teamShiftEnd || undefined,
+        })
+      });
+      setTeamName(''); setTeamShiftStart(''); setTeamShiftEnd('');
       setShowCreateTeam(false);
       flash('Team created');
       await load();
@@ -109,12 +120,19 @@ export default function AdminUsersPage() {
     e.preventDefault();
     if (!editingTeam) return;
     try {
-      await apiFetch(`/teams/admin/${editingTeam.id}`, { method: 'PATCH', body: JSON.stringify({ name: editTeamName }) });
+      await apiFetch(`/teams/admin/${editingTeam.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: editTeamName,
+          shiftStartTime: editShiftStart || undefined,
+          shiftEndTime: editShiftEnd || undefined,
+        })
+      });
       setEditingTeam(null);
-      flash('Team renamed');
+      flash('Team updated');
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rename team');
+      setError(err instanceof Error ? err.message : 'Failed to update team');
     }
   }
 
@@ -310,14 +328,31 @@ export default function AdminUsersPage() {
           {teams.map(team => (
             <span key={team.id} className="team-chip">
               {editingTeam?.id === team.id ? (
-                <form onSubmit={(e) => void renameTeam(e)} style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                <form onSubmit={(e) => void renameTeam(e)} style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <input
                     className="input"
                     value={editTeamName}
                     onChange={(e) => setEditTeamName(e.target.value)}
                     autoFocus
                     required
-                    style={{ padding: '0.15rem 0.35rem', fontSize: '0.72rem', width: '90px' }}
+                    placeholder="Name"
+                    style={{ padding: '0.15rem 0.35rem', fontSize: '0.72rem', width: '80px' }}
+                  />
+                  <input
+                    className="input"
+                    value={editShiftStart}
+                    onChange={(e) => setEditShiftStart(e.target.value)}
+                    placeholder="Start"
+                    style={{ padding: '0.15rem 0.35rem', fontSize: '0.72rem', width: '55px' }}
+                    type="time"
+                  />
+                  <input
+                    className="input"
+                    value={editShiftEnd}
+                    onChange={(e) => setEditShiftEnd(e.target.value)}
+                    placeholder="End"
+                    style={{ padding: '0.15rem 0.35rem', fontSize: '0.72rem', width: '55px' }}
+                    type="time"
                   />
                   <button type="submit" style={{ fontSize: '0.65rem' }}>✓</button>
                   <button type="button" onClick={() => setEditingTeam(null)} style={{ fontSize: '0.65rem' }}>✕</button>
@@ -325,7 +360,12 @@ export default function AdminUsersPage() {
               ) : (
                 <>
                   {team.name}
-                  <button onClick={() => { setEditingTeam(team); setEditTeamName(team.name); }} title="Rename">✏️</button>
+                  {team.shiftStartTime && team.shiftEndTime ? (
+                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)', marginLeft: '0.2rem' }}>
+                      ⏰ {team.shiftStartTime}–{team.shiftEndTime}
+                    </span>
+                  ) : null}
+                  <button onClick={() => { setEditingTeam(team); setEditTeamName(team.name); setEditShiftStart(team.shiftStartTime || ''); setEditShiftEnd(team.shiftEndTime || ''); }} title="Edit">✏️</button>
                   <button onClick={() => void deleteTeam(team.id)} title="Delete">✕</button>
                 </>
               )}
@@ -382,6 +422,17 @@ export default function AdminUsersPage() {
             <h3>🏷️ Create New Team</h3>
             <form className="form-grid" onSubmit={(e) => void createTeam(e)}>
               <input className="input" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Team name" required autoFocus />
+              <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Shift Schedule (optional)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Start Time</label>
+                  <input className="input" type="time" value={teamShiftStart} onChange={(e) => setTeamShiftStart(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>End Time</label>
+                  <input className="input" type="time" value={teamShiftEnd} onChange={(e) => setTeamShiftEnd(e.target.value)} />
+                </div>
+              </div>
               <div className="modal-footer">
                 <button type="button" className="button button-ghost" onClick={() => setShowCreateTeam(false)}>Cancel</button>
                 <button type="submit" className="button button-primary">Create Team</button>

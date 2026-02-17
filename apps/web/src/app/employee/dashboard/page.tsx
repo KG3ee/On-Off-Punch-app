@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
+import { runQueuedAction, subscribeQueue, getPendingCount, QueuedAction } from '@/lib/action-queue';
 import { MeUser } from '@/types/auth';
 
 
@@ -15,6 +16,7 @@ type DutySession = {
   status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
   isLate: boolean;
   lateMinutes: number;
+  overtimeMinutes: number;
 };
 
 type BreakPolicy = {
@@ -51,6 +53,7 @@ export default function EmployeeDashboardPage() {
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [nowTick, setNowTick] = useState(Date.now());
+  const [pendingActions, setPendingActions] = useState(0);
 
   const activeSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE'), [sessions]);
   const activeBreak = useMemo(
@@ -77,6 +80,21 @@ export default function EmployeeDashboardPage() {
   }, [activeSession, nowTick]);
 
   useEffect(() => { void loadData(); }, []);
+
+  // Subscribe to queue changes
+  useEffect(() => {
+    setPendingActions(getPendingCount());
+    const unsub = subscribeQueue((q: QueuedAction[]) => {
+      const pending = q.filter(a => a.status === 'pending' || a.status === 'syncing').length;
+      setPendingActions(pending);
+      // Refresh data when an action syncs
+      const synced = q.filter(a => a.status === 'synced');
+      if (synced.length > 0) {
+        void loadData();
+      }
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (!activeBreak && !activeSession) return;
@@ -129,14 +147,22 @@ export default function EmployeeDashboardPage() {
   async function runAction(path: string, body?: Record<string, unknown>): Promise<void> {
     setActionMessage('');
     setError('');
-    try {
-      await apiFetch(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
-      setActionMessage('✓ Action completed');
+    setLoading(true);
+
+    const result = await runQueuedAction(path, body);
+
+    if (result.ok) {
+      setActionMessage('✅ Action completed');
       setTimeout(() => setActionMessage(''), 3000);
       await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed');
+    } else if (result.queued) {
+      setActionMessage('⏳ Offline — action queued. Will sync when connection is restored.');
+      setTimeout(() => setActionMessage(''), 5000);
+    } else {
+      setError(result.error || 'Action failed');
     }
+
+    setLoading(false);
   }
 
   function fmtTime(iso: string): string {
@@ -174,6 +200,14 @@ export default function EmployeeDashboardPage() {
       {error ? <div className="alert alert-error">⚠ {error}</div> : null}
       {actionMessage ? <div className="alert alert-success">{actionMessage}</div> : null}
 
+      {/* Pending sync banner */}
+      {pendingActions > 0 ? (
+        <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span className="sync-spinner" />
+          {pendingActions} action{pendingActions > 1 ? 's' : ''} waiting to sync…
+        </div>
+      ) : null}
+
       {/* ── KPI Row ── */}
       <section className="kpi-grid">
         <article className="kpi">
@@ -195,7 +229,12 @@ export default function EmployeeDashboardPage() {
             ) : 'None'}
           </p>
         </article>
-
+        {activeSession?.isLate ? (
+          <article className="kpi">
+            <p className="kpi-label">Late</p>
+            <p className="kpi-value" style={{ color: 'var(--danger)' }}>{activeSession.lateMinutes}m</p>
+          </article>
+        ) : null}
       </section>
 
       {/* ── Main Layout ── */}
