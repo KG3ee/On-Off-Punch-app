@@ -35,3 +35,6 @@ ALTER TABLE "User"
 
 DROP INDEX IF EXISTS "User_telegramId_key";
 ALTER TABLE "User" DROP COLUMN IF EXISTS "telegramId";
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
