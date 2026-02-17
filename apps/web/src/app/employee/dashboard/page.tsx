@@ -154,6 +154,7 @@ export default function EmployeeDashboardPage() {
     <AppShell
       title="Dashboard"
       subtitle={me ? `${me.displayName}${me.team?.name ? ` · ${me.team.name}` : ''}` : '…'}
+      userRole={me?.role}
     >
       {error ? <div className="alert alert-error">⚠ {error}</div> : null}
       {actionMessage ? <div className="alert alert-success">{actionMessage}</div> : null}

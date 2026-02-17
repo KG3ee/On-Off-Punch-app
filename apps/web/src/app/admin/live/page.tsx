@@ -92,7 +92,7 @@ export default function AdminLivePage() {
   }
 
   return (
-    <AppShell title="Live Board" subtitle="Real-time duty & break status" admin>
+    <AppShell title="Live Board" subtitle="Real-time duty & break status" admin userRole="ADMIN">
       {error ? <div className="alert alert-error">⚠ {error}</div> : null}
 
       <section className="kpi-grid">

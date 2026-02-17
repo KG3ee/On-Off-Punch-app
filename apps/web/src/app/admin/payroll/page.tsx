@@ -172,7 +172,7 @@ export default function AdminPayrollPage() {
   }
 
   return (
-    <AppShell title="Admin Payroll" subtitle="Draft and finalize payroll runs from attendance data" admin>
+    <AppShell title="Payroll" subtitle="Manage salary rules and process runs" admin userRole="ADMIN">
       {message ? <p style={{ color: 'var(--ok)' }}>{message}</p> : null}
       {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
 

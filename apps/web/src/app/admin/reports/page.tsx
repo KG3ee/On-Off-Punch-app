@@ -72,7 +72,7 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <AppShell title="Admin Reports" subtitle="Generate and review monthly snapshots" admin>
+    <AppShell title="Admin Reports" subtitle="Generate and review monthly snapshots" admin userRole="ADMIN">
       {message ? <p style={{ color: 'var(--ok)' }}>{message}</p> : null}
       {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
 

@@ -151,7 +151,7 @@ export default function AdminShiftsPage() {
       : users.map((user) => ({ id: user.id, label: user.displayName }));
 
   return (
-    <AppShell title="Admin Shifts" subtitle="Manage presets, assignments, and date overrides" admin>
+    <AppShell title="Admin Shifts" subtitle="Manage shift presets and team assignments" admin userRole="ADMIN">
       {message ? <p style={{ color: 'var(--ok)' }}>{message}</p> : null}
       {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
 

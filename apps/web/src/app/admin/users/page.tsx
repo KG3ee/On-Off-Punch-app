@@ -24,7 +24,12 @@ export default function AdminUsersPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  // Team form state
   const [teamName, setTeamName] = useState('');
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [editTeamName, setEditTeamName] = useState('');
+
+  // User form state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -67,6 +72,44 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function renameTeam(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (!editingTeam) return;
+    try {
+      await apiFetch(`/teams/admin/${editingTeam.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: editTeamName })
+      });
+      setEditingTeam(null);
+      setEditTeamName('');
+      setMessage('Team renamed');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to rename team');
+    }
+  }
+
+  async function deleteTeam(id: string): Promise<void> {
+    if (!confirm('Are you sure you want to delete this team?')) return;
+    try {
+      await apiFetch(`/teams/admin/${id}`, { method: 'DELETE' });
+      setMessage('Team deleted');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete team');
+    }
+  }
+
+  function startEditTeam(team: Team) {
+    setEditingTeam(team);
+    setEditTeamName(team.name);
+  }
+
+  function cancelEditTeam() {
+    setEditingTeam(null);
+    setEditTeamName('');
+  }
+
   async function createUser(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     try {
@@ -99,24 +142,59 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <AppShell title="Admin Users" subtitle="Create and manage username/password users" admin>
+    <AppShell title="Admin Users" subtitle="Create and manage username/password users" admin userRole="ADMIN">
       {message ? <p style={{ color: 'var(--ok)' }}>{message}</p> : null}
       {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
 
       <section className="split">
-        <form className="card form-grid" onSubmit={(event) => void createTeam(event)}>
-          <h3>Create Team</h3>
-          <input
-            className="input"
-            value={teamName}
-            onChange={(e) => setTeamName(e.target.value)}
-            placeholder="Team name"
-            required
-          />
-          <button type="submit" className="button button-primary">
-            Add Team
-          </button>
-        </form>
+        <article className="card">
+          <form className="form-grid" onSubmit={(event) => void createTeam(event)} style={{ marginBottom: '1.5rem' }}>
+            <h3>Create Team</h3>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                className="input"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                placeholder="New team name"
+                required
+              />
+              <button type="submit" className="button button-primary" style={{ flexShrink: 0 }}>
+                Add
+              </button>
+            </div>
+          </form>
+
+          <h3>Manage Teams</h3>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem' }}>
+            {teams.map((team) => (
+              <li key={team.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '0.4rem 0.6rem', borderRadius: '6px' }}>
+                {editingTeam?.id === team.id ? (
+                  <form onSubmit={(e) => void renameTeam(e)} style={{ display: 'flex', gap: '0.3rem', flex: 1 }}>
+                    <input
+                      className="input"
+                      value={editTeamName}
+                      onChange={(e) => setEditTeamName(e.target.value)}
+                      autoFocus
+                      required
+                      style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem' }}
+                    />
+                    <button type="submit" className="button button-ok button-sm">Save</button>
+                    <button type="button" className="button button-ghost button-sm" onClick={cancelEditTeam}>✕</button>
+                  </form>
+                ) : (
+                  <>
+                    <span style={{ fontWeight: 500 }}>{team.name}</span>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                      <button className="button button-ghost button-sm" onClick={() => startEditTeam(team)} title="Rename">✏️</button>
+                      <button className="button button-danger button-sm" onClick={() => void deleteTeam(team.id)} title="Delete">🗑️</button>
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+            {teams.length === 0 ? <li style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>No teams found</li> : null}
+          </ul>
+        </article>
 
         <form className="card form-grid" onSubmit={(event) => void createUser(event)}>
           <h3>Create User</h3>
