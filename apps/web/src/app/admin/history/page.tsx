@@ -16,6 +16,7 @@ type AttendanceRecord = {
     status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
     isLate: boolean;
     lateMinutes: number;
+    overtimeMinutes: number;
     user: { id: string; username: string; displayName: string; role: string };
     team?: { id: string; name: string } | null;
 };
@@ -108,6 +109,7 @@ export default function AdminHistoryPage() {
     const stats = useMemo(() => {
         const totalSessions = attendance.length;
         const totalLateMin = attendance.reduce((sum, r) => sum + r.lateMinutes, 0);
+        const totalOvertimeMin = attendance.reduce((sum, r) => sum + r.overtimeMinutes, 0);
 
         // Calculate total worked minutes from closed sessions
         const totalWorkedMin = attendance.reduce((sum, r) => {
@@ -127,6 +129,7 @@ export default function AdminHistoryPage() {
         return {
             totalSessions,
             totalLateMin,
+            totalOvertimeMin,
             totalWorkedMin: Math.round(totalWorkedMin),
             totalBreaks,
             totalBreakMin
@@ -135,7 +138,7 @@ export default function AdminHistoryPage() {
 
     // ── CSV Export ──
     function exportDutyCSV(): void {
-        const header = ['Date', 'Employee', 'Team', 'Punch On', 'Punch Off', 'Status', 'Late', 'Late Minutes'];
+        const header = ['Date', 'Employee', 'Team', 'Punch On', 'Punch Off', 'Status', 'Late', 'Late Minutes', 'Overtime Minutes'];
         const rows = attendance.map(r => [
             r.localDate,
             r.user.displayName,
@@ -144,7 +147,8 @@ export default function AdminHistoryPage() {
             r.punchedOffAt ? fmtTime(r.punchedOffAt) : '',
             r.status,
             r.isLate ? 'Yes' : 'No',
-            String(r.lateMinutes)
+            String(r.lateMinutes),
+            String(r.overtimeMinutes)
         ]);
         downloadCSV([header, ...rows], `duty-history-${fromDate}-${toDate}.csv`);
     }
@@ -221,6 +225,10 @@ export default function AdminHistoryPage() {
                     <p className="kpi-value">{stats.totalLateMin > 0 ? <span style={{ color: 'var(--danger)' }}>{fmtDuration(stats.totalLateMin)}</span> : '0'}</p>
                 </article>
                 <article className="kpi">
+                    <p className="kpi-label">Overtime</p>
+                    <p className="kpi-value">{stats.totalOvertimeMin > 0 ? <span style={{ color: 'var(--brand)' }}>{fmtDuration(stats.totalOvertimeMin)}</span> : '0'}</p>
+                </article>
+                <article className="kpi">
                     <p className="kpi-label">Break Sessions</p>
                     <p className="kpi-value">{stats.totalBreaks}</p>
                 </article>
@@ -264,6 +272,7 @@ export default function AdminHistoryPage() {
                                 <th>Punch Off</th>
                                 <th>Status</th>
                                 <th>Late</th>
+                                <th>OT</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -276,10 +285,11 @@ export default function AdminHistoryPage() {
                                     <td className="mono">{r.punchedOffAt ? fmtTime(r.punchedOffAt) : '—'}</td>
                                     <td><span className={`tag ${r.status === 'ACTIVE' ? 'ok' : ''}`}>{r.status}</span></td>
                                     <td>{r.lateMinutes > 0 ? <span className="tag danger">{r.lateMinutes}m</span> : '—'}</td>
+                                    <td>{r.overtimeMinutes > 0 ? <span className="tag ok">{r.overtimeMinutes}m</span> : '—'}</td>
                                 </tr>
                             ))}
                             {attendance.length === 0 ? (
-                                <tr><td colSpan={7} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No duty records found for this period</td></tr>
+                                <tr><td colSpan={8} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No duty records found for this period</td></tr>
                             ) : null}
                         </tbody>
                     </table>
