@@ -39,7 +39,7 @@ body {
   background-image:
     radial-gradient(ellipse at 15% 5%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
     radial-gradient(ellipse at 85% 20%, rgba(245, 158, 11, 0.04) 0%, transparent 40%);
-  font-size: 14px;
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -58,12 +58,12 @@ h4 {
 p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: 0.9rem;
 }
 
 .mono {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 .eyebrow {
@@ -80,7 +80,7 @@ p {
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 0.42rem 0.85rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition);
@@ -147,7 +147,7 @@ p {
 /* Small button variant */
 .button-sm {
   padding: 0.3rem 0.6rem;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   border-radius: 6px;
 }
 
@@ -219,7 +219,7 @@ p {
   padding: 0.5rem 0.65rem;
   background: var(--surface);
   color: var(--ink);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-family: inherit;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
@@ -268,7 +268,7 @@ p {
 }
 
 .card h3 {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: var(--ink);
@@ -285,7 +285,7 @@ p {
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
   border: 1px solid var(--line);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--muted);
   letter-spacing: 0.02em;
@@ -317,7 +317,7 @@ p {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
 }
 
 th,
@@ -331,7 +331,7 @@ td {
 th {
   color: var(--muted);
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -368,7 +368,7 @@ tbody tr:hover {
 }
 
 .shell-header h2 {
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 700;
 }
 
@@ -395,8 +395,8 @@ tbody tr:hover {
 .nav a {
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: 0.3rem 0.6rem;
-  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
   font-weight: 500;
   color: var(--muted);
   transition: all var(--transition);
@@ -425,14 +425,14 @@ tbody tr:hover {
 }
 
 .kpi-value {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--ink);
   line-height: 1.2;
 }
 
 .kpi-label {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;

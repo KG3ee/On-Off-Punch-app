@@ -28,6 +28,7 @@ type BreakPolicy = {
 type BreakSession = {
   id: string;
   localDate: string;
+  dutySessionId: string;
   startedAt: string;
   endedAt?: string | null;
   expectedDurationMinutes: number;
@@ -62,6 +63,12 @@ export default function EmployeeDashboardPage() {
     const startedAt = new Date(activeBreak.startedAt).getTime();
     return Math.max(0, Math.round((nowTick - startedAt) / 60000));
   }, [activeBreak, nowTick]);
+
+  // Only show breaks linked to the current active duty session
+  const sessionBreaks = useMemo(() => {
+    if (!activeSession) return [];
+    return breakSessions.filter(b => b.dutySessionId === activeSession.id);
+  }, [breakSessions, activeSession]);
 
   const activeDutyMinutes = useMemo(() => {
     if (!activeSession) return 0;
@@ -313,7 +320,7 @@ export default function EmployeeDashboardPage() {
           </article>
 
           <article className="card">
-            <h3>☕ Break History</h3>
+            <h3>☕ Session Breaks</h3>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -326,7 +333,7 @@ export default function EmployeeDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {breakSessions.map((session) => (
+                  {sessionBreaks.map((session) => (
                     <tr key={session.id}>
                       <td><span className="tag">{session.breakPolicy.code.toUpperCase()}</span></td>
                       <td className="mono">{fmtTime(session.startedAt)}</td>
@@ -339,8 +346,8 @@ export default function EmployeeDashboardPage() {
                       </td>
                     </tr>
                   ))}
-                  {breakSessions.length === 0 ? (
-                    <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>No breaks yet</td></tr>
+                  {sessionBreaks.length === 0 ? (
+                    <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>{activeSession ? 'No breaks this session' : 'Not on duty'}</td></tr>
                   ) : null}
                 </tbody>
               </table>
