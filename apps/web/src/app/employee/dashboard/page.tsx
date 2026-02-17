@@ -252,18 +252,31 @@ export default function EmployeeDashboardPage() {
 
             {/* Break policy chips */}
             <div className="chips-grid">
-              {policies.map((policy) => (
-                <button
-                  key={policy.id}
-                  type="button"
-                  className="button-chip"
-                  disabled={loading || !activeSession || !!activeBreak}
-                  onClick={() => void runAction('/breaks/start', { code: policy.code })}
-                  title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/day`}
-                >
-                  {policy.code.toUpperCase()} · {policy.expectedDurationMinutes}m
-                </button>
-              ))}
+              {policies.map((policy) => {
+                const emojiMap: Record<string, string> = {
+                  'wc': '🚽',
+                  'bwc': '🪠',
+                  'cy': '🚬',
+                  'cf+1': '🥐',
+                  'cf+2': '🍛',
+                  'cf+3': '🍽️',
+                };
+                const emoji = emojiMap[policy.code] || '☕';
+                return (
+                  <button
+                    key={policy.id}
+                    type="button"
+                    className="button-chip"
+                    disabled={loading || !activeSession || !!activeBreak}
+                    onClick={() => void runAction('/breaks/start', { code: policy.code })}
+                    title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/day`}
+                  >
+                    <span className="chip-emoji">{emoji}</span>
+                    <span className="chip-code">{policy.code.toUpperCase()} · {policy.expectedDurationMinutes}m</span>
+                    <span className="chip-name">{policy.name}</span>
+                  </button>
+                );
+              })}
               {policies.length === 0 ? (
                 <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p>
               ) : null}

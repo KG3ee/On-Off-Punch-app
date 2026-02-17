@@ -14,12 +14,6 @@ export default function HomePage() {
           <Link href="/login" className="button button-primary">
             Login
           </Link>
-          <Link href="/employee/dashboard" className="button button-ghost">
-            Employee View
-          </Link>
-          <Link href="/admin/live" className="button button-ghost">
-            Admin Live Board
-          </Link>
         </div>
       </section>
     </main>

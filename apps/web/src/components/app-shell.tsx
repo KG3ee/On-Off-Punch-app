@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { clearAuth } from '@/lib/auth';
+import { UserRole } from '@/types/auth';
 
 type NavItem = {
   href: string;
@@ -22,15 +23,19 @@ export function AppShell({
   title,
   subtitle,
   children,
-  admin = false
+  admin = false,
+  userRole
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   admin?: boolean;
+  userRole?: UserRole;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isAdminView = pathname?.startsWith('/admin');
+  const isEmployeeView = pathname?.startsWith('/employee');
 
   async function logout(): Promise<void> {
     try {
@@ -40,6 +45,14 @@ export function AppShell({
     }
     clearAuth();
     router.push('/login');
+  }
+
+  function switchView(): void {
+    if (isAdminView) {
+      router.push('/employee/dashboard');
+    } else {
+      router.push('/admin/live');
+    }
   }
 
   return (
@@ -53,9 +66,11 @@ export function AppShell({
           </div>
           <div className="shell-header-right">
             <nav className="nav">
-              <Link href="/employee/dashboard" className={pathname?.startsWith('/employee') ? 'active' : ''}>
-                Employee
-              </Link>
+              {isEmployeeView ? (
+                <Link href="/employee/dashboard" className={pathname?.startsWith('/employee') ? 'active' : ''}>
+                  Dashboard
+                </Link>
+              ) : null}
               {admin
                 ? adminNav.map((item) => (
                   <Link
@@ -68,9 +83,21 @@ export function AppShell({
                 ))
                 : null}
             </nav>
-            <button type="button" className="button button-ghost button-sm" onClick={() => void logout()}>
-              Logout
-            </button>
+            <div className="header-actions">
+              {userRole === 'ADMIN' ? (
+                <button
+                  type="button"
+                  className="button button-ghost button-sm"
+                  onClick={switchView}
+                  title={isAdminView ? 'Switch to Employee view' : 'Switch to Admin view'}
+                >
+                  {isAdminView ? '👤 Employee View' : '🛡️ Admin View'}
+                </button>
+              ) : null}
+              <button type="button" className="button button-ghost button-sm" onClick={() => void logout()}>
+                Logout
+              </button>
+            </div>
           </div>
         </header>
         {children}
