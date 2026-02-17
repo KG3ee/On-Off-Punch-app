@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node \"$(npm root)/tsx/dist/cli.mjs\" watch src/main.ts",
-    "build": "node \"$(npm root)/typescript/bin/tsc\" -p tsconfig.build.json",
+    "build": "npm run prisma:generate && node \"$(npm root)/typescript/bin/tsc\" -p tsconfig.build.json",
     "start": "node dist/main.js",
     "prisma:generate": "node \"$(npm root)/prisma/build/index.js\" generate --schema prisma/schema.prisma",
     "prisma:migrate": "node \"$(npm root)/prisma/build/index.js\" migrate dev --schema prisma/schema.prisma",
