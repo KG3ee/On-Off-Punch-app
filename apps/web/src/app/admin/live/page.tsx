@@ -6,9 +6,7 @@ import { apiFetch } from '@/lib/api';
 
 type LiveBreak = {
   id: string;
-  breakPolicy: {
-    code: string;
-  };
+  breakPolicy: { code: string };
   startedAt: string;
 };
 
@@ -19,15 +17,9 @@ type LiveDuty = {
   punchedOnAt: string;
   isLate: boolean;
   lateMinutes: number;
-  user: {
-    displayName: string;
-  };
-  team?: {
-    name: string;
-  } | null;
-  shiftPresetSegment?: {
-    segmentNo: number;
-  } | null;
+  user: { displayName: string };
+  team?: { name: string } | null;
+  shiftPresetSegment?: { segmentNo: number } | null;
   breakSessions: LiveBreak[];
 };
 
@@ -49,15 +41,10 @@ type BreakHistoryItem = {
   actualMinutes?: number | null;
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CLOSED';
   isOvertime: boolean;
-  breakPolicy: {
-    code: string;
-    name: string;
-  };
+  breakPolicy: { code: string; name: string };
   user: {
     displayName: string;
-    team?: {
-      name: string;
-    } | null;
+    team?: { name: string } | null;
   };
 };
 
@@ -69,13 +56,8 @@ export default function AdminLivePage() {
 
   useEffect(() => {
     void load();
-    const refreshTimer = window.setInterval(() => {
-      void load();
-    }, 15000);
-    const tickTimer = window.setInterval(() => {
-      setNowTick(Date.now());
-    }, 1000);
-
+    const refreshTimer = window.setInterval(() => void load(), 15000);
+    const tickTimer = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => {
       window.clearInterval(refreshTimer);
       window.clearInterval(tickTimer);
@@ -92,137 +74,134 @@ export default function AdminLivePage() {
       setBreakHistory(history);
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load live board');
+      setError(err instanceof Error ? err.message : 'Failed to load');
     }
   }
 
-  function formatHistoryMinutes(item: BreakHistoryItem): string {
-    if (item.actualMinutes !== null && item.actualMinutes !== undefined) {
-      return `${item.actualMinutes}m`;
-    }
+  function fmtTime(iso: string): string {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
 
+  function formatHistoryMinutes(item: BreakHistoryItem): string {
+    if (item.actualMinutes !== null && item.actualMinutes !== undefined) return `${item.actualMinutes}m`;
     if (item.status === 'ACTIVE') {
-      const startedAt = new Date(item.startedAt).getTime();
-      const elapsed = Math.max(0, Math.round((nowTick - startedAt) / 60000));
+      const elapsed = Math.max(0, Math.round((nowTick - new Date(item.startedAt).getTime()) / 60000));
       return `${elapsed}m`;
     }
-
     return '-';
   }
 
   return (
-    <AppShell title="Admin Live Board" subtitle="Real-time duty and break visibility" admin>
-      {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
+    <AppShell title="Live Board" subtitle="Real-time duty & break status" admin>
+      {error ? <div className="alert alert-error">⚠ {error}</div> : null}
 
       <section className="kpi-grid">
         <article className="kpi">
-          <p className="kpi-label">Local Date</p>
-          <p className="kpi-value mono">{data?.localDate || '-'}</p>
+          <p className="kpi-label">Date</p>
+          <p className="kpi-value mono">{data?.localDate || '—'}</p>
         </article>
         <article className="kpi">
-          <p className="kpi-label">Active Duty</p>
-          <p className="kpi-value">{data?.activeDutySessions.length || 0}</p>
+          <p className="kpi-label">Active Now</p>
+          <p className="kpi-value" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            {(data?.activeDutySessions.length || 0) > 0 && <span className="status-dot active" />}
+            {data?.activeDutySessions.length || 0}
+          </p>
         </article>
         <article className="kpi">
-          <p className="kpi-label">Total Sessions Today</p>
+          <p className="kpi-label">Total Today</p>
           <p className="kpi-value">{data?.summary.totalSessionsToday || 0}</p>
         </article>
         <article className="kpi">
-          <p className="kpi-label">Late Minutes Today</p>
+          <p className="kpi-label">Late Min</p>
           <p className="kpi-value">{data?.summary.totalLateMinutesToday || 0}</p>
         </article>
       </section>
 
-      <section className="card table-wrap">
-        <h3>Active Sessions</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Team</th>
-              <th>Segment</th>
-              <th>Punched On</th>
-              <th>Late</th>
-              <th>Active Break</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.activeDutySessions.map((session) => (
-              <tr key={session.id}>
-                <td>{session.user.displayName}</td>
-                <td>{session.team?.name || '-'}</td>
-                <td>{session.shiftPresetSegment?.segmentNo || '-'}</td>
-                <td className="mono">{new Date(session.punchedOnAt).toLocaleTimeString()}</td>
-                <td>
-                  {session.lateMinutes > 0 ? (
-                    <span className="tag danger">{session.lateMinutes}m</span>
-                  ) : (
-                    <span className="tag ok">On time</span>
-                  )}
-                </td>
-                <td>
-                  {session.breakSessions.length > 0 ? (
-                    <span className="tag">
-                      {session.breakSessions[0].breakPolicy.code.toUpperCase()} since{' '}
-                      {new Date(session.breakSessions[0].startedAt).toLocaleTimeString()}
-                    </span>
-                  ) : (
-                    '-'
-                  )}
-                </td>
-              </tr>
-            ))}
-            {!data?.activeDutySessions.length ? (
+      <article className="card">
+        <h3>🟢 Active Sessions</h3>
+        <div className="table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td colSpan={6}>No active duty sessions.</td>
+                <th>Employee</th>
+                <th>Team</th>
+                <th>Seg</th>
+                <th>Punched On</th>
+                <th>Late</th>
+                <th>Break</th>
               </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody>
+              {data?.activeDutySessions.map((session) => (
+                <tr key={session.id}>
+                  <td>{session.user.displayName}</td>
+                  <td>{session.team?.name || '—'}</td>
+                  <td>{session.shiftPresetSegment?.segmentNo || '—'}</td>
+                  <td className="mono">{fmtTime(session.punchedOnAt)}</td>
+                  <td>
+                    {session.lateMinutes > 0 ? (
+                      <span className="tag danger">{session.lateMinutes}m</span>
+                    ) : (
+                      <span className="tag ok">On time</span>
+                    )}
+                  </td>
+                  <td>
+                    {session.breakSessions.length > 0 ? (
+                      <span className="tag warning">
+                        {session.breakSessions[0].breakPolicy.code.toUpperCase()} · {fmtTime(session.breakSessions[0].startedAt)}
+                      </span>
+                    ) : '—'}
+                  </td>
+                </tr>
+              ))}
+              {!data?.activeDutySessions.length ? (
+                <tr><td colSpan={6} style={{ color: 'var(--muted)' }}>No active sessions</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </article>
 
-      <section className="card table-wrap">
-        <h3>Today Break History</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Team</th>
-              <th>Code</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Minutes</th>
-              <th>Status</th>
-              <th>OT</th>
-            </tr>
-          </thead>
-          <tbody>
-            {breakHistory.map((item) => (
-              <tr key={item.id}>
-                <td>{item.user.displayName}</td>
-                <td>{item.user.team?.name || '-'}</td>
-                <td>{item.breakPolicy.code.toUpperCase()}</td>
-                <td className="mono">{new Date(item.startedAt).toLocaleTimeString()}</td>
-                <td className="mono">{item.endedAt ? new Date(item.endedAt).toLocaleTimeString() : '-'}</td>
-                <td>{formatHistoryMinutes(item)}</td>
-                <td>
-                  <span
-                    className={`tag ${item.status === 'ACTIVE' ? 'ok' : item.status === 'CANCELLED' ? 'danger' : ''}`}
-                  >
-                    {item.status}
-                  </span>
-                </td>
-                <td>{item.isOvertime ? 'Yes' : 'No'}</td>
-              </tr>
-            ))}
-            {breakHistory.length === 0 ? (
+      <article className="card">
+        <h3>☕ Today Break History</h3>
+        <div className="table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td colSpan={8}>No breaks for today.</td>
+                <th>Employee</th>
+                <th>Team</th>
+                <th>Code</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Min</th>
+                <th>Status</th>
+                <th>OT</th>
               </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody>
+              {breakHistory.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.user.displayName}</td>
+                  <td>{item.user.team?.name || '—'}</td>
+                  <td><span className="tag">{item.breakPolicy.code.toUpperCase()}</span></td>
+                  <td className="mono">{fmtTime(item.startedAt)}</td>
+                  <td className="mono">{item.endedAt ? fmtTime(item.endedAt) : '—'}</td>
+                  <td>{formatHistoryMinutes(item)}</td>
+                  <td>
+                    <span className={`tag ${item.status === 'ACTIVE' ? 'ok' : item.status === 'CANCELLED' ? 'danger' : ''}`}>
+                      {item.status}
+                    </span>
+                  </td>
+                  <td>{item.isOvertime ? <span className="tag warning">Yes</span> : '—'}</td>
+                </tr>
+              ))}
+              {breakHistory.length === 0 ? (
+                <tr><td colSpan={8} style={{ color: 'var(--muted)' }}>No breaks today</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </article>
     </AppShell>
   );
 }

@@ -11,7 +11,7 @@ type NavItem = {
 };
 
 const adminNav: NavItem[] = [
-  { href: '/admin/live', label: 'Live Board' },
+  { href: '/admin/live', label: 'Live' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/shifts', label: 'Shifts' },
   { href: '/admin/payroll', label: 'Payroll' },
@@ -34,11 +34,9 @@ export function AppShell({
 
   async function logout(): Promise<void> {
     try {
-      await apiFetch('/auth/logout', {
-        method: 'POST'
-      });
+      await apiFetch('/auth/logout', { method: 'POST' });
     } catch {
-      // Ignore logout API errors and clear local token anyway.
+      // Ignore logout API errors
     }
     clearAuth();
     router.push('/login');
@@ -51,7 +49,7 @@ export function AppShell({
           <div>
             <p className="eyebrow">Modern Punch</p>
             <h2>{title}</h2>
-            {subtitle ? <p>{subtitle}</p> : null}
+            {subtitle ? <p style={{ fontSize: '0.75rem' }}>{subtitle}</p> : null}
           </div>
           <div className="shell-header-right">
             <nav className="nav">
@@ -70,11 +68,9 @@ export function AppShell({
                 ))
                 : null}
             </nav>
-            <div className="header-actions">
-              <button type="button" className="button button-ghost" onClick={() => void logout()}>
-                Logout
-              </button>
-            </div>
+            <button type="button" className="button button-ghost button-sm" onClick={() => void logout()}>
+              Logout
+            </button>
           </div>
         </header>
         {children}
