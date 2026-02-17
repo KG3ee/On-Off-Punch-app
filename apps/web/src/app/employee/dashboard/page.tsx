@@ -284,10 +284,10 @@ export default function EmployeeDashboardPage() {
           </article>
         </div>
 
-        {/* Right column — History */}
+        {/* Right column — Current Session */}
         <div className="grid">
           <article className="card">
-            <h3>📋 Duty History</h3>
+            <h3>📋 Current Session</h3>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -300,20 +300,19 @@ export default function EmployeeDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sessions.map((session) => (
-                    <tr key={session.id}>
-                      <td className="mono">{session.shiftDate}</td>
-                      <td className="mono">{fmtTime(session.punchedOnAt)}</td>
-                      <td className="mono">{session.punchedOffAt ? fmtTime(session.punchedOffAt) : '—'}</td>
+                  {activeSession ? (
+                    <tr>
+                      <td className="mono">{activeSession.shiftDate}</td>
+                      <td className="mono">{fmtTime(activeSession.punchedOnAt)}</td>
+                      <td className="mono">{activeSession.punchedOffAt ? fmtTime(activeSession.punchedOffAt) : '—'}</td>
                       <td>
-                        <span className={`tag ${session.status === 'ACTIVE' ? 'ok' : ''}`}>{session.status}</span>
+                        <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
                       </td>
-                      <td>{session.lateMinutes > 0 ? <span className="tag danger">{session.lateMinutes}m</span> : '—'}</td>
+                      <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
                     </tr>
-                  ))}
-                  {sessions.length === 0 ? (
-                    <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>No sessions yet</td></tr>
-                  ) : null}
+                  ) : (
+                    <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>Not on duty</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
