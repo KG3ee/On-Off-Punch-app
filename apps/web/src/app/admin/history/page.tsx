@@ -66,6 +66,7 @@ export default function AdminHistoryPage() {
     useEffect(() => {
         void loadFilters();
         void search();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     async function loadFilters(): Promise<void> {

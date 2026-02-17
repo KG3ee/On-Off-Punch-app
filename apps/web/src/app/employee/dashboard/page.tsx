@@ -122,6 +122,7 @@ export default function EmployeeDashboardPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBreak, loading]);
 
   async function loadData(): Promise<void> {

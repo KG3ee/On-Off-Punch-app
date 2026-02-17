@@ -371,7 +371,7 @@ export default function AdminUsersPage() {
                 );
               })}
               {teams.length === 0 ? (
-                <tr><td colSpan={5} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet — click "+ Team" to create one</td></tr>
+                <tr><td colSpan={5} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
               ) : null}
             </tbody>
           </table>
