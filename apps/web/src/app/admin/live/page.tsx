@@ -13,13 +13,11 @@ type LiveBreak = {
 type LiveDuty = {
   id: string;
   localDate: string;
-  shiftDate: string;
   punchedOnAt: string;
   isLate: boolean;
   lateMinutes: number;
   user: { displayName: string };
   team?: { name: string } | null;
-  shiftPresetSegment?: { segmentNo: number } | null;
   breakSessions: LiveBreak[];
 };
 
@@ -125,7 +123,6 @@ export default function AdminLivePage() {
               <tr>
                 <th>Employee</th>
                 <th>Team</th>
-                <th>Seg</th>
                 <th>Punched On</th>
                 <th>Late</th>
                 <th>Break</th>
@@ -136,7 +133,6 @@ export default function AdminLivePage() {
                 <tr key={session.id}>
                   <td>{session.user.displayName}</td>
                   <td>{session.team?.name || '—'}</td>
-                  <td>{session.shiftPresetSegment?.segmentNo || '—'}</td>
                   <td className="mono">{fmtTime(session.punchedOnAt)}</td>
                   <td>
                     {session.lateMinutes > 0 ? (
@@ -155,7 +151,7 @@ export default function AdminLivePage() {
                 </tr>
               ))}
               {!data?.activeDutySessions.length ? (
-                <tr><td colSpan={6} style={{ color: 'var(--muted)' }}>No active sessions</td></tr>
+                <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>No active sessions</td></tr>
               ) : null}
             </tbody>
           </table>

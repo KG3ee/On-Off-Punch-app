@@ -5,18 +5,6 @@ import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 import { MeUser } from '@/types/auth';
 
-type ShiftCurrent = {
-  preset: { name: string; timezone: string };
-  segment: {
-    segmentNo: number;
-    shiftDate: string;
-    startTime: string;
-    endTime: string;
-    lateGraceMinutes: number;
-    scheduleStartLocal: string;
-    scheduleEndLocal: string;
-  };
-};
 
 type DutySession = {
   id: string;
@@ -54,7 +42,7 @@ type BreakSession = {
 
 export default function EmployeeDashboardPage() {
   const [me, setMe] = useState<MeUser | null>(null);
-  const [currentShift, setCurrentShift] = useState<ShiftCurrent | null>(null);
+
   const [sessions, setSessions] = useState<DutySession[]>([]);
   const [policies, setPolicies] = useState<BreakPolicy[]>([]);
   const [breakSessions, setBreakSessions] = useState<BreakSession[]>([]);
@@ -114,13 +102,12 @@ export default function EmployeeDashboardPage() {
   async function loadData(): Promise<void> {
     setLoading(true);
     setError('');
-    const [meResult, sessionsResult, policiesResult, breaksResult, shiftResult] =
+    const [meResult, sessionsResult, policiesResult, breaksResult] =
       await Promise.allSettled([
         apiFetch<MeUser>('/me'),
         apiFetch<DutySession[]>('/attendance/me/today'),
         apiFetch<BreakPolicy[]>('/breaks/policies'),
-        apiFetch<BreakSession[]>('/breaks/me/today'),
-        apiFetch<ShiftCurrent>('/shifts/current')
+        apiFetch<BreakSession[]>('/breaks/me/today')
       ]);
 
     let failedCount = 0;
@@ -128,7 +115,6 @@ export default function EmployeeDashboardPage() {
     if (sessionsResult.status === 'fulfilled') setSessions(sessionsResult.value); else failedCount++;
     if (policiesResult.status === 'fulfilled') setPolicies(policiesResult.value); else failedCount++;
     if (breaksResult.status === 'fulfilled') setBreakSessions(breaksResult.value); else failedCount++;
-    if (shiftResult.status === 'fulfilled') setCurrentShift(shiftResult.value); else setCurrentShift(null);
     if (failedCount > 0) setError('Some data could not be loaded. Please refresh.');
     setLoading(false);
   }
@@ -202,32 +188,16 @@ export default function EmployeeDashboardPage() {
             ) : 'None'}
           </p>
         </article>
-        <article className="kpi">
-          <p className="kpi-label">Segment</p>
-          <p className="kpi-value">
-            {currentShift
-              ? `#${currentShift.segment.segmentNo}`
-              : '—'
-            }
-          </p>
-        </article>
+
       </section>
 
       {/* ── Main Layout ── */}
       <section className="split">
         {/* Left column — Actions */}
         <div className="grid">
-          {/* Duty + Shift info */}
+          {/* Duty */}
           <article className="card">
             <h3>⚡ Duty</h3>
-            {currentShift ? (
-              <p style={{ fontSize: '0.75rem', marginBottom: '0.45rem' }}>
-                Seg {currentShift.segment.segmentNo}: {currentShift.segment.startTime} – {currentShift.segment.endTime}
-                <span style={{ color: 'var(--muted)', marginLeft: '0.4rem' }}>({currentShift.segment.shiftDate})</span>
-              </p>
-            ) : (
-              <p style={{ fontSize: '0.75rem', marginBottom: '0.45rem' }}>No scheduled segment</p>
-            )}
             <div className="action-row">
               <button
                 type="button"

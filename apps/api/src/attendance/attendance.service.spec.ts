@@ -1,7 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AttendanceService } from "./attendance.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { ShiftsService } from "../shifts/shifts.service";
 
 const mockPrismaService = {
   dutySession: {
@@ -15,10 +14,6 @@ const mockPrismaService = {
   },
 };
 
-const mockShiftsService = {
-  getActiveSegmentForUser: jest.fn(),
-};
-
 describe("AttendanceService", () => {
   let service: AttendanceService;
 
@@ -27,7 +22,6 @@ describe("AttendanceService", () => {
       providers: [
         AttendanceService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: ShiftsService, useValue: mockShiftsService },
       ],
     }).compile();
 

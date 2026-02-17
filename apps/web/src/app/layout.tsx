@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Modern Punch Dashboard',
-  description: 'Prototype for duty + break + payroll dashboard'
+  description: 'Prototype for duty + break dashboard'
 };
 
 export default function RootLayout({

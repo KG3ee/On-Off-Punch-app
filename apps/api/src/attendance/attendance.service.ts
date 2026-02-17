@@ -5,42 +5,19 @@ import {
 } from "@nestjs/common";
 import {
   formatDateInZone,
-  minutesNowInZone,
-  parseTimeToMinutes,
 } from "../core";
 import { DutySessionStatus, User } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-import { ShiftsService } from "../shifts/shifts.service";
 
 @Injectable()
 export class AttendanceService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly shiftsService: ShiftsService,
   ) { }
 
   async punchOn(user: User, note?: string) {
     const now = new Date();
     const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
-
-    // Try to find an active shift segment, but don't fail if none exists
-    let preset: Awaited<
-      ReturnType<ShiftsService["getActiveSegmentForUser"]>
-    >["preset"] | null = null;
-    let segment: Awaited<
-      ReturnType<ShiftsService["getActiveSegmentForUser"]>
-    >["segment"] | null = null;
-
-    try {
-      const result = await this.shiftsService.getActiveSegmentForUser(
-        user,
-        now,
-      );
-      preset = result.preset;
-      segment = result.segment;
-    } catch {
-      // No active segment — allow punch anyway
-    }
 
     // Check for existing active session
     const existing = await this.prisma.dutySession.findFirst({
@@ -55,32 +32,21 @@ export class AttendanceService {
     }
 
     const localDate = formatDateInZone(now, timezone);
-    let lateMinutes = 0;
-
-    if (segment) {
-      lateMinutes = this.calculateLateMinutes(
-        now,
-        timezone,
-        segment.startTime,
-        segment.lateGraceMinutes,
-        segment.crossesMidnight,
-      );
-    }
 
     const created = await this.prisma.dutySession.create({
       data: {
         userId: user.id,
         teamId: user.teamId || null,
-        shiftPresetId: preset?.id || null,
-        shiftPresetSegmentId: segment?.segmentId || null,
-        shiftDate: segment?.shiftDate || localDate,
+        shiftPresetId: null,
+        shiftPresetSegmentId: null,
+        shiftDate: localDate,
         localDate,
-        scheduledStartLocal: segment?.scheduleStartLocal || null,
-        scheduledEndLocal: segment?.scheduleEndLocal || null,
+        scheduledStartLocal: null,
+        scheduledEndLocal: null,
         punchedOnAt: now,
         status: DutySessionStatus.ACTIVE,
-        isLate: lateMinutes > 0,
-        lateMinutes,
+        isLate: false,
+        lateMinutes: 0,
         note,
         createdById: user.id,
       },
@@ -93,9 +59,9 @@ export class AttendanceService {
         entityType: "DutySession",
         entityId: created.id,
         payload: {
-          shiftDate: segment?.shiftDate || localDate,
-          segmentNo: segment?.segmentNo || null,
-          lateMinutes,
+          shiftDate: localDate,
+          segmentNo: null,
+          lateMinutes: 0,
         },
       },
     });
@@ -255,23 +221,5 @@ export class AttendanceService {
       },
       orderBy: [{ localDate: "desc" }, { punchedOnAt: "desc" }],
     });
-  }
-
-  private calculateLateMinutes(
-    now: Date,
-    timezone: string,
-    startTime: string,
-    graceMinutes: number,
-    crossesMidnight: boolean,
-  ): number {
-    const start = parseTimeToMinutes(startTime);
-    let nowMinutes = minutesNowInZone(now, timezone);
-
-    if (crossesMidnight && nowMinutes < start) {
-      nowMinutes += 1440;
-    }
-
-    const threshold = start + graceMinutes;
-    return Math.max(0, nowMinutes - threshold);
   }
 }
