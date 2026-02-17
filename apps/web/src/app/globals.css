@@ -597,6 +597,211 @@ main {
   padding: 0.85rem;
 }
 
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  animation: fadeIn 150ms ease-out;
+}
+
+.modal {
+  background: var(--card-solid);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  width: min(520px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+  animation: slideUp 200ms ease-out;
+}
+
+.modal h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.85rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.toolbar .input {
+  max-width: 280px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+/* ── Search input with icon ── */
+.input-search {
+  position: relative;
+}
+
+.input-search .input {
+  padding-left: 2rem;
+}
+
+.input-search::before {
+  content: '🔍';
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Dropdown action menu ── */
+.action-menu-wrap {
+  position: relative;
+}
+
+.action-menu-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all var(--transition);
+  line-height: 1;
+}
+
+.action-menu-btn:hover {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.action-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--card-solid);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  min-width: 160px;
+  z-index: 20;
+  padding: 0.25rem;
+  animation: fadeIn 100ms ease-out;
+}
+
+.action-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition);
+  text-align: left;
+}
+
+.action-menu button:hover {
+  background: var(--surface);
+}
+
+.action-menu button.danger-text {
+  color: var(--danger);
+}
+
+/* ── Tag brand variant ── */
+.tag.brand {
+  border-color: rgba(56, 189, 248, 0.3);
+  color: var(--brand);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+/* ── Team chip ── */
+.team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--surface);
+  color: var(--ink);
+  transition: all var(--transition);
+}
+
+.team-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.7rem;
+  padding: 0;
+  line-height: 1;
+  transition: color var(--transition);
+}
+
+.team-chip button:hover {
+  color: var(--ink);
+}
+
+/* ── Password form card ── */
+.password-card {
+  width: min(440px, 94vw);
+  margin: 0 auto;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .split {

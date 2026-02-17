@@ -13,6 +13,7 @@ type NavItem = {
 
 const adminNav: NavItem[] = [
   { href: '/admin/live', label: 'Live' },
+  { href: '/admin/history', label: 'History' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/reports', label: 'Reports' }
 ];
@@ -65,9 +66,14 @@ export function AppShell({
           <div className="shell-header-right">
             <nav className="nav">
               {isEmployeeView ? (
-                <Link href="/employee/dashboard" className={pathname?.startsWith('/employee') ? 'active' : ''}>
-                  Dashboard
-                </Link>
+                <>
+                  <Link href="/employee/dashboard" className={pathname === '/employee/dashboard' ? 'active' : ''}>
+                    Dashboard
+                  </Link>
+                  <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
+                    🔑 Password
+                  </Link>
+                </>
               ) : null}
               {admin
                 ? adminNav.map((item) => (

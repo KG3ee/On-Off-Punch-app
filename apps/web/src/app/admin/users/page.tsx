@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 
@@ -23,13 +23,15 @@ export default function AdminUsersPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
-  // Team form state
-  const [teamName, setTeamName] = useState('');
+  // Modal
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editTeamName, setEditTeamName] = useState('');
 
-  // User form state
+  // Create user form
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -39,8 +41,35 @@ export default function AdminUsersPage() {
   const [role, setRole] = useState<'ADMIN' | 'EMPLOYEE'>('EMPLOYEE');
   const [teamId, setTeamId] = useState('');
 
+  // Create team form
+  const [teamName, setTeamName] = useState('');
+
+  // Action menu
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Reset password modal
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserRow | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+
+  // Edit user modal
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editRole, setEditRole] = useState<'ADMIN' | 'EMPLOYEE'>('EMPLOYEE');
+  const [editTeamId, setEditTeamId] = useState('');
+
   useEffect(() => {
     void load();
+  }, []);
+
+  // Close action menu on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   async function load(): Promise<void> {
@@ -57,32 +86,32 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function createTeam(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
+  function flash(msg: string) {
+    setMessage(msg);
+    setTimeout(() => setMessage(''), 3000);
+  }
+
+  // ── Team CRUD ──
+  async function createTeam(e: FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
     try {
-      await apiFetch('/teams/admin', {
-        method: 'POST',
-        body: JSON.stringify({ name: teamName })
-      });
+      await apiFetch('/teams/admin', { method: 'POST', body: JSON.stringify({ name: teamName }) });
       setTeamName('');
-      setMessage('Team created');
+      setShowCreateTeam(false);
+      flash('Team created');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create team');
     }
   }
 
-  async function renameTeam(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
+  async function renameTeam(e: FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
     if (!editingTeam) return;
     try {
-      await apiFetch(`/teams/admin/${editingTeam.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ name: editTeamName })
-      });
+      await apiFetch(`/teams/admin/${editingTeam.id}`, { method: 'PATCH', body: JSON.stringify({ name: editTeamName }) });
       setEditingTeam(null);
-      setEditTeamName('');
-      setMessage('Team renamed');
+      flash('Team renamed');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to rename team');
@@ -90,207 +119,325 @@ export default function AdminUsersPage() {
   }
 
   async function deleteTeam(id: string): Promise<void> {
-    if (!confirm('Are you sure you want to delete this team?')) return;
+    if (!confirm('Delete this team? Users in it will become unassigned.')) return;
     try {
       await apiFetch(`/teams/admin/${id}`, { method: 'DELETE' });
-      setMessage('Team deleted');
+      flash('Team deleted');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete team');
     }
   }
 
-  function startEditTeam(team: Team) {
-    setEditingTeam(team);
-    setEditTeamName(team.name);
-  }
-
-  function cancelEditTeam() {
-    setEditingTeam(null);
-    setEditTeamName('');
-  }
-
-  async function createUser(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
+  // ── User CRUD ──
+  async function createUser(e: FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
     try {
       await apiFetch('/admin/users', {
         method: 'POST',
         body: JSON.stringify({
-          firstName,
-          lastName,
-          displayName,
-          username,
-          password,
-          role,
-          teamId: teamId || undefined,
-          mustChangePassword
+          firstName, lastName, displayName, username, password,
+          role, teamId: teamId || undefined, mustChangePassword
         })
       });
-      setFirstName('');
-      setLastName('');
-      setDisplayName('');
-      setUsername('');
-      setPassword('');
-      setRole('EMPLOYEE');
-      setTeamId('');
-      setMustChangePassword(true);
-      setMessage('User created');
+      setFirstName(''); setLastName(''); setDisplayName('');
+      setUsername(''); setPassword(''); setRole('EMPLOYEE');
+      setTeamId(''); setMustChangePassword(true);
+      setShowCreateUser(false);
+      flash('User created');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create user');
     }
   }
 
+  async function updateUserField(userId: string, data: Record<string, unknown>): Promise<void> {
+    try {
+      await apiFetch(`/admin/users/${userId}`, { method: 'PATCH', body: JSON.stringify(data) });
+      flash('User updated');
+      setOpenMenuId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Update failed');
+    }
+  }
+
+  async function submitResetPassword(e: FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
+    if (!resetPasswordUser) return;
+    try {
+      await apiFetch(`/admin/users/${resetPasswordUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ password: newPassword, mustChangePassword: true })
+      });
+      setResetPasswordUser(null);
+      setNewPassword('');
+      flash('Password reset — user will be prompted to change it');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reset password');
+    }
+  }
+
+  async function submitEditUser(e: FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
+    if (!editingUser) return;
+    try {
+      await apiFetch(`/admin/users/${editingUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role: editRole, teamId: editTeamId || null })
+      });
+      setEditingUser(null);
+      flash('User updated');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update user');
+    }
+  }
+
+  function openEditUser(user: UserRow) {
+    setEditingUser(user);
+    setEditRole(user.role);
+    setEditTeamId(user.team?.id || '');
+    setOpenMenuId(null);
+  }
+
+  function openResetPassword(user: UserRow) {
+    setResetPasswordUser(user);
+    setNewPassword('');
+    setOpenMenuId(null);
+  }
+
+  // ── Filter ──
+  const filteredUsers = users.filter(u => {
+    const q = search.toLowerCase();
+    return u.displayName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)
+      || (u.team?.name || '').toLowerCase().includes(q);
+  });
+
   return (
-    <AppShell title="Admin Users" subtitle="Create and manage username/password users" admin userRole="ADMIN">
-      {message ? <p style={{ color: 'var(--ok)' }}>{message}</p> : null}
-      {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
+    <AppShell title="Users & Teams" subtitle="Manage employees, roles, and teams" admin userRole="ADMIN">
+      {message ? <div className="alert alert-success">{message}</div> : null}
+      {error ? <div className="alert alert-error">⚠ {error}</div> : null}
 
-      <section className="split">
-        <article className="card">
-          <form className="form-grid" onSubmit={(event) => void createTeam(event)} style={{ marginBottom: '1.5rem' }}>
-            <h3>Create Team</h3>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                className="input"
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder="New team name"
-                required
-              />
-              <button type="submit" className="button button-primary" style={{ flexShrink: 0 }}>
-                Add
-              </button>
-            </div>
-          </form>
+      {/* ── Toolbar ── */}
+      <div className="toolbar">
+        <div className="input-search">
+          <input
+            className="input"
+            placeholder="Search by name, username, or team…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="toolbar-spacer" />
+        <button type="button" className="button button-ghost button-sm" onClick={() => setShowCreateTeam(true)}>
+          + Team
+        </button>
+        <button type="button" className="button button-primary" onClick={() => setShowCreateUser(true)}>
+          + New User
+        </button>
+      </div>
 
-          <h3>Manage Teams</h3>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem' }}>
-            {teams.map((team) => (
-              <li key={team.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '0.4rem 0.6rem', borderRadius: '6px' }}>
-                {editingTeam?.id === team.id ? (
-                  <form onSubmit={(e) => void renameTeam(e)} style={{ display: 'flex', gap: '0.3rem', flex: 1 }}>
-                    <input
-                      className="input"
-                      value={editTeamName}
-                      onChange={(e) => setEditTeamName(e.target.value)}
-                      autoFocus
-                      required
-                      style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem' }}
-                    />
-                    <button type="submit" className="button button-ok button-sm">Save</button>
-                    <button type="button" className="button button-ghost button-sm" onClick={cancelEditTeam}>✕</button>
-                  </form>
-                ) : (
-                  <>
-                    <span style={{ fontWeight: 500 }}>{team.name}</span>
-                    <div style={{ display: 'flex', gap: '0.3rem' }}>
-                      <button className="button button-ghost button-sm" onClick={() => startEditTeam(team)} title="Rename">✏️</button>
-                      <button className="button button-danger button-sm" onClick={() => void deleteTeam(team.id)} title="Delete">🗑️</button>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-            {teams.length === 0 ? <li style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>No teams found</li> : null}
-          </ul>
-        </article>
-
-        <form className="card form-grid" onSubmit={(event) => void createUser(event)}>
-          <h3>Create User</h3>
-          <input
-            className="input"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="First name"
-            required
-          />
-          <input
-            className="input"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="Last name"
-          />
-          <input
-            className="input"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Display name"
-            required
-          />
-          <input
-            className="input"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-            required
-          />
-          <input
-            className="input"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Temporary password"
-            minLength={6}
-            required
-          />
-          <select className="select" value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'EMPLOYEE')}>
-            <option value="EMPLOYEE">EMPLOYEE</option>
-            <option value="ADMIN">ADMIN</option>
-          </select>
-          <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-            <option value="">No team</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input
-              type="checkbox"
-              checked={mustChangePassword}
-              onChange={(e) => setMustChangePassword(e.target.checked)}
-            />
-            Force password change on first login
-          </label>
-          <button type="submit" className="button button-primary">
-            Add User
-          </button>
-        </form>
-      </section>
-
-      <section className="card table-wrap">
-        <h3>Users</h3>
+      {/* ── Users Table ── */}
+      <article className="card table-wrap">
         <table>
           <thead>
             <tr>
               <th>Name</th>
               <th>Username</th>
-              <th>Role</th>
               <th>Team</th>
-              <th>Password Change</th>
+              <th>Role</th>
               <th>Status</th>
+              <th>PW Change</th>
+              <th style={{ width: '40px' }}></th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {filteredUsers.map(user => (
               <tr key={user.id}>
-                <td>{user.displayName}</td>
+                <td style={{ fontWeight: 500 }}>{user.displayName}</td>
                 <td className="mono">{user.username}</td>
-                <td>{user.role}</td>
-                <td>{user.team?.name || '-'}</td>
-                <td>{user.mustChangePassword ? 'Required' : 'No'}</td>
+                <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
+                <td>
+                  <span className={`tag ${user.role === 'ADMIN' ? 'warning' : ''}`}>
+                    {user.role}
+                  </span>
+                </td>
                 <td>
                   <span className={`tag ${user.isActive ? 'ok' : 'danger'}`}>
                     {user.isActive ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </td>
+                <td>{user.mustChangePassword ? <span className="tag warning">Required</span> : '—'}</td>
+                <td>
+                  <div className="action-menu-wrap" ref={openMenuId === user.id ? menuRef : undefined}>
+                    <button
+                      className="action-menu-btn"
+                      onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                      title="Actions"
+                    >
+                      ⋮
+                    </button>
+                    {openMenuId === user.id ? (
+                      <div className="action-menu">
+                        <button onClick={() => openEditUser(user)}>✏️ Edit Role &amp; Team</button>
+                        <button onClick={() => openResetPassword(user)}>🔑 Reset Password</button>
+                        <button
+                          onClick={() => void updateUserField(user.id, { isActive: !user.isActive })}
+                        >
+                          {user.isActive ? '🚫 Deactivate' : '✅ Reactivate'}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </td>
               </tr>
             ))}
+            {filteredUsers.length === 0 ? (
+              <tr><td colSpan={7} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>
+                {search ? 'No users matching search' : 'No users found'}
+              </td></tr>
+            ) : null}
           </tbody>
         </table>
-      </section>
+      </article>
+
+      {/* ── Teams Chips ── */}
+      <article className="card">
+        <h3>Teams</h3>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {teams.map(team => (
+            <span key={team.id} className="team-chip">
+              {editingTeam?.id === team.id ? (
+                <form onSubmit={(e) => void renameTeam(e)} style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                  <input
+                    className="input"
+                    value={editTeamName}
+                    onChange={(e) => setEditTeamName(e.target.value)}
+                    autoFocus
+                    required
+                    style={{ padding: '0.15rem 0.35rem', fontSize: '0.72rem', width: '90px' }}
+                  />
+                  <button type="submit" style={{ fontSize: '0.65rem' }}>✓</button>
+                  <button type="button" onClick={() => setEditingTeam(null)} style={{ fontSize: '0.65rem' }}>✕</button>
+                </form>
+              ) : (
+                <>
+                  {team.name}
+                  <button onClick={() => { setEditingTeam(team); setEditTeamName(team.name); }} title="Rename">✏️</button>
+                  <button onClick={() => void deleteTeam(team.id)} title="Delete">✕</button>
+                </>
+              )}
+            </span>
+          ))}
+          {teams.length === 0 ? <span style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>No teams yet</span> : null}
+        </div>
+      </article>
+
+      {/* ══════════════════════════════════════ */}
+      {/* ── MODALS ── */}
+      {/* ══════════════════════════════════════ */}
+
+      {/* Create User Modal */}
+      {showCreateUser ? (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowCreateUser(false); }}>
+          <div className="modal">
+            <h3>👤 Create New User</h3>
+            <form className="form-grid" onSubmit={(e) => void createUser(e)}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" required />
+                <input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" />
+              </div>
+              <input className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Display name" required />
+              <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" required />
+              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temporary password" minLength={6} required />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <select className="select" value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'EMPLOYEE')}>
+                  <option value="EMPLOYEE">EMPLOYEE</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+                <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                  <option value="">No team</option>
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.78rem' }}>
+                <input type="checkbox" checked={mustChangePassword} onChange={(e) => setMustChangePassword(e.target.checked)} />
+                Force password change on first login
+              </label>
+              <div className="modal-footer">
+                <button type="button" className="button button-ghost" onClick={() => setShowCreateUser(false)}>Cancel</button>
+                <button type="submit" className="button button-primary">Create User</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Create Team Modal */}
+      {showCreateTeam ? (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowCreateTeam(false); }}>
+          <div className="modal">
+            <h3>🏷️ Create New Team</h3>
+            <form className="form-grid" onSubmit={(e) => void createTeam(e)}>
+              <input className="input" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Team name" required autoFocus />
+              <div className="modal-footer">
+                <button type="button" className="button button-ghost" onClick={() => setShowCreateTeam(false)}>Cancel</button>
+                <button type="submit" className="button button-primary">Create Team</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Reset Password Modal */}
+      {resetPasswordUser ? (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setResetPasswordUser(null); }}>
+          <div className="modal">
+            <h3>🔑 Reset Password</h3>
+            <p style={{ marginBottom: '0.65rem' }}>
+              Set a new password for <strong>{resetPasswordUser.displayName}</strong> ({resetPasswordUser.username}).
+              They will be required to change it on next login.
+            </p>
+            <form className="form-grid" onSubmit={(e) => void submitResetPassword(e)}>
+              <input className="input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New temporary password" minLength={6} required autoFocus />
+              <div className="modal-footer">
+                <button type="button" className="button button-ghost" onClick={() => setResetPasswordUser(null)}>Cancel</button>
+                <button type="submit" className="button button-primary">Reset Password</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Edit User (Role & Team) Modal */}
+      {editingUser ? (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setEditingUser(null); }}>
+          <div className="modal">
+            <h3>✏️ Edit User</h3>
+            <p style={{ marginBottom: '0.65rem' }}>
+              Editing <strong>{editingUser.displayName}</strong> ({editingUser.username})
+            </p>
+            <form className="form-grid" onSubmit={(e) => void submitEditUser(e)}>
+              <label style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Role</label>
+              <select className="select" value={editRole} onChange={(e) => setEditRole(e.target.value as 'ADMIN' | 'EMPLOYEE')}>
+                <option value="EMPLOYEE">EMPLOYEE</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+              <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Team</label>
+              <select className="select" value={editTeamId} onChange={(e) => setEditTeamId(e.target.value)}>
+                <option value="">No team</option>
+                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <div className="modal-footer">
+                <button type="button" className="button button-ghost" onClick={() => setEditingUser(null)}>Cancel</button>
+                <button type="submit" className="button button-primary">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </AppShell>
   );
 }
