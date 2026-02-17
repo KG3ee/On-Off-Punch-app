@@ -58,7 +58,7 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  const port = Number(process.env.PORT || 4000);
+  const port = Number(process.env.PORT || 4001);
   await app.listen(port);
 
   console.log(`API running on http://localhost:${port}`);
