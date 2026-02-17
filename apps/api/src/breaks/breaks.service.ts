@@ -4,7 +4,7 @@ import {
   NotFoundException
 } from '@nestjs/common';
 import { BreakSessionStatus, DutySessionStatus, User } from '@prisma/client';
-import { formatDateInZone } from '@modern-punch/core';
+import { formatDateInZone } from '../core';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBreakPolicyDto } from './dto/create-break-policy.dto';
 

@@ -99,31 +99,52 @@ export default function EmployeeDashboardPage() {
   async function loadData(): Promise<void> {
     setLoading(true);
     setError('');
-
-    try {
-      const [meData, sessionsData, policiesData, breakData] = await Promise.all([
+    const [meResult, sessionsResult, policiesResult, breaksResult, shiftResult] =
+      await Promise.allSettled([
         apiFetch<MeUser>('/me'),
         apiFetch<DutySession[]>('/attendance/me/today'),
         apiFetch<BreakPolicy[]>('/breaks/policies'),
-        apiFetch<BreakSession[]>('/breaks/me/today')
+        apiFetch<BreakSession[]>('/breaks/me/today'),
+        apiFetch<ShiftCurrent>('/shifts/current')
       ]);
 
-      setMe(meData);
-      setSessions(sessionsData);
-      setPolicies(policiesData);
-      setBreakSessions(breakData);
+    let failedCount = 0;
 
-      try {
-        const current = await apiFetch<ShiftCurrent>('/shifts/current');
-        setCurrentShift(current);
-      } catch {
-        setCurrentShift(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-    } finally {
-      setLoading(false);
+    if (meResult.status === 'fulfilled') {
+      setMe(meResult.value);
+    } else {
+      failedCount += 1;
     }
+
+    if (sessionsResult.status === 'fulfilled') {
+      setSessions(sessionsResult.value);
+    } else {
+      failedCount += 1;
+    }
+
+    if (policiesResult.status === 'fulfilled') {
+      setPolicies(policiesResult.value);
+    } else {
+      failedCount += 1;
+    }
+
+    if (breaksResult.status === 'fulfilled') {
+      setBreakSessions(breaksResult.value);
+    } else {
+      failedCount += 1;
+    }
+
+    if (shiftResult.status === 'fulfilled') {
+      setCurrentShift(shiftResult.value);
+    } else {
+      setCurrentShift(null);
+    }
+
+    if (failedCount > 0) {
+      setError('Some dashboard data could not be loaded. Please refresh.');
+    }
+
+    setLoading(false);
   }
 
   async function runAction(path: string, body?: Record<string, unknown>): Promise<void> {
@@ -155,6 +176,22 @@ export default function EmployeeDashboardPage() {
 
     return '-';
   }
+
+  const breakBlockedReason = useMemo(() => {
+    if (!activeSession) {
+      return 'Punch ON first before starting a break.';
+    }
+
+    if (activeBreak) {
+      return `You already have an active break (${activeBreak.breakPolicy.code.toUpperCase()}). End or cancel it first.`;
+    }
+
+    if (policies.length === 0) {
+      return 'No break policies configured yet. Ask admin to create break policies.';
+    }
+
+    return '';
+  }, [activeBreak, activeSession, policies.length]);
 
   return (
     <AppShell
@@ -218,23 +255,29 @@ export default function EmployeeDashboardPage() {
           <article className="card">
             <h3>Break Actions</h3>
             <p>Start break from policy or close/cancel your current break.</p>
+            {breakBlockedReason ? (
+              <p style={{ marginTop: '0.4rem', color: 'var(--warning)' }}>{breakBlockedReason}</p>
+            ) : null}
             <div className="grid" style={{ marginTop: '0.7rem' }}>
               {policies.map((policy) => (
                 <button
                   key={policy.id}
                   type="button"
                   className="button button-ghost"
-                  disabled={!activeSession || !!activeBreak}
+                  disabled={loading || !activeSession || !!activeBreak}
                   onClick={() => void runAction('/breaks/start', { code: policy.code })}
                 >
                   {policy.code.toUpperCase()} • {policy.expectedDurationMinutes}m • limit {policy.dailyLimit}
                 </button>
               ))}
+              {policies.length === 0 ? (
+                <p style={{ color: 'var(--danger)' }}>No break policies available.</p>
+              ) : null}
               <div style={{ display: 'flex', gap: '0.6rem' }}>
                 <button
                   type="button"
                   className="button button-ok"
-                  disabled={!activeBreak}
+                  disabled={loading || !activeBreak}
                   onClick={() => void runAction('/breaks/end')}
                 >
                   End Break
@@ -242,7 +285,7 @@ export default function EmployeeDashboardPage() {
                 <button
                   type="button"
                   className="button button-danger"
-                  disabled={!activeBreak}
+                  disabled={loading || !activeBreak}
                   onClick={() => void runAction('/breaks/cancel')}
                 >
                   Cancel Break

@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException
 } from '@nestjs/common';
-import { computePayrollItem } from '@modern-punch/core';
+import { computePayrollItem } from '../core';
 import {
   BreakDeductionMode,
   BreakSessionStatus,

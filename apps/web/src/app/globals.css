@@ -3,6 +3,7 @@
 :root {
   --bg: #f6f3ee;
   --card: #fffcf7;
+  --surface: #ffffff;
   --ink: #14213d;
   --muted: #59657a;
   --brand: #1f7a8c;
@@ -12,6 +13,33 @@
   --ring: rgba(31, 122, 140, 0.3);
   --line: #d9d3c8;
   --shadow: 0 12px 30px rgba(20, 33, 61, 0.08);
+  --header-bg: rgba(255, 252, 247, 0.8);
+  --wash-one: rgba(244, 162, 97, 0.18);
+  --wash-two: rgba(31, 122, 140, 0.2);
+  --kpi-start: #ffffff;
+  --kpi-end: #fef7ee;
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  --bg: #0d131d;
+  --card: #151d2a;
+  --surface: #1c2738;
+  --ink: #e7edf8;
+  --muted: #9eb0cb;
+  --brand: #58c6d7;
+  --accent: #ffba84;
+  --danger: #ff7f73;
+  --ok: #54d2c2;
+  --ring: rgba(88, 198, 215, 0.35);
+  --line: #2b3a53;
+  --shadow: 0 14px 34px rgba(2, 6, 14, 0.45);
+  --header-bg: rgba(13, 19, 29, 0.84);
+  --wash-one: rgba(255, 186, 132, 0.16);
+  --wash-two: rgba(88, 198, 215, 0.2);
+  --kpi-start: #1a2637;
+  --kpi-end: #151f2d;
+  color-scheme: dark;
 }
 
 * {
@@ -26,8 +54,8 @@ body {
   font-family: 'Space Grotesk', sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(circle at 10% 20%, rgba(244, 162, 97, 0.18) 0%, rgba(244, 162, 97, 0) 35%),
-    radial-gradient(circle at 80% 0%, rgba(31, 122, 140, 0.2) 0%, rgba(31, 122, 140, 0) 40%),
+    radial-gradient(circle at 10% 20%, var(--wash-one) 0%, rgba(244, 162, 97, 0) 35%),
+    radial-gradient(circle at 80% 0%, var(--wash-two) 0%, rgba(31, 122, 140, 0) 40%),
     var(--bg);
 }
 
@@ -111,7 +139,7 @@ p {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.68rem 0.75rem;
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   font-size: 0.92rem;
 }
@@ -194,7 +222,7 @@ th {
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
-  background: rgba(255, 252, 247, 0.8);
+  background: var(--header-bg);
   backdrop-filter: blur(8px);
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -202,6 +230,19 @@ th {
   position: sticky;
   top: 1rem;
   z-index: 10;
+}
+
+.shell-header-right {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: end;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .nav {
@@ -222,7 +263,7 @@ th {
 .nav a:hover {
   border-color: var(--line);
   color: var(--ink);
-  background: white;
+  background: var(--surface);
 }
 
 .kpi-grid {
@@ -232,7 +273,7 @@ th {
 }
 
 .kpi {
-  background: linear-gradient(135deg, #ffffff, #fef7ee);
+  background: linear-gradient(135deg, var(--kpi-start), var(--kpi-end));
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 0.75rem;
@@ -303,5 +344,14 @@ th {
 
   .shell-header {
     position: static;
+  }
+
+  .shell-header-right {
+    width: 100%;
+    justify-items: start;
+  }
+
+  .header-actions {
+    justify-content: flex-start;
   }
 }

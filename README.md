@@ -59,40 +59,52 @@ npm run dev
 - `SEED_ADMIN_USERNAME` (default `admin`)
 - `SEED_ADMIN_PASSWORD` (default `admin123`)
 - Admin-created users can be forced to change password on first login (`mustChangePassword`).
-- Free-tier target deployment: Vercel (web), Render (api), Neon (db).
+- Free-tier target deployment: Vercel (web + api), Neon (db).
 
 ## Deploy (Prototype Final)
 ### 1. Database (Neon)
 1. Create a Neon Postgres database.
-2. Set `DATABASE_URL` in Render API environment.
-3. Run migration and seed from API service shell:
-```bash
-npm run prisma:migrate
-npm run seed --workspace @modern-punch/api
-```
+2. Keep the connection string ready for both local migration and Vercel API env.
 
-### 2. API (Render)
-1. Create Render service from this repo.
-2. Use `render.yaml` blueprint at repo root.
-3. Configure env vars:
+### 2. API (Vercel Project: `modern-punch-api`)
+1. Import this repo in Vercel.
+2. Set **Root Directory** to `apps/api`.
+3. Framework Preset: `NestJS`.
+4. Configure API env vars in Vercel:
 - `DATABASE_URL`
 - `JWT_SECRET`
 - `APP_TIMEZONE`
 - `JOB_SECRET`
+- `CORS_ORIGIN` (example: `https://your-web.vercel.app,https://*.vercel.app`)
 - optional: `SYSTEM_JOB_USER_ID`
 - optional: `BREAK_GRACE_MINUTES`
 - optional: `BCRYPT_ROUNDS`
 - optional: `SEED_ADMIN_USERNAME`
 - optional: `SEED_ADMIN_PASSWORD`
+5. Deploy and copy the API URL (example: `https://modern-punch-api.vercel.app`).
 
-### 3. Web (Vercel)
+### 3. Run Migration + Seed (local terminal)
+Use the same production `DATABASE_URL` and run:
+```bash
+npm run prisma:migrate
+npm run seed --workspace @modern-punch/api
+```
+
+### 4. Web (Vercel Project: `modern-punch-web`)
 1. Import the same repo in Vercel with root directory `apps/web`.
 2. Configure env vars:
-- `NEXT_PUBLIC_API_URL` (public API URL)
-- `API_INTERNAL_URL` (same API URL for cron route)
+- `NEXT_PUBLIC_API_URL` (your Vercel API URL)
+- `API_INTERNAL_URL` (same Vercel API URL)
 - `JOB_SECRET` (must match API `JOB_SECRET`)
 - optional: `CRON_SECRET`
 3. `apps/web/vercel.json` schedules daily cron at `00:10 UTC` for `/api/cron/daily`.
+
+### 5. Final Check
+1. Open web URL and login with seeded admin account.
+2. Verify API health from browser:
+```text
+https://your-api.vercel.app/health
+```
 
 ## Job Endpoints
 All require `x-job-secret` header with `JOB_SECRET`.

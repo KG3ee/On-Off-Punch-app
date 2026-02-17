@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException
 } from '@nestjs/common';
-import { formatDateInZone, minutesNowInZone, parseTimeToMinutes } from '@modern-punch/core';
+import { formatDateInZone, minutesNowInZone, parseTimeToMinutes } from '../core';
 import { DutySessionStatus, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ShiftsService } from '../shifts/shifts.service';

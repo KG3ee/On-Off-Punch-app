@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { clearAuth } from '@/lib/auth';
 
@@ -18,6 +19,13 @@ const adminNav: NavItem[] = [
   { href: '/admin/reports', label: 'Reports' }
 ];
 
+type Theme = 'light' | 'dark';
+const themeStorageKey = 'modern-punch-theme';
+
+function applyTheme(theme: Theme): void {
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
 export function AppShell({
   title,
   subtitle,
@@ -31,6 +39,19 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [theme, setTheme] = useState<Theme>('light');
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem(themeStorageKey);
+    const resolvedTheme: Theme =
+      storedTheme === 'dark' || storedTheme === 'light'
+        ? storedTheme
+        : window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+    setTheme(resolvedTheme);
+    applyTheme(resolvedTheme);
+  }, []);
 
   async function logout(): Promise<void> {
     try {
@@ -44,6 +65,13 @@ export function AppShell({
     router.push('/login');
   }
 
+  function toggleTheme(): void {
+    const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    applyTheme(nextTheme);
+    window.localStorage.setItem(themeStorageKey, nextTheme);
+  }
+
   return (
     <main>
       <div className="shell">
@@ -53,7 +81,7 @@ export function AppShell({
             <h2>{title}</h2>
             {subtitle ? <p>{subtitle}</p> : null}
           </div>
-          <div style={{ display: 'grid', gap: '0.5rem', justifyItems: 'end' }}>
+          <div className="shell-header-right">
             <nav className="nav">
               <Link href="/employee/dashboard" className={pathname?.startsWith('/employee') ? 'active' : ''}>
                 Employee
@@ -70,9 +98,14 @@ export function AppShell({
                   ))
                 : null}
             </nav>
-            <button type="button" className="button button-ghost" onClick={() => void logout()}>
-              Logout
-            </button>
+            <div className="header-actions">
+              <button type="button" className="button button-ghost" onClick={toggleTheme}>
+                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              </button>
+              <button type="button" className="button button-ghost" onClick={() => void logout()}>
+                Logout
+              </button>
+            </div>
           </div>
         </header>
         {children}

@@ -11,7 +11,7 @@ import {
   ShiftPresetInput,
   resolveActiveShiftSegment,
   formatDateInZone
-} from '@modern-punch/core';
+} from '../core';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateShiftAssignmentDto } from './dto/create-shift-assignment.dto';
 import { CreateShiftOverrideDto } from './dto/create-shift-override.dto';

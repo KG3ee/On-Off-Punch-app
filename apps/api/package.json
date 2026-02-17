@@ -3,16 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node ../../node_modules/tsx/dist/cli.mjs watch src/main.ts",
-    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.build.json",
+    "dev": "node \"$(npm root)/tsx/dist/cli.mjs\" watch src/main.ts",
+    "build": "node \"$(npm root)/typescript/bin/tsc\" -p tsconfig.build.json",
     "start": "node dist/main.js",
-    "prisma:generate": "node ../../node_modules/prisma/build/index.js generate --schema prisma/schema.prisma",
-    "prisma:migrate": "node ../../node_modules/prisma/build/index.js migrate dev --schema prisma/schema.prisma",
-    "prisma:studio": "node ../../node_modules/prisma/build/index.js studio --schema prisma/schema.prisma",
-    "seed": "node ../../node_modules/tsx/dist/cli.mjs prisma/seed.ts"
+    "prisma:generate": "node \"$(npm root)/prisma/build/index.js\" generate --schema prisma/schema.prisma",
+    "prisma:migrate": "node \"$(npm root)/prisma/build/index.js\" migrate dev --schema prisma/schema.prisma",
+    "prisma:studio": "node \"$(npm root)/prisma/build/index.js\" studio --schema prisma/schema.prisma",
+    "seed": "node \"$(npm root)/tsx/dist/cli.mjs\" prisma/seed.ts",
+    "lint": "node \"$(npm root)/eslint/bin/eslint.js\" \"{src,apps,libs,test}/**/*.ts\"",
+    "test": "node \"$(npm root)/jest/bin/jest.js\"",
+    "test:watch": "node \"$(npm root)/jest/bin/jest.js\" --watch",
+    "test:cov": "node \"$(npm root)/jest/bin/jest.js\" --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register \"$(npm root)/jest/bin/jest.js\" --runInBand",
+    "test:e2e": "node \"$(npm root)/jest/bin/jest.js\" --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@modern-punch/core": "file:../../packages/core",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
@@ -32,6 +37,38 @@
     "@types/node": "^22.10.5",
     "prisma": "^6.4.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "@nestjs/testing": "^11.0.1",
+    "@types/jest": "^29.5.14",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.2",
+    "globals": "^15.14.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.4.2",
+    "source-map-support": "^0.5.21",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript-eslint": "^8.20.0"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
   }
 }

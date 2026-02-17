@@ -9,10 +9,10 @@
     "lint": "node \"$(npm root)/next/dist/bin/next\" lint"
   },
   "dependencies": {
-    "@modern-punch/core": "file:../../packages/core",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@modern-punch/core": "*"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
