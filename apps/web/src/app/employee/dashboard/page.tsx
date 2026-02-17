@@ -295,7 +295,7 @@ export default function EmployeeDashboardPage() {
               {policies.map((policy) => {
                 const emojiMap: Record<string, string> = {
                   'wc': '🚽',
-                  'bwc': '🪠',
+                  'bwc': '💩',
                   'cy': '🚬',
                   'cf+1': '🥐',
                   'cf+2': '🍛',
