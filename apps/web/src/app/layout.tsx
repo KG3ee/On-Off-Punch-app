@@ -12,13 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-theme="dark">
       <body>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var key='modern-punch-theme';var saved=localStorage.getItem(key);var theme=saved==='dark'||saved==='light'?saved:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',theme);}catch(e){}})();`
-          }}
-        />
         {children}
       </body>
     </html>

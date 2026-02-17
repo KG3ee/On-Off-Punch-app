@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { clearAuth } from '@/lib/auth';
-import { ThemeToggle } from './theme-toggle';
 
 type NavItem = {
   href: string;
@@ -72,7 +71,6 @@ export function AppShell({
                 : null}
             </nav>
             <div className="header-actions">
-              <ThemeToggle />
               <button type="button" className="button button-ghost" onClick={() => void logout()}>
                 Logout
               </button>

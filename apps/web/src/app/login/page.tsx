@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { setAccessToken } from '@/lib/auth';
 import { MeUser } from '@/types/auth';
-import { ThemeToggle } from '@/components/theme-toggle';
 
 type LoginResult = {
   accessToken: string;
@@ -54,7 +53,6 @@ export default function LoginPage() {
             <p className="eyebrow">Authentication</p>
             <h1>Sign In</h1>
           </div>
-          <ThemeToggle />
         </div>
         <p>Login with admin-created username and password.</p>
 

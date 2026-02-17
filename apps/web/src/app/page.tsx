@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function HomePage() {
   return (
@@ -21,7 +20,6 @@ export default function HomePage() {
           <Link href="/admin/live" className="button button-ghost">
             Admin Live Board
           </Link>
-          <ThemeToggle />
         </div>
       </section>
     </main>

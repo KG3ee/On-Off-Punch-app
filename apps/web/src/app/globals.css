@@ -1,27 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg: #f6f3ee;
-  --card: #fffcf7;
-  --surface: #ffffff;
-  --ink: #14213d;
-  --muted: #59657a;
-  --brand: #1f7a8c;
-  --accent: #f4a261;
-  --danger: #c44536;
-  --ok: #2a9d8f;
-  --ring: rgba(31, 122, 140, 0.3);
-  --line: #d9d3c8;
-  --shadow: 0 12px 30px rgba(20, 33, 61, 0.08);
-  --header-bg: rgba(255, 252, 247, 0.8);
-  --wash-one: rgba(244, 162, 97, 0.18);
-  --wash-two: rgba(31, 122, 140, 0.2);
-  --kpi-start: #ffffff;
-  --kpi-end: #fef7ee;
-  color-scheme: light;
-}
-
-html[data-theme='dark'] {
   --bg: #0d131d;
   --card: #151d2a;
   --surface: #1c2738;
