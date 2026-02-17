@@ -462,6 +462,20 @@ tbody tr:hover {
 }
 
 /* ── Break chips grid ── */
+.break-chips-layout {
+  display: grid;
+}
+
+.chips-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.chips-row-bottom {
+  margin-top: 0.65rem;
+}
+
 .chips-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));

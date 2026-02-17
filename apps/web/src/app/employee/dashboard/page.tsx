@@ -43,6 +43,18 @@ type BreakSession = {
   };
 };
 
+const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
+const BOTTOM_BREAK_CODES = ['cf+1', 'cf+2', 'cf+3'] as const;
+const FIXED_BREAK_CODES: ReadonlySet<string> = new Set([...TOP_BREAK_CODES, ...BOTTOM_BREAK_CODES]);
+const BREAK_EMOJI_MAP: Record<string, string> = {
+  wc: '🚽',
+  bwc: '💩',
+  cy: '🚬',
+  'cf+1': '🥐',
+  'cf+2': '🍛',
+  'cf+3': '🍽️'
+};
+
 export default function EmployeeDashboardPage() {
   const [me, setMe] = useState<MeUser | null>(null);
 
@@ -192,6 +204,49 @@ export default function EmployeeDashboardPage() {
     return '';
   }, [activeBreak, activeSession, policies.length]);
 
+  const topRowPolicies = useMemo(
+    () =>
+      TOP_BREAK_CODES.map((code) => policies.find((policy) => policy.code.toLowerCase() === code)).filter(
+        (policy): policy is BreakPolicy => Boolean(policy)
+      ),
+    [policies]
+  );
+
+  const bottomRowPolicies = useMemo(
+    () =>
+      BOTTOM_BREAK_CODES.map((code) => policies.find((policy) => policy.code.toLowerCase() === code)).filter(
+        (policy): policy is BreakPolicy => Boolean(policy)
+      ),
+    [policies]
+  );
+
+  const extraPolicies = useMemo(
+    () =>
+      policies
+        .filter((policy) => !FIXED_BREAK_CODES.has(policy.code.toLowerCase()))
+        .sort((a, b) => a.code.localeCompare(b.code)),
+    [policies]
+  );
+
+  function renderPolicyButton(policy: BreakPolicy) {
+    const normalizedCode = policy.code.toLowerCase();
+    const emoji = BREAK_EMOJI_MAP[normalizedCode] || '☕';
+    return (
+      <button
+        key={policy.id}
+        type="button"
+        className="button-chip"
+        disabled={loading || !activeSession || !!activeBreak}
+        onClick={() => void runAction('/breaks/start', { code: policy.code })}
+        title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/day`}
+      >
+        <span className="chip-emoji">{emoji}</span>
+        <span className="chip-code">{policy.code.toUpperCase()} · {policy.expectedDurationMinutes}m</span>
+        <span className="chip-name">{policy.name}</span>
+      </button>
+    );
+  }
+
   return (
     <AppShell
       title="Dashboard"
@@ -291,32 +346,12 @@ export default function EmployeeDashboardPage() {
             ) : null}
 
             {/* Break policy chips */}
-            <div className="chips-grid">
-              {policies.map((policy) => {
-                const emojiMap: Record<string, string> = {
-                  'wc': '🚽',
-                  'bwc': '💩',
-                  'cy': '🚬',
-                  'cf+1': '🥐',
-                  'cf+2': '🍛',
-                  'cf+3': '🍽️',
-                };
-                const emoji = emojiMap[policy.code] || '☕';
-                return (
-                  <button
-                    key={policy.id}
-                    type="button"
-                    className="button-chip"
-                    disabled={loading || !activeSession || !!activeBreak}
-                    onClick={() => void runAction('/breaks/start', { code: policy.code })}
-                    title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/day`}
-                  >
-                    <span className="chip-emoji">{emoji}</span>
-                    <span className="chip-code">{policy.code.toUpperCase()} · {policy.expectedDurationMinutes}m</span>
-                    <span className="chip-name">{policy.name}</span>
-                  </button>
-                );
-              })}
+            <div className="break-chips-layout">
+              {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
+              {bottomRowPolicies.length > 0 ? (
+                <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div>
+              ) : null}
+              {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
               {policies.length === 0 ? (
                 <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p>
               ) : null}
