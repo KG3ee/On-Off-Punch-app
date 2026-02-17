@@ -89,6 +89,28 @@ export default function EmployeeDashboardPage() {
     return () => window.clearInterval(timer);
   }, [activeBreak, activeSession]);
 
+  // Keyboard shortcuts: Space → End break, Esc → Cancel break
+  useEffect(() => {
+    if (!activeBreak) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      // Don't intercept if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        void runAction('/breaks/end');
+      } else if (e.code === 'Escape') {
+        e.preventDefault();
+        void runAction('/breaks/cancel');
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeBreak, loading]);
+
   async function loadData(): Promise<void> {
     setLoading(true);
     setError('');
@@ -241,11 +263,11 @@ export default function EmployeeDashboardPage() {
                 <span className="elapsed">{activeBreakMinutes}m</span>
                 <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-                  <button className="button button-ok button-sm" disabled={loading} onClick={() => void runAction('/breaks/end')}>
-                    End
+                  <button className="button button-ok button-sm" disabled={loading} onClick={() => void runAction('/breaks/end')} title="Space bar">
+                    End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
                   </button>
-                  <button className="button button-danger button-sm" disabled={loading} onClick={() => void runAction('/breaks/cancel')}>
-                    Cancel
+                  <button className="button button-danger button-sm" disabled={loading} onClick={() => void runAction('/breaks/cancel')} title="Escape">
+                    Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
                   </button>
                 </div>
               </div>
