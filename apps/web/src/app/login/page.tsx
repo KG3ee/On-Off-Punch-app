@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { setAccessToken } from '@/lib/auth';
 import { MeUser } from '@/types/auth';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 type LoginResult = {
   accessToken: string;
@@ -48,11 +49,14 @@ export default function LoginPage() {
   return (
     <main className="login-wrap">
       <section className="login-card card">
-        <div>
-          <p className="eyebrow">Authentication</p>
-          <h1>Sign In</h1>
-          <p>Login with admin-created username and password.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <p className="eyebrow">Authentication</p>
+            <h1>Sign In</h1>
+          </div>
+          <ThemeToggle />
         </div>
+        <p>Login with admin-created username and password.</p>
 
         <form className="card form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <input

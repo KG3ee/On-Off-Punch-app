@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { clearAuth } from '@/lib/auth';
+import { ThemeToggle } from './theme-toggle';
 
 type NavItem = {
   href: string;
@@ -19,13 +19,6 @@ const adminNav: NavItem[] = [
   { href: '/admin/reports', label: 'Reports' }
 ];
 
-type Theme = 'light' | 'dark';
-const themeStorageKey = 'modern-punch-theme';
-
-function applyTheme(theme: Theme): void {
-  document.documentElement.setAttribute('data-theme', theme);
-}
-
 export function AppShell({
   title,
   subtitle,
@@ -39,19 +32,6 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [theme, setTheme] = useState<Theme>('light');
-
-  useEffect(() => {
-    const storedTheme = window.localStorage.getItem(themeStorageKey);
-    const resolvedTheme: Theme =
-      storedTheme === 'dark' || storedTheme === 'light'
-        ? storedTheme
-        : window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'dark'
-          : 'light';
-    setTheme(resolvedTheme);
-    applyTheme(resolvedTheme);
-  }, []);
 
   async function logout(): Promise<void> {
     try {
@@ -63,13 +43,6 @@ export function AppShell({
     }
     clearAuth();
     router.push('/login');
-  }
-
-  function toggleTheme(): void {
-    const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    applyTheme(nextTheme);
-    window.localStorage.setItem(themeStorageKey, nextTheme);
   }
 
   return (
@@ -88,20 +61,18 @@ export function AppShell({
               </Link>
               {admin
                 ? adminNav.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={pathname === item.href ? 'active' : ''}
-                    >
-                      {item.label}
-                    </Link>
-                  ))
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={pathname === item.href ? 'active' : ''}
+                  >
+                    {item.label}
+                  </Link>
+                ))
                 : null}
             </nav>
             <div className="header-actions">
-              <button type="button" className="button button-ghost" onClick={toggleTheme}>
-                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-              </button>
+              <ThemeToggle />
               <button type="button" className="button button-ghost" onClick={() => void logout()}>
                 Logout
               </button>
