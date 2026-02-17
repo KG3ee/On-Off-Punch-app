@@ -236,7 +236,7 @@ export default function EmployeeDashboardPage() {
               <button
                 type="button"
                 className="button button-ok"
-                disabled={loading || !currentShift || !!activeSession}
+                disabled={loading || !!activeSession}
                 onClick={() => void runAction('/attendance/on')}
               >
                 Punch ON

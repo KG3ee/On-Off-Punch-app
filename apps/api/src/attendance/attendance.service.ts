@@ -17,46 +17,66 @@ export class AttendanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly shiftsService: ShiftsService,
-  ) {}
+  ) { }
 
   async punchOn(user: User, note?: string) {
     const now = new Date();
-    const { preset, segment, timezone } =
-      await this.shiftsService.getActiveSegmentForUser(user, now);
+    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
 
+    // Try to find an active shift segment, but don't fail if none exists
+    let preset: Awaited<
+      ReturnType<ShiftsService["getActiveSegmentForUser"]>
+    >["preset"] | null = null;
+    let segment: Awaited<
+      ReturnType<ShiftsService["getActiveSegmentForUser"]>
+    >["segment"] | null = null;
+
+    try {
+      const result = await this.shiftsService.getActiveSegmentForUser(
+        user,
+        now,
+      );
+      preset = result.preset;
+      segment = result.segment;
+    } catch {
+      // No active segment — allow punch anyway
+    }
+
+    // Check for existing active session
     const existing = await this.prisma.dutySession.findFirst({
       where: {
         userId: user.id,
-        shiftDate: segment.shiftDate,
-        shiftPresetSegmentId: segment.segmentId, // Note: This check ensures we don't start a duplicate concurrent session for the SAME segment
         status: DutySessionStatus.ACTIVE,
       },
     });
 
     if (existing) {
-      throw new BadRequestException(
-        "Already punched ON for this active segment",
-      );
+      throw new BadRequestException("Already punched ON");
     }
 
-    const lateMinutes = this.calculateLateMinutes(
-      now,
-      timezone,
-      segment.startTime,
-      segment.lateGraceMinutes,
-      segment.crossesMidnight,
-    );
+    const localDate = formatDateInZone(now, timezone);
+    let lateMinutes = 0;
+
+    if (segment) {
+      lateMinutes = this.calculateLateMinutes(
+        now,
+        timezone,
+        segment.startTime,
+        segment.lateGraceMinutes,
+        segment.crossesMidnight,
+      );
+    }
 
     const created = await this.prisma.dutySession.create({
       data: {
         userId: user.id,
         teamId: user.teamId || null,
-        shiftPresetId: preset.id,
-        shiftPresetSegmentId: segment.segmentId,
-        shiftDate: segment.shiftDate,
-        localDate: formatDateInZone(now, timezone),
-        scheduledStartLocal: segment.scheduleStartLocal,
-        scheduledEndLocal: segment.scheduleEndLocal,
+        shiftPresetId: preset?.id || null,
+        shiftPresetSegmentId: segment?.segmentId || null,
+        shiftDate: segment?.shiftDate || localDate,
+        localDate,
+        scheduledStartLocal: segment?.scheduleStartLocal || null,
+        scheduledEndLocal: segment?.scheduleEndLocal || null,
         punchedOnAt: now,
         status: DutySessionStatus.ACTIVE,
         isLate: lateMinutes > 0,
@@ -73,8 +93,8 @@ export class AttendanceService {
         entityType: "DutySession",
         entityId: created.id,
         payload: {
-          shiftDate: segment.shiftDate,
-          segmentNo: segment.segmentNo,
+          shiftDate: segment?.shiftDate || localDate,
+          segmentNo: segment?.segmentNo || null,
           lateMinutes,
         },
       },
