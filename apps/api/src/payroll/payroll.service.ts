@@ -1,9 +1,9 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException
-} from '@nestjs/common';
-import { computePayrollItem } from '../core';
+  NotFoundException,
+} from "@nestjs/common";
+import { computePayrollItem } from "../core";
 import {
   BreakDeductionMode,
   BreakSessionStatus,
@@ -11,12 +11,12 @@ import {
   Prisma,
   Role,
   SalaryRule,
-  User
-} from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { AuthUser } from '../common/interfaces/auth-user.interface';
-import { CreateSalaryRuleDto } from './dto/create-salary-rule.dto';
-import { GeneratePayrollRunDto } from './dto/generate-payroll-run.dto';
+  User,
+} from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { AuthUser } from "../common/interfaces/auth-user.interface";
+import { CreateSalaryRuleDto } from "./dto/create-salary-rule.dto";
+import { GeneratePayrollRunDto } from "./dto/generate-payroll-run.dto";
 
 @Injectable()
 export class PayrollService {
@@ -25,7 +25,7 @@ export class PayrollService {
   async listSalaryRules() {
     return this.prisma.salaryRule.findMany({
       where: { isActive: true },
-      orderBy: { effectiveFrom: 'desc' }
+      orderBy: { effectiveFrom: "desc" },
     });
   }
 
@@ -38,9 +38,11 @@ export class PayrollService {
         latePenaltyPerMinute: dto.latePenaltyPerMinute,
         breakDeductionMode: dto.breakDeductionMode || BreakDeductionMode.NONE,
         effectiveFrom: new Date(`${dto.effectiveFrom}T00:00:00.000Z`),
-        effectiveTo: dto.effectiveTo ? new Date(`${dto.effectiveTo}T23:59:59.999Z`) : null,
-        createdById: actorId
-      }
+        effectiveTo: dto.effectiveTo
+          ? new Date(`${dto.effectiveTo}T23:59:59.999Z`)
+          : null,
+        createdById: actorId,
+      },
     });
   }
 
@@ -51,33 +53,33 @@ export class PayrollService {
         salaryRule: true,
         _count: {
           select: {
-            items: true
-          }
-        }
+            items: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
   }
 
   async getRunItems(runId: string) {
     return this.prisma.payrollItem.findMany({
       where: {
-        payrollRunId: runId
+        payrollRunId: runId,
       },
       include: {
         user: {
           select: {
             id: true,
             username: true,
-            displayName: true
-          }
-        }
+            displayName: true,
+          },
+        },
       },
       orderBy: {
         user: {
-          displayName: 'asc'
-        }
-      }
+          displayName: "asc",
+        },
+      },
     });
   }
 
@@ -86,38 +88,38 @@ export class PayrollService {
       where: { id: runId },
       include: {
         team: true,
-        salaryRule: true
-      }
+        salaryRule: true,
+      },
     });
 
     if (!run) {
-      throw new NotFoundException('Payroll run not found');
+      throw new NotFoundException("Payroll run not found");
     }
 
     const items = await this.getRunItems(runId);
 
     const headers = [
-      'run_id',
-      'period_from',
-      'period_to',
-      'team',
-      'salary_rule',
-      'employee',
-      'worked_minutes',
-      'break_minutes',
-      'payable_minutes',
-      'overtime_minutes',
-      'late_minutes',
-      'gross_pay',
-      'late_penalty',
-      'final_pay'
+      "run_id",
+      "period_from",
+      "period_to",
+      "team",
+      "salary_rule",
+      "employee",
+      "worked_minutes",
+      "break_minutes",
+      "payable_minutes",
+      "overtime_minutes",
+      "late_minutes",
+      "gross_pay",
+      "late_penalty",
+      "final_pay",
     ];
 
     const rows = items.map((item) => [
       run.id,
       run.localDateFrom,
       run.localDateTo,
-      run.team?.name || 'All',
+      run.team?.name || "All",
       run.salaryRule.name,
       item.user.displayName,
       String(item.workedMinutes),
@@ -127,7 +129,7 @@ export class PayrollService {
       String(item.lateMinutes),
       String(item.grossPay),
       String(item.latePenalty),
-      String(item.finalPay)
+      String(item.finalPay),
     ]);
 
     const csvLines = [headers, ...rows].map((row) =>
@@ -136,15 +138,15 @@ export class PayrollService {
           const escaped = value.replace(/"/g, '""');
           return `"${escaped}"`;
         })
-        .join(',')
+        .join(","),
     );
 
-    return csvLines.join('\n');
+    return csvLines.join("\n");
   }
 
   async generateRun(dto: GeneratePayrollRunDto, actor: AuthUser) {
     if (dto.localDateFrom > dto.localDateTo) {
-      throw new BadRequestException('localDateFrom must be <= localDateTo');
+      throw new BadRequestException("localDateFrom must be <= localDateTo");
     }
 
     const salaryRule = await this.resolveSalaryRule(dto.salaryRuleId);
@@ -153,15 +155,15 @@ export class PayrollService {
       where: {
         isActive: true,
         role: Role.EMPLOYEE,
-        ...(dto.teamId ? { teamId: dto.teamId } : {})
+        ...(dto.teamId ? { teamId: dto.teamId } : {}),
       },
       orderBy: {
-        displayName: 'asc'
-      }
+        displayName: "asc",
+      },
     });
 
     if (users.length === 0) {
-      throw new NotFoundException('No employees found for selected filters');
+      throw new NotFoundException("No employees found for selected filters");
     }
 
     const periodStart = new Date(`${dto.localDateFrom}T00:00:00.000Z`);
@@ -177,12 +179,17 @@ export class PayrollService {
           teamId: dto.teamId || null,
           salaryRuleId: salaryRule.id,
           createdById: actor.sub,
-          notes: dto.notes
-        }
+          notes: dto.notes,
+        },
       });
 
       for (const user of users) {
-        const metrics = await this.computeUserMetrics(tx, user, dto.localDateFrom, dto.localDateTo);
+        const metrics = await this.computeUserMetrics(
+          tx,
+          user,
+          dto.localDateFrom,
+          dto.localDateTo,
+        );
 
         const computed = computePayrollItem({
           employeeId: user.id,
@@ -196,8 +203,8 @@ export class PayrollService {
             baseHourlyRate: Number(salaryRule.baseHourlyRate),
             overtimeMultiplier: Number(salaryRule.overtimeMultiplier),
             latePenaltyPerMinute: Number(salaryRule.latePenaltyPerMinute),
-            breakDeductionMode: salaryRule.breakDeductionMode
-          }
+            breakDeductionMode: salaryRule.breakDeductionMode,
+          },
         });
 
         await tx.payrollItem.create({
@@ -212,25 +219,25 @@ export class PayrollService {
             grossPay: computed.grossPay,
             latePenalty: computed.latePenalty,
             finalPay: computed.finalPay,
-            details: computed.metadata
-          }
+            details: computed.metadata,
+          },
         });
       }
 
       await tx.auditEvent.create({
         data: {
           actorUserId: actor.sub,
-          action: 'PAYROLL_RUN_GENERATED',
-          entityType: 'PayrollRun',
+          action: "PAYROLL_RUN_GENERATED",
+          entityType: "PayrollRun",
           entityId: run.id,
           payload: {
             localDateFrom: dto.localDateFrom,
             localDateTo: dto.localDateTo,
             teamId: dto.teamId || null,
             employees: users.length,
-            salaryRuleId: salaryRule.id
-          }
-        }
+            salaryRuleId: salaryRule.id,
+          },
+        },
       });
 
       return tx.payrollRun.findUnique({
@@ -238,17 +245,19 @@ export class PayrollService {
         include: {
           salaryRule: true,
           _count: {
-            select: { items: true }
-          }
-        }
+            select: { items: true },
+          },
+        },
       });
     });
   }
 
   async finalizeRun(runId: string, actor: AuthUser) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
+    const run = await this.prisma.payrollRun.findUnique({
+      where: { id: runId },
+    });
     if (!run) {
-      throw new NotFoundException('Payroll run not found');
+      throw new NotFoundException("Payroll run not found");
     }
     if (run.status === PayrollRunStatus.FINALIZED) {
       return run;
@@ -259,17 +268,17 @@ export class PayrollService {
       data: {
         status: PayrollRunStatus.FINALIZED,
         finalizedAt: new Date(),
-        finalizedById: actor.sub
-      }
+        finalizedById: actor.sub,
+      },
     });
 
     await this.prisma.auditEvent.create({
       data: {
         actorUserId: actor.sub,
-        action: 'PAYROLL_RUN_FINALIZED',
-        entityType: 'PayrollRun',
-        entityId: updated.id
-      }
+        action: "PAYROLL_RUN_FINALIZED",
+        entityType: "PayrollRun",
+        entityId: updated.id,
+      },
     });
 
     return updated;
@@ -277,9 +286,11 @@ export class PayrollService {
 
   private async resolveSalaryRule(salaryRuleId?: string): Promise<SalaryRule> {
     if (salaryRuleId) {
-      const rule = await this.prisma.salaryRule.findUnique({ where: { id: salaryRuleId } });
+      const rule = await this.prisma.salaryRule.findUnique({
+        where: { id: salaryRuleId },
+      });
       if (!rule) {
-        throw new NotFoundException('Salary rule not found');
+        throw new NotFoundException("Salary rule not found");
       }
       return rule;
     }
@@ -289,13 +300,13 @@ export class PayrollService {
       where: {
         isActive: true,
         effectiveFrom: { lte: now },
-        OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }]
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
       },
-      orderBy: { effectiveFrom: 'desc' }
+      orderBy: { effectiveFrom: "desc" },
     });
 
     if (!active) {
-      throw new NotFoundException('No active salary rule found');
+      throw new NotFoundException("No active salary rule found");
     }
 
     return active;
@@ -305,7 +316,7 @@ export class PayrollService {
     tx: Prisma.TransactionClient,
     user: User,
     localDateFrom: string,
-    localDateTo: string
+    localDateTo: string,
   ): Promise<{
     workedMinutes: number;
     breakMinutes: number;
@@ -316,8 +327,8 @@ export class PayrollService {
       where: {
         userId: user.id,
         localDate: { gte: localDateFrom, lte: localDateTo },
-        status: 'CLOSED'
-      }
+        status: "CLOSED",
+      },
     });
 
     const workedMinutes = dutySessions.reduce((sum, session) => {
@@ -326,24 +337,33 @@ export class PayrollService {
       }
       const minutes = Math.max(
         0,
-        Math.round((session.punchedOffAt.getTime() - session.punchedOnAt.getTime()) / 60000)
+        Math.round(
+          (session.punchedOffAt.getTime() - session.punchedOnAt.getTime()) /
+            60000,
+        ),
       );
       return sum + minutes;
     }, 0);
 
-    const lateMinutes = dutySessions.reduce((sum, session) => sum + session.lateMinutes, 0);
+    const lateMinutes = dutySessions.reduce(
+      (sum, session) => sum + session.lateMinutes,
+      0,
+    );
 
     const breakSessions = await tx.breakSession.findMany({
       where: {
         userId: user.id,
         localDate: { gte: localDateFrom, lte: localDateTo },
         status: {
-          in: [BreakSessionStatus.COMPLETED, BreakSessionStatus.AUTO_CLOSED]
-        }
-      }
+          in: [BreakSessionStatus.COMPLETED, BreakSessionStatus.AUTO_CLOSED],
+        },
+      },
     });
 
-    const breakMinutes = breakSessions.reduce((sum, session) => sum + (session.actualMinutes || 0), 0);
+    const breakMinutes = breakSessions.reduce(
+      (sum, session) => sum + (session.actualMinutes || 0),
+      0,
+    );
 
     // Prototype: overtime can be derived from future rule configuration.
     const overtimeMinutes = 0;
@@ -352,7 +372,7 @@ export class PayrollService {
       workedMinutes,
       breakMinutes,
       overtimeMinutes,
-      lateMinutes
+      lateMinutes,
     };
   }
 }

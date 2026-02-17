@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
 import {
   ArrayMinSize,
   IsBoolean,
@@ -7,8 +7,8 @@ import {
   IsOptional,
   IsString,
   Matches,
-  ValidateNested
-} from 'class-validator';
+  ValidateNested,
+} from "class-validator";
 
 export class CreateShiftSegmentDto {
   @IsInt()

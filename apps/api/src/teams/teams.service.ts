@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { Team } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateTeamDto } from './dto/create-team.dto';
+import { Injectable } from "@nestjs/common";
+import { Team } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateTeamDto } from "./dto/create-team.dto";
 
 @Injectable()
 export class TeamsService {
@@ -10,19 +10,19 @@ export class TeamsService {
   async create(dto: CreateTeamDto): Promise<Team> {
     return this.prisma.team.create({
       data: {
-        name: dto.name
-      }
+        name: dto.name,
+      },
     });
   }
 
   async list(): Promise<Team[]> {
     return this.prisma.team.findMany({
       where: {
-        isActive: true
+        isActive: true,
       },
       orderBy: {
-        name: 'asc'
-      }
+        name: "asc",
+      },
     });
   }
 }

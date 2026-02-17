@@ -1,19 +1,21 @@
-import { PayrollComputationInput, PayrollComputationResult } from './types';
+import { PayrollComputationInput, PayrollComputationResult } from "./types";
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-export function computePayrollItem(input: PayrollComputationInput): PayrollComputationResult {
+export function computePayrollItem(
+  input: PayrollComputationInput,
+): PayrollComputationResult {
   const worked = Math.max(0, input.workedMinutes);
   const breaks = Math.max(0, input.breakMinutes);
   const overtime = Math.max(0, input.overtimeMinutes);
   const late = Math.max(0, input.lateMinutes);
 
   let payableMinutes = worked;
-  if (input.rule.breakDeductionMode === 'UNPAID_ALL_BREAKS') {
+  if (input.rule.breakDeductionMode === "UNPAID_ALL_BREAKS") {
     payableMinutes = Math.max(0, worked - breaks);
-  } else if (input.rule.breakDeductionMode === 'UNPAID_OVERTIME_ONLY') {
+  } else if (input.rule.breakDeductionMode === "UNPAID_OVERTIME_ONLY") {
     payableMinutes = Math.max(0, worked - Math.max(0, breaks - overtime));
   }
 
@@ -40,7 +42,7 @@ export function computePayrollItem(input: PayrollComputationInput): PayrollCompu
       workedMinutes: worked,
       breakMinutes: breaks,
       lateMinutes: late,
-      breakDeductionMode: input.rule.breakDeductionMode
-    }
+      breakDeductionMode: input.rule.breakDeductionMode,
+    },
   };
 }

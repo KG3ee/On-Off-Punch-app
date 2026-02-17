@@ -1,38 +1,51 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException
-} from '@nestjs/common';
-import { formatDateInZone, minutesNowInZone, parseTimeToMinutes } from '../core';
-import { DutySessionStatus, User } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { ShiftsService } from '../shifts/shifts.service';
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  formatDateInZone,
+  minutesNowInZone,
+  parseTimeToMinutes,
+} from "../core";
+import { DutySessionStatus, User } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { ShiftsService } from "../shifts/shifts.service";
 
 @Injectable()
 export class AttendanceService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly shiftsService: ShiftsService
+    private readonly shiftsService: ShiftsService,
   ) {}
 
   async punchOn(user: User, note?: string) {
     const now = new Date();
-    const { preset, segment, timezone } = await this.shiftsService.getActiveSegmentForUser(user, now);
+    const { preset, segment, timezone } =
+      await this.shiftsService.getActiveSegmentForUser(user, now);
 
     const existing = await this.prisma.dutySession.findFirst({
       where: {
         userId: user.id,
         shiftDate: segment.shiftDate,
-        shiftPresetSegmentId: segment.segmentId,
-        status: DutySessionStatus.ACTIVE
-      }
+        shiftPresetSegmentId: segment.segmentId, // Note: This check ensures we don't start a duplicate concurrent session for the SAME segment
+        status: DutySessionStatus.ACTIVE,
+      },
     });
 
     if (existing) {
-      throw new BadRequestException('Already punched ON for this active segment');
+      throw new BadRequestException(
+        "Already punched ON for this active segment",
+      );
     }
 
-    const lateMinutes = this.calculateLateMinutes(now, timezone, segment.startTime, segment.lateGraceMinutes, segment.crossesMidnight);
+    const lateMinutes = this.calculateLateMinutes(
+      now,
+      timezone,
+      segment.startTime,
+      segment.lateGraceMinutes,
+      segment.crossesMidnight,
+    );
 
     const created = await this.prisma.dutySession.create({
       data: {
@@ -49,22 +62,22 @@ export class AttendanceService {
         isLate: lateMinutes > 0,
         lateMinutes,
         note,
-        createdById: user.id
-      }
+        createdById: user.id,
+      },
     });
 
     await this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
-        action: 'DUTY_PUNCH_ON',
-        entityType: 'DutySession',
+        action: "DUTY_PUNCH_ON",
+        entityType: "DutySession",
         entityId: created.id,
         payload: {
           shiftDate: segment.shiftDate,
           segmentNo: segment.segmentNo,
-          lateMinutes
-        }
-      }
+          lateMinutes,
+        },
+      },
     });
 
     return created;
@@ -74,104 +87,110 @@ export class AttendanceService {
     const active = await this.prisma.dutySession.findFirst({
       where: {
         userId: user.id,
-        status: DutySessionStatus.ACTIVE
+        status: DutySessionStatus.ACTIVE,
       },
       orderBy: {
-        punchedOnAt: 'desc'
-      }
+        punchedOnAt: "desc",
+      },
     });
 
     if (!active) {
-      throw new NotFoundException('No active duty session found');
+      throw new NotFoundException("No active duty session found");
     }
 
     const now = new Date();
-    const workedMinutes = Math.max(0, Math.round((now.getTime() - active.punchedOnAt.getTime()) / 60000));
+    const workedMinutes = Math.max(
+      0,
+      Math.round((now.getTime() - active.punchedOnAt.getTime()) / 60000),
+    );
 
     const updated = await this.prisma.dutySession.update({
       where: { id: active.id },
       data: {
         punchedOffAt: now,
         status: DutySessionStatus.CLOSED,
-        note: note || active.note
-      }
+        note: note || active.note,
+      },
     });
 
     await this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
-        action: 'DUTY_PUNCH_OFF',
-        entityType: 'DutySession',
+        action: "DUTY_PUNCH_OFF",
+        entityType: "DutySession",
         entityId: updated.id,
         payload: {
-          workedMinutes
-        }
-      }
+          workedMinutes,
+        },
+      },
     });
 
     return {
       ...updated,
-      workedMinutes
+      workedMinutes,
     };
   }
 
   async myTodaySessions(userId: string): Promise<unknown> {
     const now = new Date();
-    const localDate = formatDateInZone(now, process.env.APP_TIMEZONE || 'Asia/Dubai');
+    const localDate = formatDateInZone(
+      now,
+      process.env.APP_TIMEZONE || "Asia/Dubai",
+    );
 
     return this.prisma.dutySession.findMany({
       where: {
         userId,
-        localDate
+        localDate,
       },
       orderBy: {
-        punchedOnAt: 'asc'
-      }
+        punchedOnAt: "asc",
+      },
     });
   }
 
   async getLiveBoard(localDate?: string) {
-    const timezone = process.env.APP_TIMEZONE || 'Asia/Dubai';
+    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
     const date = localDate || formatDateInZone(new Date(), timezone);
 
     const activeDutySessions = await this.prisma.dutySession.findMany({
       where: {
-        status: DutySessionStatus.ACTIVE
+        status: DutySessionStatus.ACTIVE,
       },
       include: {
         user: {
           select: {
             id: true,
             username: true,
-            displayName: true
-          }
+            displayName: true,
+          },
         },
         team: true,
         breakSessions: {
           where: {
-            status: 'ACTIVE'
+            status: "ACTIVE",
           },
           include: {
-            breakPolicy: true
-          }
+            breakPolicy: true,
+          },
         },
-        shiftPresetSegment: true
+        shiftPresetSegment: true,
       },
       orderBy: {
-        punchedOnAt: 'asc'
-      }
+        punchedOnAt: "asc",
+      },
     });
 
     const todaySummary = await this.prisma.dutySession.aggregate({
       where: {
-        localDate: date
+        localDate: date,
       },
       _count: {
-        _all: true
+        _all: true,
       },
       _sum: {
-        lateMinutes: true
-      }
+        lateMinutes: true,
+      },
     });
 
     return {
@@ -179,8 +198,8 @@ export class AttendanceService {
       activeDutySessions,
       summary: {
         totalSessionsToday: todaySummary._count._all,
-        totalLateMinutesToday: todaySummary._sum.lateMinutes || 0
-      }
+        totalLateMinutesToday: todaySummary._sum.lateMinutes || 0,
+      },
     };
   }
 
@@ -195,11 +214,11 @@ export class AttendanceService {
       where: {
         localDate: {
           gte: params.from,
-          lte: params.to
+          lte: params.to,
         },
         ...(params.teamId ? { teamId: params.teamId } : {}),
         ...(params.userId ? { userId: params.userId } : {}),
-        ...(params.status ? { status: params.status } : {})
+        ...(params.status ? { status: params.status } : {}),
       },
       include: {
         user: {
@@ -207,14 +226,14 @@ export class AttendanceService {
             id: true,
             username: true,
             displayName: true,
-            role: true
-          }
+            role: true,
+          },
         },
         team: true,
         shiftPreset: true,
-        shiftPresetSegment: true
+        shiftPresetSegment: true,
       },
-      orderBy: [{ localDate: 'desc' }, { punchedOnAt: 'desc' }]
+      orderBy: [{ localDate: "desc" }, { punchedOnAt: "desc" }],
     });
   }
 
@@ -223,7 +242,7 @@ export class AttendanceService {
     timezone: string,
     startTime: string,
     graceMinutes: number,
-    crossesMidnight: boolean
+    crossesMidnight: boolean,
   ): number {
     const start = parseTimeToMinutes(startTime);
     let nowMinutes = minutesNowInZone(now, timezone);

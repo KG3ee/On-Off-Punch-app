@@ -1,13 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { BreakSessionStatus, Role } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { ReportsService } from '../reports/reports.service';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { BreakSessionStatus, Role } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { ReportsService } from "../reports/reports.service";
 
 @Injectable()
 export class JobsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly reportsService: ReportsService
+    private readonly reportsService: ReportsService,
   ) {}
 
   async runDailyJobs(secret: string | undefined) {
@@ -19,7 +19,7 @@ export class JobsService {
     return {
       ok: true,
       autoClose,
-      monthly
+      monthly,
     };
   }
 
@@ -28,7 +28,7 @@ export class JobsService {
     const autoClose = await this.autoCloseOvertimeBreaks();
     return {
       ok: true,
-      autoClose
+      autoClose,
     };
   }
 
@@ -39,7 +39,7 @@ export class JobsService {
       month?: number;
       teamId?: string;
       force?: boolean;
-    }
+    },
   ) {
     this.assertJobSecret(secret);
 
@@ -49,22 +49,25 @@ export class JobsService {
         {
           year: params.year,
           month: params.month,
-          teamId: params.teamId
+          teamId: params.teamId,
         },
-        actorId
+        actorId,
       );
 
       return {
         ok: true,
         generated: true,
-        report
+        report,
       };
     }
 
-    const monthly = await this.generatePreviousMonthReportIfFirstDay(params.force || false, params.teamId);
+    const monthly = await this.generatePreviousMonthReportIfFirstDay(
+      params.force || false,
+      params.teamId,
+    );
     return {
       ok: true,
-      monthly
+      monthly,
     };
   }
 
@@ -72,11 +75,11 @@ export class JobsService {
     const expected = process.env.JOB_SECRET;
 
     if (!expected) {
-      throw new UnauthorizedException('JOB_SECRET is not configured');
+      throw new UnauthorizedException("JOB_SECRET is not configured");
     }
 
     if (!secret || secret !== expected) {
-      throw new UnauthorizedException('Invalid job secret');
+      throw new UnauthorizedException("Invalid job secret");
     }
   }
 
@@ -89,11 +92,11 @@ export class JobsService {
 
     const activeBreaks = await this.prisma.breakSession.findMany({
       where: {
-        status: BreakSessionStatus.ACTIVE
+        status: BreakSessionStatus.ACTIVE,
       },
       include: {
-        breakPolicy: true
-      }
+        breakPolicy: true,
+      },
     });
 
     let autoClosed = 0;
@@ -101,10 +104,13 @@ export class JobsService {
     for (const breakSession of activeBreaks) {
       const elapsedMinutes = Math.max(
         0,
-        Math.round((now.getTime() - breakSession.startedAt.getTime()) / 60000)
+        Math.round((now.getTime() - breakSession.startedAt.getTime()) / 60000),
       );
 
-      if (elapsedMinutes <= breakSession.expectedDurationMinutes + graceMinutes) {
+      if (
+        elapsedMinutes <=
+        breakSession.expectedDurationMinutes + graceMinutes
+      ) {
         continue;
       }
 
@@ -115,23 +121,23 @@ export class JobsService {
           actualMinutes: elapsedMinutes,
           isOvertime: true,
           autoClosed: true,
-          status: BreakSessionStatus.AUTO_CLOSED
-        }
+          status: BreakSessionStatus.AUTO_CLOSED,
+        },
       });
 
       await this.prisma.auditEvent.create({
         data: {
           actorUserId: breakSession.userId,
-          action: 'BREAK_AUTO_CLOSE',
-          entityType: 'BreakSession',
+          action: "BREAK_AUTO_CLOSE",
+          entityType: "BreakSession",
           entityId: breakSession.id,
           payload: {
             code: breakSession.breakPolicy.code,
             expectedDuration: breakSession.expectedDurationMinutes,
             actualMinutes: elapsedMinutes,
-            graceMinutes
-          }
-        }
+            graceMinutes,
+          },
+        },
       });
 
       autoClosed++;
@@ -139,13 +145,13 @@ export class JobsService {
 
     return {
       checked: activeBreaks.length,
-      autoClosed
+      autoClosed,
     };
   }
 
   private async generatePreviousMonthReportIfFirstDay(
     force = false,
-    teamId?: string
+    teamId?: string,
   ): Promise<{
     generated: boolean;
     reason?: string;
@@ -153,14 +159,14 @@ export class JobsService {
     year?: number;
     month?: number;
   }> {
-    const timeZone = process.env.APP_TIMEZONE || 'Asia/Dubai';
+    const timeZone = process.env.APP_TIMEZONE || "Asia/Dubai";
     const now = new Date();
     const parts = this.getLocalDateParts(now, timeZone);
 
     if (!force && parts.day !== 1) {
       return {
         generated: false,
-        reason: 'Not first day of month'
+        reason: "Not first day of month",
       };
     }
 
@@ -176,23 +182,25 @@ export class JobsService {
       {
         year: targetYear,
         month: targetMonth,
-        teamId
+        teamId,
       },
-      actorId
+      actorId,
     );
 
     return {
       generated: true,
       reportId: report.id,
       year: targetYear,
-      month: targetMonth
+      month: targetMonth,
     };
   }
 
   private async resolveJobActorId(): Promise<string | null> {
     const configured = process.env.SYSTEM_JOB_USER_ID;
     if (configured) {
-      const user = await this.prisma.user.findUnique({ where: { id: configured } });
+      const user = await this.prisma.user.findUnique({
+        where: { id: configured },
+      });
       if (user) {
         return user.id;
       }
@@ -201,27 +209,30 @@ export class JobsService {
     const firstAdmin = await this.prisma.user.findFirst({
       where: {
         role: Role.ADMIN,
-        isActive: true
+        isActive: true,
       },
       orderBy: {
-        createdAt: 'asc'
-      }
+        createdAt: "asc",
+      },
     });
 
     return firstAdmin?.id || null;
   }
 
-  private getLocalDateParts(date: Date, timeZone: string): { year: number; month: number; day: number } {
-    const parts = new Intl.DateTimeFormat('en-GB', {
+  private getLocalDateParts(
+    date: Date,
+    timeZone: string,
+  ): { year: number; month: number; day: number } {
+    const parts = new Intl.DateTimeFormat("en-GB", {
       timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     }).formatToParts(date);
 
     const map: Record<string, string> = {};
     for (const part of parts) {
-      if (part.type !== 'literal') {
+      if (part.type !== "literal") {
         map[part.type] = part.value;
       }
     }
@@ -229,7 +240,7 @@ export class JobsService {
     return {
       year: Number(map.year),
       month: Number(map.month),
-      day: Number(map.day)
+      day: Number(map.day),
     };
   }
 }

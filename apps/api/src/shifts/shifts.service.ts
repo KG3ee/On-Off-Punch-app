@@ -1,21 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   AssignmentTargetType,
-  Prisma,
   ShiftPreset,
   ShiftPresetSegment,
-  User
-} from '@prisma/client';
+  User,
+} from "@prisma/client";
 import {
   ResolvedShiftSegment,
   ShiftPresetInput,
   resolveActiveShiftSegment,
-  formatDateInZone
-} from '../core';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateShiftAssignmentDto } from './dto/create-shift-assignment.dto';
-import { CreateShiftOverrideDto } from './dto/create-shift-override.dto';
-import { CreateShiftPresetDto } from './dto/create-shift-preset.dto';
+  formatDateInZone,
+} from "../core";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateShiftAssignmentDto } from "./dto/create-shift-assignment.dto";
+import { CreateShiftOverrideDto } from "./dto/create-shift-override.dto";
+import { CreateShiftPresetDto } from "./dto/create-shift-preset.dto";
 
 type PresetWithSegments = ShiftPreset & { segments: ShiftPresetSegment[] };
 
@@ -27,7 +26,7 @@ export class ShiftsService {
     return this.prisma.shiftPreset.create({
       data: {
         name: dto.name,
-        timezone: dto.timezone || 'Asia/Dubai',
+        timezone: dto.timezone || "Asia/Dubai",
         teamId: dto.teamId,
         isDefault: dto.isDefault ?? false,
         segments: {
@@ -36,15 +35,15 @@ export class ShiftsService {
             startTime: segment.startTime,
             endTime: segment.endTime,
             crossesMidnight: segment.crossesMidnight ?? false,
-            lateGraceMinutes: segment.lateGraceMinutes ?? 10
-          }))
-        }
+            lateGraceMinutes: segment.lateGraceMinutes ?? 10,
+          })),
+        },
       },
       include: {
         segments: {
-          orderBy: { segmentNo: 'asc' }
-        }
-      }
+          orderBy: { segmentNo: "asc" },
+        },
+      },
     });
   }
 
@@ -54,10 +53,10 @@ export class ShiftsService {
       include: {
         team: true,
         segments: {
-          orderBy: { segmentNo: 'asc' }
-        }
+          orderBy: { segmentNo: "asc" },
+        },
       },
-      orderBy: [{ teamId: 'asc' }, { name: 'asc' }]
+      orderBy: [{ teamId: "asc" }, { name: "asc" }],
     });
   }
 
@@ -68,8 +67,10 @@ export class ShiftsService {
         targetId: dto.targetId,
         shiftPresetId: dto.shiftPresetId,
         effectiveFrom: new Date(`${dto.effectiveFrom}T00:00:00.000Z`),
-        effectiveTo: dto.effectiveTo ? new Date(`${dto.effectiveTo}T23:59:59.999Z`) : null
-      }
+        effectiveTo: dto.effectiveTo
+          ? new Date(`${dto.effectiveTo}T23:59:59.999Z`)
+          : null,
+      },
     });
   }
 
@@ -80,25 +81,32 @@ export class ShiftsService {
         targetId: dto.targetId,
         shiftPresetId: dto.shiftPresetId,
         overrideDate: new Date(`${dto.overrideDate}T00:00:00.000Z`),
-        reason: dto.reason
-      }
+        reason: dto.reason,
+      },
     });
   }
 
-  async getActiveSegmentForUser(user: User & { team?: { id: string } | null }, now: Date): Promise<{
+  async getActiveSegmentForUser(
+    user: User & { team?: { id: string } | null },
+    now: Date,
+  ): Promise<{
     preset: PresetWithSegments;
     segment: ResolvedShiftSegment;
     timezone: string;
   }> {
     const preset = await this.resolvePresetForUser(user, now);
     if (!preset) {
-      throw new NotFoundException('No shift preset assigned for this user');
+      throw new NotFoundException("No shift preset assigned for this user");
     }
 
-    const timezone = preset.timezone || 'Asia/Dubai';
-    const segment = resolveActiveShiftSegment(this.toCorePreset(preset), now, timezone);
+    const timezone = preset.timezone || "Asia/Dubai";
+    const segment = resolveActiveShiftSegment(
+      this.toCorePreset(preset),
+      now,
+      timezone,
+    );
     if (!segment) {
-      throw new NotFoundException('No active shift segment right now');
+      throw new NotFoundException("No active shift segment right now");
     }
 
     return { preset, segment, timezone };
@@ -106,27 +114,45 @@ export class ShiftsService {
 
   async resolvePresetForUser(
     user: User & { team?: { id: string } | null },
-    now: Date
+    now: Date,
   ): Promise<PresetWithSegments | null> {
-    const baseTimeZone = 'Asia/Dubai';
+    const baseTimeZone = "Asia/Dubai";
     const localDate = formatDateInZone(now, baseTimeZone);
     const dayStart = new Date(`${localDate}T00:00:00.000Z`);
     const dayEnd = new Date(`${localDate}T23:59:59.999Z`);
     const instant = new Date(`${localDate}T12:00:00.000Z`);
 
-    const userOverride = await this.findOverride(AssignmentTargetType.USER, user.id, dayStart, dayEnd);
+    const userOverride = await this.findOverride(
+      AssignmentTargetType.USER,
+      user.id,
+      dayStart,
+      dayEnd,
+    );
     if (userOverride) return userOverride;
 
     if (user.teamId) {
-      const teamOverride = await this.findOverride(AssignmentTargetType.TEAM, user.teamId, dayStart, dayEnd);
+      const teamOverride = await this.findOverride(
+        AssignmentTargetType.TEAM,
+        user.teamId,
+        dayStart,
+        dayEnd,
+      );
       if (teamOverride) return teamOverride;
     }
 
-    const userAssignment = await this.findAssignment(AssignmentTargetType.USER, user.id, instant);
+    const userAssignment = await this.findAssignment(
+      AssignmentTargetType.USER,
+      user.id,
+      instant,
+    );
     if (userAssignment) return userAssignment;
 
     if (user.teamId) {
-      const teamAssignment = await this.findAssignment(AssignmentTargetType.TEAM, user.teamId, instant);
+      const teamAssignment = await this.findAssignment(
+        AssignmentTargetType.TEAM,
+        user.teamId,
+        instant,
+      );
       if (teamAssignment) return teamAssignment;
     }
 
@@ -135,9 +161,9 @@ export class ShiftsService {
         where: {
           isActive: true,
           isDefault: true,
-          teamId: user.teamId
+          teamId: user.teamId,
         },
-        include: { segments: { orderBy: { segmentNo: 'asc' } } }
+        include: { segments: { orderBy: { segmentNo: "asc" } } },
       });
       if (teamDefault) return teamDefault;
     }
@@ -146,9 +172,9 @@ export class ShiftsService {
       where: {
         isActive: true,
         isDefault: true,
-        teamId: null
+        teamId: null,
       },
-      include: { segments: { orderBy: { segmentNo: 'asc' } } }
+      include: { segments: { orderBy: { segmentNo: "asc" } } },
     });
   }
 
@@ -156,7 +182,7 @@ export class ShiftsService {
     targetType: AssignmentTargetType,
     targetId: string,
     dayStart: Date,
-    dayEnd: Date
+    dayEnd: Date,
   ): Promise<PresetWithSegments | null> {
     const override = await this.prisma.shiftOverride.findFirst({
       where: {
@@ -164,19 +190,19 @@ export class ShiftsService {
         targetId,
         overrideDate: {
           gte: dayStart,
-          lte: dayEnd
-        }
+          lte: dayEnd,
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         shiftPreset: {
           include: {
             segments: {
-              orderBy: { segmentNo: 'asc' }
-            }
-          }
-        }
-      }
+              orderBy: { segmentNo: "asc" },
+            },
+          },
+        },
+      },
     });
 
     return (override?.shiftPreset as PresetWithSegments) || null;
@@ -185,7 +211,7 @@ export class ShiftsService {
   private async findAssignment(
     targetType: AssignmentTargetType,
     targetId: string,
-    instant: Date
+    instant: Date,
   ): Promise<PresetWithSegments | null> {
     const assignment = await this.prisma.shiftAssignment.findFirst({
       where: {
@@ -193,20 +219,20 @@ export class ShiftsService {
         targetId,
         isActive: true,
         effectiveFrom: {
-          lte: instant
+          lte: instant,
         },
-        OR: [{ effectiveTo: null }, { effectiveTo: { gte: instant } }]
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: instant } }],
       },
-      orderBy: { effectiveFrom: 'desc' },
+      orderBy: { effectiveFrom: "desc" },
       include: {
         shiftPreset: {
           include: {
             segments: {
-              orderBy: { segmentNo: 'asc' }
-            }
-          }
-        }
-      }
+              orderBy: { segmentNo: "asc" },
+            },
+          },
+        },
+      },
     });
 
     return (assignment?.shiftPreset as PresetWithSegments) || null;
@@ -223,8 +249,8 @@ export class ShiftsService {
         startTime: segment.startTime,
         endTime: segment.endTime,
         crossesMidnight: segment.crossesMidnight,
-        lateGraceMinutes: segment.lateGraceMinutes
-      }))
+        lateGraceMinutes: segment.lateGraceMinutes,
+      })),
     };
   }
 }

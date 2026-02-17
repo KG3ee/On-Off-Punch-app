@@ -1,5 +1,12 @@
-import { BreakDeductionMode } from '@prisma/client';
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { BreakDeductionMode } from "@prisma/client";
+import {
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 export class CreateSalaryRuleDto {
   @IsString()

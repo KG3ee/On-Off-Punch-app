@@ -1,22 +1,24 @@
-import { ResolvedShiftSegment, ShiftPresetInput } from './types';
+import { ResolvedShiftSegment, ShiftPresetInput } from "./types";
 import {
   formatDateInZone,
   getPreviousDateInZone,
   localDateTime,
   minutesNowInZone,
-  parseTimeToMinutes
-} from './time';
+  parseTimeToMinutes,
+} from "./time";
 
 export function resolveActiveShiftSegment(
   preset: ShiftPresetInput,
   now: Date,
-  timeZone: string
+  timeZone: string,
 ): ResolvedShiftSegment | null {
   const nowMinutes = minutesNowInZone(now, timeZone);
   const today = formatDateInZone(now, timeZone);
   const yesterday = getPreviousDateInZone(now, timeZone);
 
-  for (const segment of preset.segments.sort((a, b) => a.segmentNo - b.segmentNo)) {
+  for (const segment of preset.segments.sort(
+    (a, b) => a.segmentNo - b.segmentNo,
+  )) {
     const startMinutes = parseTimeToMinutes(segment.startTime);
     const endMinutes = parseTimeToMinutes(segment.endTime);
 
@@ -36,9 +38,11 @@ export function resolveActiveShiftSegment(
     }
 
     const startDate = shiftDate;
-    const endDate = segment.crossesMidnight && parseTimeToMinutes(segment.endTime) <= startMinutes
-      ? today
-      : shiftDate;
+    const endDate =
+      segment.crossesMidnight &&
+      parseTimeToMinutes(segment.endTime) <= startMinutes
+        ? today
+        : shiftDate;
 
     return {
       presetId: preset.id,
@@ -55,7 +59,7 @@ export function resolveActiveShiftSegment(
       isLateAt: (date: Date, zone: string) => {
         const minutes = minutesNowInZone(date, zone);
         return minutes > startMinutes + segment.lateGraceMinutes;
-      }
+      },
     };
   }
 

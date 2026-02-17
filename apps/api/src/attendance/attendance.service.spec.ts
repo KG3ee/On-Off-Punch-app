@@ -1,40 +1,40 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AttendanceService } from './attendance.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { ShiftsService } from '../shifts/shifts.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { AttendanceService } from "./attendance.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { ShiftsService } from "../shifts/shifts.service";
 
 const mockPrismaService = {
-    dutySession: {
-        findFirst: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-        findMany: jest.fn(),
-    },
-    auditEvent: {
-        create: jest.fn(),
-    },
+  dutySession: {
+    findFirst: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    findMany: jest.fn(),
+  },
+  auditEvent: {
+    create: jest.fn(),
+  },
 };
 
 const mockShiftsService = {
-    getActiveSegmentForUser: jest.fn(),
+  getActiveSegmentForUser: jest.fn(),
 };
 
-describe('AttendanceService', () => {
-    let service: AttendanceService;
+describe("AttendanceService", () => {
+  let service: AttendanceService;
 
-    beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                AttendanceService,
-                { provide: PrismaService, useValue: mockPrismaService },
-                { provide: ShiftsService, useValue: mockShiftsService },
-            ],
-        }).compile();
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AttendanceService,
+        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: ShiftsService, useValue: mockShiftsService },
+      ],
+    }).compile();
 
-        service = module.get<AttendanceService>(AttendanceService);
-    });
+    service = module.get<AttendanceService>(AttendanceService);
+  });
 
-    it('should be defined', () => {
-        expect(service).toBeDefined();
-    });
+  it("should be defined", () => {
+    expect(service).toBeDefined();
+  });
 });

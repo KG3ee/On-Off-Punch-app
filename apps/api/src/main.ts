@@ -1,34 +1,34 @@
-import 'reflect-metadata';
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import cookieParser = require('cookie-parser');
-import { AppModule } from './app.module';
+import "reflect-metadata";
+import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+import cookieParser from "cookie-parser";
+import { AppModule } from "./app.module";
 
 type CorsCallback = (err: Error | null, allow?: boolean) => void;
 
 function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function parseCorsRules(): string[] {
-  const raw = process.env.CORS_ORIGIN || 'http://localhost:3000';
+  const raw = process.env.CORS_ORIGIN || "http://localhost:3000";
   return raw
-    .split(',')
+    .split(",")
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
 }
 
 function isAllowedOrigin(origin: string, rules: string[]): boolean {
   return rules.some((rule) => {
-    if (rule === '*') {
+    if (rule === "*") {
       return true;
     }
 
-    if (!rule.includes('*')) {
+    if (!rule.includes("*")) {
       return rule === origin;
     }
 
-    const regex = new RegExp(`^${escapeRegex(rule).replace(/\\\*/g, '.*')}$`);
+    const regex = new RegExp(`^${escapeRegex(rule).replace(/\\\*/g, ".*")}$`);
     return regex.test(origin);
   });
 }
@@ -41,8 +41,8 @@ async function bootstrap(): Promise<void> {
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
-      transform: true
-    })
+      transform: true,
+    }),
   );
 
   const corsRules = parseCorsRules();
@@ -55,12 +55,12 @@ async function bootstrap(): Promise<void> {
 
       callback(new Error(`Origin ${origin} is not allowed by CORS`));
     },
-    credentials: true
+    credentials: true,
   });
 
   const port = Number(process.env.PORT || 4000);
   await app.listen(port);
-  // eslint-disable-next-line no-console
+
   console.log(`API running on http://localhost:${port}`);
 }
 

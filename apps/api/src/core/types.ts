@@ -1,6 +1,6 @@
-export type Role = 'ADMIN' | 'EMPLOYEE';
+export type Role = "ADMIN" | "EMPLOYEE";
 
-export type AssignmentTargetType = 'TEAM' | 'USER';
+export type AssignmentTargetType = "TEAM" | "USER";
 
 export interface ShiftSegmentInput {
   id: string;
@@ -55,7 +55,7 @@ export interface PayrollRuleSnapshot {
   baseHourlyRate: number;
   overtimeMultiplier: number;
   latePenaltyPerMinute: number;
-  breakDeductionMode: 'NONE' | 'UNPAID_ALL_BREAKS' | 'UNPAID_OVERTIME_ONLY';
+  breakDeductionMode: "NONE" | "UNPAID_ALL_BREAKS" | "UNPAID_OVERTIME_ONLY";
 }
 
 export interface PayrollComputationInput {
@@ -81,6 +81,6 @@ export interface PayrollComputationResult {
     workedMinutes: number;
     breakMinutes: number;
     lateMinutes: number;
-    breakDeductionMode: PayrollRuleSnapshot['breakDeductionMode'];
+    breakDeductionMode: PayrollRuleSnapshot["breakDeductionMode"];
   };
 }

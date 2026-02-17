@@ -1,12 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { Role } from '@prisma/client';
-import { Roles } from '../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { CreateTeamDto } from './dto/create-team.dto';
-import { TeamsService } from './teams.service';
+import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Role } from "@prisma/client";
+import { Roles } from "../common/decorators/roles.decorator";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
+import { CreateTeamDto } from "./dto/create-team.dto";
+import { TeamsService } from "./teams.service";
 
-@Controller('teams')
+@Controller("teams")
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
@@ -18,7 +18,7 @@ export class TeamsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  @Post('admin')
+  @Post("admin")
   async createTeam(@Body() dto: CreateTeamDto) {
     return this.teamsService.create(dto);
   }

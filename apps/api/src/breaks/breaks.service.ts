@@ -1,12 +1,12 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException
-} from '@nestjs/common';
-import { BreakSessionStatus, DutySessionStatus, User } from '@prisma/client';
-import { formatDateInZone } from '../core';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateBreakPolicyDto } from './dto/create-break-policy.dto';
+  NotFoundException,
+} from "@nestjs/common";
+import { BreakSessionStatus, DutySessionStatus, User } from "@prisma/client";
+import { formatDateInZone } from "../core";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateBreakPolicyDto } from "./dto/create-break-policy.dto";
 
 @Injectable()
 export class BreaksService {
@@ -15,11 +15,11 @@ export class BreaksService {
   async listPolicies() {
     return this.prisma.breakPolicy.findMany({
       where: {
-        isActive: true
+        isActive: true,
       },
       orderBy: {
-        code: 'asc'
-      }
+        code: "asc",
+      },
     });
   }
 
@@ -30,18 +30,21 @@ export class BreaksService {
         name: dto.name,
         expectedDurationMinutes: dto.expectedDurationMinutes,
         dailyLimit: dto.dailyLimit,
-        isActive: dto.isActive ?? true
-      }
+        isActive: dto.isActive ?? true,
+      },
     });
   }
 
   async myTodayBreaks(userId: string) {
-    const localDate = formatDateInZone(new Date(), process.env.APP_TIMEZONE || 'Asia/Dubai');
+    const localDate = formatDateInZone(
+      new Date(),
+      process.env.APP_TIMEZONE || "Asia/Dubai",
+    );
 
     return this.prisma.breakSession.findMany({
       where: {
         userId,
-        localDate
+        localDate,
       },
       include: {
         breakPolicy: true,
@@ -49,13 +52,13 @@ export class BreaksService {
           select: {
             id: true,
             shiftDate: true,
-            status: true
-          }
-        }
+            status: true,
+          },
+        },
       },
       orderBy: {
-        startedAt: 'asc'
-      }
+        startedAt: "asc",
+      },
     });
   }
 
@@ -63,7 +66,7 @@ export class BreaksService {
     return this.prisma.breakSession.findFirst({
       where: {
         userId,
-        status: BreakSessionStatus.ACTIVE
+        status: BreakSessionStatus.ACTIVE,
       },
       include: {
         breakPolicy: true,
@@ -71,13 +74,13 @@ export class BreaksService {
           select: {
             id: true,
             shiftDate: true,
-            status: true
-          }
-        }
+            status: true,
+          },
+        },
       },
       orderBy: {
-        startedAt: 'desc'
-      }
+        startedAt: "desc",
+      },
     });
   }
 
@@ -88,7 +91,10 @@ export class BreaksService {
     userId?: string;
     status?: BreakSessionStatus;
   }) {
-    const today = formatDateInZone(new Date(), process.env.APP_TIMEZONE || 'Asia/Dubai');
+    const today = formatDateInZone(
+      new Date(),
+      process.env.APP_TIMEZONE || "Asia/Dubai",
+    );
     const from = params.from || today;
     const to = params.to || from;
 
@@ -96,11 +102,11 @@ export class BreaksService {
       where: {
         localDate: {
           gte: from,
-          lte: to
+          lte: to,
         },
         ...(params.teamId ? { user: { teamId: params.teamId } } : {}),
         ...(params.userId ? { userId: params.userId } : {}),
-        ...(params.status ? { status: params.status } : {})
+        ...(params.status ? { status: params.status } : {}),
       },
       include: {
         breakPolicy: true,
@@ -112,20 +118,20 @@ export class BreaksService {
             team: {
               select: {
                 id: true,
-                name: true
-              }
-            }
-          }
+                name: true,
+              },
+            },
+          },
         },
         dutySession: {
           select: {
             id: true,
             shiftDate: true,
-            status: true
-          }
-        }
+            status: true,
+          },
+        },
       },
-      orderBy: [{ localDate: 'desc' }, { startedAt: 'desc' }]
+      orderBy: [{ localDate: "desc" }, { startedAt: "desc" }],
     });
   }
 
@@ -133,40 +139,42 @@ export class BreaksService {
     const normalizedCode = code.toLowerCase().trim();
     const policy = await this.prisma.breakPolicy.findUnique({
       where: {
-        code: normalizedCode
-      }
+        code: normalizedCode,
+      },
     });
 
     if (!policy || !policy.isActive) {
-      throw new NotFoundException('Break policy not found');
+      throw new NotFoundException("Break policy not found");
     }
 
     const activeDuty = await this.prisma.dutySession.findFirst({
       where: {
         userId: user.id,
-        status: DutySessionStatus.ACTIVE
+        status: DutySessionStatus.ACTIVE,
       },
       orderBy: {
-        punchedOnAt: 'desc'
-      }
+        punchedOnAt: "desc",
+      },
     });
 
     if (!activeDuty) {
-      throw new BadRequestException('Cannot start break without active duty session');
+      throw new BadRequestException(
+        "Cannot start break without active duty session",
+      );
     }
 
     const activeBreak = await this.prisma.breakSession.findFirst({
       where: {
         userId: user.id,
-        status: BreakSessionStatus.ACTIVE
-      }
+        status: BreakSessionStatus.ACTIVE,
+      },
     });
 
     if (activeBreak) {
-      throw new BadRequestException('You already have an active break');
+      throw new BadRequestException("You already have an active break");
     }
 
-    const timezone = process.env.APP_TIMEZONE || 'Asia/Dubai';
+    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
     const localDate = formatDateInZone(new Date(), timezone);
 
     const usedCount = await this.prisma.breakSession.count({
@@ -175,14 +183,18 @@ export class BreaksService {
         breakPolicyId: policy.id,
         localDate,
         status: {
-          in: [BreakSessionStatus.ACTIVE, BreakSessionStatus.COMPLETED, BreakSessionStatus.AUTO_CLOSED]
-        }
-      }
+          in: [
+            BreakSessionStatus.ACTIVE,
+            BreakSessionStatus.COMPLETED,
+            BreakSessionStatus.AUTO_CLOSED,
+          ],
+        },
+      },
     });
 
     if (usedCount >= policy.dailyLimit) {
       throw new BadRequestException(
-        `Daily limit reached for ${policy.code}. Limit: ${policy.dailyLimit}`
+        `Daily limit reached for ${policy.code}. Limit: ${policy.dailyLimit}`,
       );
     }
 
@@ -195,26 +207,26 @@ export class BreaksService {
         startedAt: new Date(),
         expectedDurationMinutes: policy.expectedDurationMinutes,
         status: BreakSessionStatus.ACTIVE,
-        createdById: user.id
+        createdById: user.id,
       },
       include: {
-        breakPolicy: true
-      }
+        breakPolicy: true,
+      },
     });
 
     await this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
-        action: 'BREAK_START',
-        entityType: 'BreakSession',
+        action: "BREAK_START",
+        entityType: "BreakSession",
         entityId: created.id,
         payload: {
           code: policy.code,
           localDate,
           usedCountAfter: usedCount + 1,
-          dailyLimit: policy.dailyLimit
-        }
-      }
+          dailyLimit: policy.dailyLimit,
+        },
+      },
     });
 
     return created;
@@ -224,24 +236,24 @@ export class BreaksService {
     const activeBreak = await this.prisma.breakSession.findFirst({
       where: {
         userId: user.id,
-        status: BreakSessionStatus.ACTIVE
+        status: BreakSessionStatus.ACTIVE,
       },
       include: {
-        breakPolicy: true
+        breakPolicy: true,
       },
       orderBy: {
-        startedAt: 'desc'
-      }
+        startedAt: "desc",
+      },
     });
 
     if (!activeBreak) {
-      throw new NotFoundException('No active break found');
+      throw new NotFoundException("No active break found");
     }
 
     const endedAt = new Date();
     const actualMinutes = Math.max(
       0,
-      Math.round((endedAt.getTime() - activeBreak.startedAt.getTime()) / 60000)
+      Math.round((endedAt.getTime() - activeBreak.startedAt.getTime()) / 60000),
     );
     const isOvertime = actualMinutes > activeBreak.expectedDurationMinutes;
 
@@ -251,26 +263,26 @@ export class BreaksService {
         endedAt,
         actualMinutes,
         isOvertime,
-        status: BreakSessionStatus.COMPLETED
+        status: BreakSessionStatus.COMPLETED,
       },
       include: {
-        breakPolicy: true
-      }
+        breakPolicy: true,
+      },
     });
 
     await this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
-        action: 'BREAK_END',
-        entityType: 'BreakSession',
+        action: "BREAK_END",
+        entityType: "BreakSession",
         entityId: updated.id,
         payload: {
           code: activeBreak.breakPolicy.code,
           actualMinutes,
           expectedDuration: activeBreak.expectedDurationMinutes,
-          isOvertime
-        }
-      }
+          isOvertime,
+        },
+      },
     });
 
     return updated;
@@ -280,38 +292,38 @@ export class BreaksService {
     const activeBreak = await this.prisma.breakSession.findFirst({
       where: {
         userId: user.id,
-        status: BreakSessionStatus.ACTIVE
+        status: BreakSessionStatus.ACTIVE,
       },
       orderBy: {
-        startedAt: 'desc'
-      }
+        startedAt: "desc",
+      },
     });
 
     if (!activeBreak) {
-      throw new NotFoundException('No active break to cancel');
+      throw new NotFoundException("No active break to cancel");
     }
 
     const updated = await this.prisma.breakSession.update({
       where: {
-        id: activeBreak.id
+        id: activeBreak.id,
       },
       data: {
         status: BreakSessionStatus.CANCELLED,
         cancelledAt: new Date(),
-        cancelledById: user.id
-      }
+        cancelledById: user.id,
+      },
     });
 
     await this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
-        action: 'BREAK_CANCEL',
-        entityType: 'BreakSession',
+        action: "BREAK_CANCEL",
+        entityType: "BreakSession",
         entityId: updated.id,
         payload: {
-          localDate: activeBreak.localDate
-        }
-      }
+          localDate: activeBreak.localDate,
+        },
+      },
     });
 
     return updated;
