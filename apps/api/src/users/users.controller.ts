@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  Delete,
 } from "@nestjs/common";
 import { Role } from "@prisma/client";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
@@ -19,7 +20,7 @@ import { UsersService } from "./users.service";
 
 @Controller()
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @UseGuards(JwtAuthGuard)
   @Get("me")
@@ -46,5 +47,12 @@ export class UsersController {
   @Patch("admin/users/:id")
   async updateUser(@Param("id") id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.updateUser(id, dto);
+  }
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Delete("admin/users/:id")
+  async deleteUser(@Param("id") id: string) {
+    await this.usersService.deleteUser(id);
+    return { success: true };
   }
 }

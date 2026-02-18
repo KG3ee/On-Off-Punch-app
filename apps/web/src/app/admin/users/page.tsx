@@ -395,6 +395,20 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function deleteUser(id: string, displayName: string): Promise<void> {
+    const confirmation = prompt(`WARNING: This will permanently delete user "${displayName}" and ALL their history (attendance, breaks, reports).\n\nType "DELETE" to confirm:`);
+    if (confirmation !== 'DELETE') return;
+
+    try {
+      await apiFetch(`/admin/users/${id}`, { method: 'DELETE' });
+      flash('User deleted permanently');
+      setOpenMenuId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete user');
+    }
+  }
+
   function openEditUser(user: UserRow) {
     setEditingUser(user);
     setEditRole(user.role);
@@ -589,6 +603,13 @@ export default function AdminUsersPage() {
                           onClick={() => void updateUserField(user.id, { isActive: !user.isActive })}
                         >
                           {user.isActive ? '🚫 Deactivate' : '✅ Reactivate'}
+                        </button>
+                        <hr style={{ margin: '0.2rem 0', border: 0, borderTop: '1px solid var(--border)' }} />
+                        <button
+                          onClick={() => void deleteUser(user.id, user.displayName)}
+                          style={{ color: 'var(--danger)' }}
+                        >
+                          🗑 Delete Permanently
                         </button>
                       </div>
                     ) : null}

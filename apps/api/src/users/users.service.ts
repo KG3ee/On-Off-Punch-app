@@ -35,7 +35,7 @@ type PublicUserWithTeam = Prisma.UserGetPayload<{
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createUser(dto: CreateUserDto): Promise<PublicUserWithTeam> {
     const passwordHash = await this.hashPassword(dto.password);
@@ -51,12 +51,12 @@ export class UsersService {
       isActive: dto.isActive ?? true,
       ...(dto.teamId
         ? {
-            team: {
-              connect: {
-                id: dto.teamId,
-              },
+          team: {
+            connect: {
+              id: dto.teamId,
             },
-          }
+          },
+        }
         : {}),
     };
 
@@ -148,6 +148,69 @@ export class UsersService {
         passwordHash: await this.hashPassword(password),
         mustChangePassword,
       },
+    });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await this.ensureUser(id);
+
+    // Hard delete with cleanup of related records
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Anonymize Audit logs
+      await tx.auditEvent.updateMany({
+        where: { actorUserId: id },
+        data: { actorUserId: null },
+      });
+
+      // 2. Anonymize approvals/reviews
+      await tx.registrationRequest.updateMany({
+        where: { reviewedById: id },
+        data: { reviewedById: null },
+      });
+      await tx.registrationRequest.updateMany({
+        where: { approvedUserId: id },
+        data: { approvedUserId: null },
+      });
+
+      // 3. Anonymize reports
+      await tx.monthlyReport.updateMany({
+        where: { generatedById: id },
+        data: { generatedById: null },
+      });
+
+      // 4. Anonymize session metadata (created/cancelled by this user)
+      await tx.breakSession.updateMany({
+        where: { createdById: id },
+        data: { createdById: null },
+      });
+      await tx.breakSession.updateMany({
+        where: { cancelledById: id },
+        data: { cancelledById: null },
+      });
+      await tx.dutySession.updateMany({
+        where: { createdById: id },
+        data: { createdById: null },
+      });
+
+      // 5. Delete Breaks (must be before DutySessions if linked)
+      await tx.breakSession.deleteMany({
+        where: { userId: id },
+      });
+
+      // 6. Delete DutySessions
+      await tx.dutySession.deleteMany({
+        where: { userId: id },
+      });
+
+      // 7. Delete Shift Assignments
+      await tx.shiftAssignment.deleteMany({
+        where: { targetType: "USER", targetId: id },
+      });
+
+      // 8. Delete User
+      await tx.user.delete({
+        where: { id },
+      });
     });
   }
 
