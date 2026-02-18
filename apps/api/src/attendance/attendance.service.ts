@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import {
   formatDateInZone,
+  getTimePartsInZone,
   minutesNowInZone,
   parseTimeToMinutes,
   resolveEventTime,
@@ -12,11 +13,13 @@ import {
 } from "../core";
 import { DutySessionStatus, Team, User } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { ShiftsService } from "../shifts/shifts.service";
 
 @Injectable()
 export class AttendanceService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly shiftsService: ShiftsService,
   ) { }
 
   async punchOn(user: User, note?: string, clientTimestamp?: string) {
@@ -26,7 +29,8 @@ export class AttendanceService {
       highTrustSkewMinutes: this.envNumber("HIGH_TRUST_SKEW_MINUTES", 2),
     });
     const now = eventTime.effectiveAt;
-    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
+    const resolvedShift = await this.shiftsService.getSegmentForPunch(user, now);
+    const timezone = resolvedShift?.timezone || process.env.APP_TIMEZONE || "Asia/Dubai";
 
     // Check for existing active session
     const existing = await this.prisma.dutySession.findFirst({
@@ -42,11 +46,28 @@ export class AttendanceService {
 
     const localDate = formatDateInZone(now, timezone);
 
-    // Get team shift times for late calculation
+    let shiftDate = localDate;
+    let shiftPresetId: string | null = null;
+    let shiftPresetSegmentId: string | null = null;
+    let scheduledStartLocal: string | null = null;
+    let scheduledEndLocal: string | null = null;
+
     let isLate = false;
     let lateMinutes = 0;
 
-    if (user.teamId) {
+    if (resolvedShift) {
+      shiftDate = resolvedShift.segment.shiftDate;
+      shiftPresetId = resolvedShift.preset.id;
+      shiftPresetSegmentId = resolvedShift.segment.segmentId;
+      scheduledStartLocal = resolvedShift.segment.scheduleStartLocal;
+      scheduledEndLocal = resolvedShift.segment.scheduleEndLocal;
+
+      const nowStamp = this.localMinuteStampFromDate(now, timezone);
+      const scheduleStartStamp = this.localMinuteStamp(scheduledStartLocal);
+      const rawLate = nowStamp - scheduleStartStamp - resolvedShift.segment.lateGraceMinutes;
+      lateMinutes = Math.min(this.maxLateMinutes(), Math.max(0, rawLate));
+      isLate = lateMinutes > 0;
+    } else if (user.teamId) {
       const team = await this.prisma.team.findUnique({
         where: { id: user.teamId },
       });
@@ -69,12 +90,12 @@ export class AttendanceService {
       data: {
         userId: user.id,
         teamId: user.teamId || null,
-        shiftPresetId: null,
-        shiftPresetSegmentId: null,
-        shiftDate: localDate,
+        shiftPresetId,
+        shiftPresetSegmentId,
+        shiftDate,
         localDate,
-        scheduledStartLocal: null,
-        scheduledEndLocal: null,
+        scheduledStartLocal,
+        scheduledEndLocal,
         punchedOnAt: now,
         status: DutySessionStatus.ACTIVE,
         isLate,
@@ -91,9 +112,13 @@ export class AttendanceService {
         entityType: "DutySession",
         entityId: created.id,
         payload: {
-          shiftDate: localDate,
+          shiftDate,
           isLate,
           lateMinutes,
+          shiftPresetId,
+          shiftPresetSegmentId,
+          scheduledStartLocal,
+          scheduledEndLocal,
           clientTimestamp: clientTimestamp || null,
           time: serializeEventTime(eventTime),
         },
@@ -150,6 +175,8 @@ export class AttendanceService {
       active.punchedOnAt,
       now,
       timezone,
+      active.scheduledStartLocal,
+      active.scheduledEndLocal,
     );
 
     const updated = await this.prisma.dutySession.update({
@@ -301,7 +328,21 @@ export class AttendanceService {
     punchedOnAt: Date,
     punchedOffAt: Date,
     timeZone: string,
+    scheduledStartLocal?: string | null,
+    scheduledEndLocal?: string | null,
   ): number {
+    if (scheduledStartLocal && scheduledEndLocal) {
+      const punchOnStamp = this.localMinuteStampFromDate(punchedOnAt, timeZone);
+      const punchOffStamp = this.localMinuteStampFromDate(punchedOffAt, timeZone);
+      const scheduledStartStamp = this.localMinuteStamp(scheduledStartLocal);
+      const scheduledEndStamp = this.localMinuteStamp(scheduledEndLocal);
+
+      const effectivePunchOffStamp = Math.max(punchOffStamp, punchOnStamp);
+      const earlyOvertime = Math.max(0, scheduledStartStamp - punchOnStamp);
+      const lateOvertime = Math.max(0, effectivePunchOffStamp - scheduledEndStamp);
+      return Math.min(this.maxOvertimeMinutes(), earlyOvertime + lateOvertime);
+    }
+
     if (!team?.shiftStartTime || !team.shiftEndTime) {
       return 0;
     }
@@ -354,5 +395,17 @@ export class AttendanceService {
       return parsed;
     }
     return fallback;
+  }
+
+  private localMinuteStamp(localDateTimeValue: string): number {
+    const [datePart, timePart] = localDateTimeValue.split("T");
+    const [year, month, day] = datePart.split("-").map((value) => Number(value));
+    const [hour, minute] = timePart.split(":").map((value) => Number(value));
+    return Date.UTC(year, month - 1, day, hour, minute, 0, 0) / 60000;
+  }
+
+  private localMinuteStampFromDate(date: Date, timeZone: string): number {
+    const parts = getTimePartsInZone(date, timeZone);
+    return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0) / 60000;
   }
 }

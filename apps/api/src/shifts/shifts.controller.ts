@@ -34,6 +34,13 @@ export class ShiftsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @Get('admin/shift-assignments')
+  async listAssignments() {
+    return this.shiftsService.listAssignments();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Post('admin/shift-assignments')
   async createAssignment(@Body() dto: CreateShiftAssignmentDto) {
     return this.shiftsService.createAssignment(dto);

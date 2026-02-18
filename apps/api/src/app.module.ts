@@ -12,6 +12,7 @@ import { BreaksModule } from "./breaks/breaks.module";
 
 import { ReportsModule } from "./reports/reports.module";
 import { JobsModule } from "./jobs/jobs.module";
+import { ShiftsModule } from "./shifts/shifts.module";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { JobsModule } from "./jobs/jobs.module";
 
     AttendanceModule,
     BreaksModule,
+    ShiftsModule,
 
     ReportsModule,
     JobsModule,
