@@ -14,8 +14,7 @@ type NavItem = {
 const adminNav: NavItem[] = [
   { href: '/admin/live', label: 'Live' },
   { href: '/admin/history', label: 'History' },
-  { href: '/admin/users', label: 'Users' },
-  { href: '/admin/shifts', label: 'Shifts' }
+  { href: '/admin/users', label: 'Users' }
 ];
 
 export function AppShell({
