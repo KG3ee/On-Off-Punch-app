@@ -28,6 +28,7 @@ import {
   CreateShiftPresetDto,
   CreateShiftSegmentDto
 } from './dto/create-shift-preset.dto';
+import { CreateShiftChangeRequestDto } from './dto/create-shift-change-request.dto';
 
 type PresetWithSegments = ShiftPreset & { segments: ShiftPresetSegment[] };
 type AssignmentWithPreset = ShiftAssignment & {
@@ -36,7 +37,7 @@ type AssignmentWithPreset = ShiftAssignment & {
 
 @Injectable()
 export class ShiftsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createPreset(dto: CreateShiftPresetDto): Promise<PresetWithSegments> {
     const normalizedSegments = this.normalizeSegments(dto.segments);
@@ -155,10 +156,10 @@ export class ShiftsService {
     now: Date
   ): Promise<
     | {
-        preset: PresetWithSegments;
-        segment: ResolvedShiftSegment;
-        timezone: string;
-      }
+      preset: PresetWithSegments;
+      segment: ResolvedShiftSegment;
+      timezone: string;
+    }
     | null
   > {
     const preset = await this.resolvePresetForUser(user, now);
@@ -313,13 +314,13 @@ export class ShiftsService {
       segments: [...preset.segments]
         .sort((a, b) => a.segmentNo - b.segmentNo)
         .map((segment) => ({
-        id: segment.id,
-        segmentNo: segment.segmentNo,
-        startTime: segment.startTime,
-        endTime: segment.endTime,
-        crossesMidnight: segment.crossesMidnight,
-        lateGraceMinutes: segment.lateGraceMinutes
-      }))
+          id: segment.id,
+          segmentNo: segment.segmentNo,
+          startTime: segment.startTime,
+          endTime: segment.endTime,
+          crossesMidnight: segment.crossesMidnight,
+          lateGraceMinutes: segment.lateGraceMinutes
+        }))
     };
   }
 
@@ -434,5 +435,64 @@ export class ShiftsService {
   private localMinuteStampFromDate(date: Date, timeZone: string): number {
     const parts = getTimePartsInZone(date, timeZone);
     return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0) / 60000;
+  }
+  async createRequest(userId: string, dto: CreateShiftChangeRequestDto) {
+    return this.prisma.shiftChangeRequest.create({
+      data: {
+        userId,
+        shiftPresetId: dto.shiftPresetId,
+        requestedDate: new Date(dto.requestedDate),
+        reason: dto.reason,
+        status: 'PENDING'
+      }
+    });
+  }
+
+  async listRequests(isAdmin: boolean, userId?: string) {
+    return this.prisma.shiftChangeRequest.findMany({
+      where: isAdmin ? {} : { userId },
+      include: {
+        user: true,
+        shiftPreset: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async approveRequest(requestId: string, reviewerId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const req = await tx.shiftChangeRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'APPROVED',
+          reviewedById: reviewerId,
+          reviewedAt: new Date()
+        },
+        include: { shiftPreset: true }
+      });
+
+      // Create Override automatically
+      await tx.shiftOverride.create({
+        data: {
+          targetType: 'USER',
+          targetId: req.userId,
+          shiftPresetId: req.shiftPresetId,
+          overrideDate: req.requestedDate,
+          reason: `Approved request: ${req.reason || 'No reason'}`
+        }
+      });
+      return req;
+    });
+  }
+
+  async rejectRequest(requestId: string, reviewerId: string) {
+    return this.prisma.shiftChangeRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'REJECTED',
+        reviewedById: reviewerId,
+        reviewedAt: new Date()
+      }
+    });
   }
 }

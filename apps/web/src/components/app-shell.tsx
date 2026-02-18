@@ -14,7 +14,8 @@ type NavItem = {
 const adminNav: NavItem[] = [
   { href: '/admin/live', label: 'Live' },
   { href: '/admin/history', label: 'History' },
-  { href: '/admin/users', label: 'Users' }
+  { href: '/admin/users', label: 'Users' },
+  { href: '/admin/requests', label: 'Requests' }
 ];
 
 export function AppShell({
@@ -71,6 +72,9 @@ export function AppShell({
                   </Link>
                   <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
                     🔑 Password
+                  </Link>
+                  <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
+                    📅 Requests
                   </Link>
                 </>
               ) : null}
