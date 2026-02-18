@@ -717,7 +717,7 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map(user => (
+            {filteredUsers.map((user, index) => (
               <tr key={user.id}>
                 <td style={{ fontWeight: 500 }}>{user.displayName}</td>
                 <td className="mono">{user.username}</td>
@@ -743,7 +743,10 @@ export default function AdminUsersPage() {
                       ⋮
                     </button>
                     {openMenuId === user.id ? (
-                      <div className="action-menu">
+                      <div
+                        className="action-menu"
+                        style={index >= filteredUsers.length - 2 ? { top: 'auto', bottom: '100%', marginBottom: '4px' } : undefined}
+                      >
                         <button onClick={() => openEditUser(user)}>✏️ Edit Role &amp; Team</button>
                         <button onClick={() => openResetPassword(user)}>🔑 Reset Password</button>
                         <button
