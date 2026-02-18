@@ -52,6 +52,38 @@ type UserRow = {
   mustChangePassword: boolean;
 };
 
+type RegistrationRequestStatus = 'PENDING' | 'READY_REVIEW' | 'APPROVED' | 'REJECTED';
+
+type RegistrationRequestRow = {
+  id: string;
+  staffCode: string;
+  phoneLast4: string;
+  firstName: string;
+  lastName?: string | null;
+  displayName: string;
+  desiredUsername: string;
+  status: RegistrationRequestStatus;
+  verificationScore: number;
+  verificationNotes?: string | null;
+  submittedAt: string;
+  requestedTeam?: { id: string; name: string } | null;
+  rosterEntry?: { id: string; staffCode: string; displayName: string; defaultTeam?: { id: string; name: string } | null } | null;
+  reviewedBy?: { id: string; displayName: string; username: string } | null;
+  reviewNote?: string | null;
+};
+
+type RegistrationRosterRow = {
+  id: string;
+  staffCode: string;
+  firstName: string;
+  lastName?: string | null;
+  displayName: string;
+  phoneLast4: string;
+  defaultTeamId?: string | null;
+  defaultTeam?: { id: string; name: string } | null;
+  isActive: boolean;
+};
+
 function createRowId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -72,6 +104,8 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [shiftAssignments, setShiftAssignments] = useState<ShiftAssignment[]>([]);
+  const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequestRow[]>([]);
+  const [registrationRoster, setRegistrationRoster] = useState<RegistrationRosterRow[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -112,6 +146,14 @@ export default function AdminUsersPage() {
   const [editRole, setEditRole] = useState<'ADMIN' | 'EMPLOYEE'>('EMPLOYEE');
   const [editTeamId, setEditTeamId] = useState('');
 
+  // Registration roster form
+  const [rosterStaffCode, setRosterStaffCode] = useState('');
+  const [rosterFirstName, setRosterFirstName] = useState('');
+  const [rosterLastName, setRosterLastName] = useState('');
+  const [rosterDisplayName, setRosterDisplayName] = useState('');
+  const [rosterPhoneLast4, setRosterPhoneLast4] = useState('');
+  const [rosterTeamId, setRosterTeamId] = useState('');
+
   useEffect(() => {
     void load();
   }, []);
@@ -129,14 +171,18 @@ export default function AdminUsersPage() {
 
   async function load(): Promise<void> {
     try {
-      const [userData, teamData, assignmentData] = await Promise.all([
+      const [userData, teamData, assignmentData, requestData, rosterData] = await Promise.all([
         apiFetch<UserRow[]>('/admin/users'),
         apiFetch<Team[]>('/teams'),
-        apiFetch<ShiftAssignment[]>('/admin/shift-assignments')
+        apiFetch<ShiftAssignment[]>('/admin/shift-assignments'),
+        apiFetch<RegistrationRequestRow[]>('/admin/registration-requests'),
+        apiFetch<RegistrationRosterRow[]>('/admin/registration-roster')
       ]);
       setUsers(userData);
       setTeams(teamData);
       setShiftAssignments(assignmentData);
+      setRegistrationRequests(requestData);
+      setRegistrationRoster(rosterData);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -390,12 +436,86 @@ export default function AdminUsersPage() {
     return '—';
   }
 
+  function formatDateTime(value: string): string {
+    return new Date(value).toLocaleString();
+  }
+
+  async function createRosterEntry(e: FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
+    try {
+      await apiFetch('/admin/registration-roster', {
+        method: 'POST',
+        body: JSON.stringify({
+          staffCode: rosterStaffCode,
+          firstName: rosterFirstName,
+          lastName: rosterLastName || undefined,
+          displayName: rosterDisplayName,
+          phoneLast4: rosterPhoneLast4,
+          defaultTeamId: rosterTeamId || undefined
+        })
+      });
+
+      setRosterStaffCode('');
+      setRosterFirstName('');
+      setRosterLastName('');
+      setRosterDisplayName('');
+      setRosterPhoneLast4('');
+      setRosterTeamId('');
+      flash('Roster entry saved');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save roster entry');
+    }
+  }
+
+  async function deleteRosterEntry(id: string): Promise<void> {
+    if (!confirm('Delete this roster entry?')) return;
+    try {
+      await apiFetch(`/admin/registration-roster/${id}`, { method: 'DELETE' });
+      flash('Roster entry deleted');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete roster entry');
+    }
+  }
+
+  async function approveRequest(requestId: string): Promise<void> {
+    try {
+      await apiFetch(`/admin/registration-requests/${requestId}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({})
+      });
+      flash('Registration request approved');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to approve request');
+    }
+  }
+
+  async function rejectRequest(requestId: string): Promise<void> {
+    const note = prompt('Optional reject reason:') || undefined;
+    try {
+      await apiFetch(`/admin/registration-requests/${requestId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reviewNote: note })
+      });
+      flash('Registration request rejected');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reject request');
+    }
+  }
+
   // ── Filter ──
   const filteredUsers = users.filter(u => {
     const q = search.toLowerCase();
     return u.displayName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)
       || (u.team?.name || '').toLowerCase().includes(q);
   });
+
+  const pendingRegistrationRequests = registrationRequests.filter((request) =>
+    request.status === 'PENDING' || request.status === 'READY_REVIEW'
+  );
 
   return (
     <AppShell title="Users & Teams" subtitle="Manage employees, roles, and teams" admin userRole="ADMIN">
@@ -529,6 +649,152 @@ export default function AdminUsersPage() {
               })}
               {teams.length === 0 ? (
                 <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article className="card">
+        <h3>Registration Approval Queue</h3>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Submitted</th>
+                <th>Staff Code</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Verification</th>
+                <th>Status</th>
+                <th style={{ width: '140px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingRegistrationRequests.map((request) => (
+                <tr key={request.id}>
+                  <td className="mono">{formatDateTime(request.submittedAt)}</td>
+                  <td className="mono">{request.staffCode}</td>
+                  <td>
+                    <div>{request.displayName}</div>
+                    <div style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>
+                      phone ****{request.phoneLast4}
+                    </div>
+                  </td>
+                  <td className="mono">{request.desiredUsername}</td>
+                  <td>
+                    <span className={`tag ${request.verificationScore >= 90 ? 'ok' : request.verificationScore >= 40 ? 'warning' : 'danger'}`}>
+                      {request.verificationScore}
+                    </span>
+                    {request.verificationNotes ? (
+                      <div style={{ color: 'var(--muted)', fontSize: '0.72rem', marginTop: '0.15rem' }}>
+                        {request.verificationNotes}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td>
+                    <span className={`tag ${request.status === 'READY_REVIEW' ? 'ok' : 'warning'}`}>
+                      {request.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                      <button type="button" className="button button-ok button-sm" onClick={() => void approveRequest(request.id)}>
+                        Approve
+                      </button>
+                      <button type="button" className="button button-danger button-sm" onClick={() => void rejectRequest(request.id)}>
+                        Reject
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {pendingRegistrationRequests.length === 0 ? (
+                <tr><td colSpan={7} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No pending registration requests</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article className="card">
+        <h3>Registration Roster</h3>
+        <form className="toolbar" onSubmit={(e) => void createRosterEntry(e)}>
+          <input
+            className="input"
+            style={{ width: '120px' }}
+            value={rosterStaffCode}
+            onChange={(e) => setRosterStaffCode(e.target.value.toUpperCase())}
+            placeholder="Staff code"
+            required
+          />
+          <input
+            className="input"
+            style={{ width: '140px' }}
+            value={rosterFirstName}
+            onChange={(e) => setRosterFirstName(e.target.value)}
+            placeholder="First name"
+            required
+          />
+          <input
+            className="input"
+            style={{ width: '140px' }}
+            value={rosterLastName}
+            onChange={(e) => setRosterLastName(e.target.value)}
+            placeholder="Last name"
+          />
+          <input
+            className="input"
+            style={{ width: '180px' }}
+            value={rosterDisplayName}
+            onChange={(e) => setRosterDisplayName(e.target.value)}
+            placeholder="Display name"
+            required
+          />
+          <input
+            className="input"
+            style={{ width: '120px' }}
+            value={rosterPhoneLast4}
+            onChange={(e) => setRosterPhoneLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder="Phone last4"
+            required
+          />
+          <select className="select" style={{ width: '170px' }} value={rosterTeamId} onChange={(e) => setRosterTeamId(e.target.value)}>
+            <option value="">Default team (none)</option>
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>{team.name}</option>
+            ))}
+          </select>
+          <button type="submit" className="button button-primary">Save Roster</button>
+        </form>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Staff Code</th>
+                <th>Name</th>
+                <th>Phone Last4</th>
+                <th>Default Team</th>
+                <th style={{ width: '90px' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registrationRoster.map((entry) => (
+                <tr key={entry.id}>
+                  <td className="mono">{entry.staffCode}</td>
+                  <td>{entry.displayName}</td>
+                  <td className="mono">****{entry.phoneLast4}</td>
+                  <td>{entry.defaultTeam?.name || '—'}</td>
+                  <td>
+                    <button type="button" className="button button-danger button-sm" onClick={() => void deleteRosterEntry(entry.id)}>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {registrationRoster.length === 0 ? (
+                <tr><td colSpan={5} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No roster entries yet</td></tr>
               ) : null}
             </tbody>
           </table>

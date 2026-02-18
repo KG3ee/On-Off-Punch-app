@@ -30,6 +30,13 @@ enum BreakSessionStatus {
   AUTO_CLOSED
 }
 
+enum RegistrationRequestStatus {
+  PENDING
+  READY_REVIEW
+  APPROVED
+  REJECTED
+}
+
 model Team {
   id             String  @id @default(cuid())
   name           String  @unique
@@ -43,6 +50,8 @@ model Team {
   shiftPresets  ShiftPreset[]
   dutySessions  DutySession[]
   monthlyReports MonthlyReport[]
+  registrationRosters EmployeeRoster[]
+  registrationRequests RegistrationRequest[]
 }
 
 model User {
@@ -69,9 +78,63 @@ model User {
 
   dutySessions DutySession[]
   breakSessions BreakSession[]
+  reviewedRegistrationRequests RegistrationRequest[] @relation("ReviewedRegistrationRequests")
+  approvedRegistrationRequests RegistrationRequest[] @relation("ApprovedRegistrationRequests")
 
   @@index([teamId])
   @@index([role])
+}
+
+model EmployeeRoster {
+  id            String   @id @default(cuid())
+  staffCode     String   @unique
+  firstName     String
+  lastName      String?
+  displayName   String
+  phoneLast4    String
+  defaultTeamId String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  defaultTeam Team? @relation(fields: [defaultTeamId], references: [id])
+  registrationRequests RegistrationRequest[]
+
+  @@index([defaultTeamId])
+  @@index([isActive])
+}
+
+model RegistrationRequest {
+  id              String                    @id @default(cuid())
+  staffCode       String
+  phoneLast4      String
+  firstName       String
+  lastName        String?
+  displayName     String
+  desiredUsername String
+  passwordHash    String
+  status          RegistrationRequestStatus @default(PENDING)
+  verificationScore Int                     @default(0)
+  verificationNotes String?
+  rosterEntryId   String?
+  requestedTeamId String?
+  reviewNote      String?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  approvedUserId  String?
+  submittedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  rosterEntry EmployeeRoster? @relation(fields: [rosterEntryId], references: [id])
+  requestedTeam Team? @relation(fields: [requestedTeamId], references: [id])
+  reviewedBy User? @relation("ReviewedRegistrationRequests", fields: [reviewedById], references: [id])
+  approvedUser User? @relation("ApprovedRegistrationRequests", fields: [approvedUserId], references: [id])
+
+  @@index([status, submittedAt])
+  @@index([desiredUsername])
+  @@index([staffCode])
+  @@index([requestedTeamId])
 }
 
 model ShiftPreset {

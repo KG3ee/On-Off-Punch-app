@@ -87,6 +87,48 @@ async function main(): Promise<void> {
     create: { code: 'cf+3', name: 'Dinner', expectedDurationMinutes: 30, dailyLimit: 1 }
   });
 
+  await prisma.employeeRoster.upsert({
+    where: { staffCode: 'A1001' },
+    update: {
+      firstName: 'Team',
+      lastName: 'A',
+      displayName: 'Team A Candidate',
+      phoneLast4: '1001',
+      defaultTeamId: teamA.id,
+      isActive: true
+    },
+    create: {
+      staffCode: 'A1001',
+      firstName: 'Team',
+      lastName: 'A',
+      displayName: 'Team A Candidate',
+      phoneLast4: '1001',
+      defaultTeamId: teamA.id,
+      isActive: true
+    }
+  });
+
+  await prisma.employeeRoster.upsert({
+    where: { staffCode: 'B1001' },
+    update: {
+      firstName: 'Team',
+      lastName: 'B',
+      displayName: 'Team B Candidate',
+      phoneLast4: '2001',
+      defaultTeamId: teamB.id,
+      isActive: true
+    },
+    create: {
+      staffCode: 'B1001',
+      firstName: 'Team',
+      lastName: 'B',
+      displayName: 'Team B Candidate',
+      phoneLast4: '2001',
+      defaultTeamId: teamB.id,
+      isActive: true
+    }
+  });
+
   let teamAPreset = await prisma.shiftPreset.findFirst({
     where: { name: 'Team A Split Shift', teamId: teamA.id },
     include: { segments: true }

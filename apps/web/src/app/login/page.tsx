@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
@@ -80,6 +81,10 @@ export default function LoginPage() {
         </form>
 
         {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
+
+        <p style={{ fontSize: '0.82rem' }}>
+          New employee? <Link href="/register" className="tag brand">Request account</Link>
+        </p>
       </section>
     </main>
   );
