@@ -555,127 +555,6 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
-      {/* ── Users Table ── */}
-      <article className="card table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Username</th>
-              <th>Team</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>PW Change</th>
-              <th style={{ width: '40px' }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map(user => (
-              <tr key={user.id}>
-                <td style={{ fontWeight: 500 }}>{user.displayName}</td>
-                <td className="mono">{user.username}</td>
-                <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
-                <td>
-                  <span className={`tag ${user.role === 'ADMIN' ? 'warning' : ''}`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td>
-                  <span className={`tag ${user.isActive ? 'ok' : 'danger'}`}>
-                    {user.isActive ? 'ACTIVE' : 'INACTIVE'}
-                  </span>
-                </td>
-                <td>{user.mustChangePassword ? <span className="tag warning">Required</span> : '—'}</td>
-                <td>
-                  <div className="action-menu-wrap" ref={openMenuId === user.id ? menuRef : undefined}>
-                    <button
-                      className="action-menu-btn"
-                      onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
-                      title="Actions"
-                    >
-                      ⋮
-                    </button>
-                    {openMenuId === user.id ? (
-                      <div className="action-menu">
-                        <button onClick={() => openEditUser(user)}>✏️ Edit Role &amp; Team</button>
-                        <button onClick={() => openResetPassword(user)}>🔑 Reset Password</button>
-                        <button
-                          onClick={() => void updateUserField(user.id, { isActive: !user.isActive })}
-                        >
-                          {user.isActive ? '🚫 Deactivate' : '✅ Reactivate'}
-                        </button>
-                        <hr style={{ margin: '0.2rem 0', border: 0, borderTop: '1px solid var(--border)' }} />
-                        <button
-                          onClick={() => void deleteUser(user.id, user.displayName)}
-                          style={{ color: 'var(--danger)' }}
-                        >
-                          🗑 Delete Permanently
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filteredUsers.length === 0 ? (
-              <tr><td colSpan={7} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>
-                {search ? 'No users matching search' : 'No users found'}
-              </td></tr>
-            ) : null}
-          </tbody>
-        </table>
-      </article>
-
-      {/* ── Teams Table ── */}
-      <article className="card">
-        <h3>Teams</h3>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Shifts</th>
-                <th>Members</th>
-                <th style={{ width: '100px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teams.map(team => {
-                const memberCount = users.filter(u => u.team?.id === team.id).length;
-                return (
-                  <tr key={team.id}>
-                    <td style={{ fontWeight: 500 }}>{team.name}</td>
-                    <td className="mono">{getTeamShiftText(team)}</td>
-                    <td>{memberCount}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.3rem' }}>
-                        <button
-                          type="button"
-                          className="button button-ghost button-sm"
-                          onClick={() => openEditTeam(team)}
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="button button-danger button-sm"
-                          onClick={() => void deleteTeam(team.id)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {teams.length === 0 ? (
-                <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
       <article className="card">
         <h3>Registration Approval Queue</h3>
         <div className="table-wrap">
@@ -822,6 +701,127 @@ export default function AdminUsersPage() {
         </div>
       </article>
 
+
+      {/* ── Users Table ── */}
+      <article className="card table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Team</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>PW Change</th>
+              <th style={{ width: '40px' }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredUsers.map(user => (
+              <tr key={user.id}>
+                <td style={{ fontWeight: 500 }}>{user.displayName}</td>
+                <td className="mono">{user.username}</td>
+                <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
+                <td>
+                  <span className={`tag ${user.role === 'ADMIN' ? 'warning' : ''}`}>
+                    {user.role}
+                  </span>
+                </td>
+                <td>
+                  <span className={`tag ${user.isActive ? 'ok' : 'danger'}`}>
+                    {user.isActive ? 'ACTIVE' : 'INACTIVE'}
+                  </span>
+                </td>
+                <td>{user.mustChangePassword ? <span className="tag warning">Required</span> : '—'}</td>
+                <td>
+                  <div className="action-menu-wrap" ref={openMenuId === user.id ? menuRef : undefined}>
+                    <button
+                      className="action-menu-btn"
+                      onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                      title="Actions"
+                    >
+                      ⋮
+                    </button>
+                    {openMenuId === user.id ? (
+                      <div className="action-menu">
+                        <button onClick={() => openEditUser(user)}>✏️ Edit Role &amp; Team</button>
+                        <button onClick={() => openResetPassword(user)}>🔑 Reset Password</button>
+                        <button
+                          onClick={() => void updateUserField(user.id, { isActive: !user.isActive })}
+                        >
+                          {user.isActive ? '🚫 Deactivate' : '✅ Reactivate'}
+                        </button>
+                        <hr style={{ margin: '0.2rem 0', border: 0, borderTop: '1px solid var(--border)' }} />
+                        <button
+                          onClick={() => void deleteUser(user.id, user.displayName)}
+                          style={{ color: 'var(--danger)' }}
+                        >
+                          🗑 Delete Permanently
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredUsers.length === 0 ? (
+              <tr><td colSpan={7} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>
+                {search ? 'No users matching search' : 'No users found'}
+              </td></tr>
+            ) : null}
+          </tbody>
+        </table>
+      </article>
+
+      {/* ── Teams Table ── */}
+      <article className="card">
+        <h3>Teams</h3>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Shifts</th>
+                <th>Members</th>
+                <th style={{ width: '100px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teams.map(team => {
+                const memberCount = users.filter(u => u.team?.id === team.id).length;
+                return (
+                  <tr key={team.id}>
+                    <td style={{ fontWeight: 500 }}>{team.name}</td>
+                    <td className="mono">{getTeamShiftText(team)}</td>
+                    <td>{memberCount}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.3rem' }}>
+                        <button
+                          type="button"
+                          className="button button-ghost button-sm"
+                          onClick={() => openEditTeam(team)}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="button button-danger button-sm"
+                          onClick={() => void deleteTeam(team.id)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {teams.length === 0 ? (
+                <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </article>
       {/* ══════════════════════════════════════ */}
       {/* ── MODALS ── */}
       {/* ══════════════════════════════════════ */}
