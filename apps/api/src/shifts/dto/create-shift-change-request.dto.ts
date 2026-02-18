@@ -3,10 +3,10 @@ import { IsDateString, IsOptional, IsString } from 'class-validator';
 
 export class CreateShiftChangeRequestDto {
     @IsString()
-    shiftPresetId: string;
+    shiftPresetId!: string;
 
     @IsDateString()
-    requestedDate: string;
+    requestedDate!: string;
 
     @IsOptional()
     @IsString()
