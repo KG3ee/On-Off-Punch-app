@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 import {
+  clearSynced,
   runQueuedAction,
   subscribeQueue,
   getPendingCount,
@@ -121,6 +122,7 @@ export default function EmployeeDashboardPage() {
   );
   const [clockSkewMinutes, setClockSkewMinutes] = useState<number | null>(null);
   const [serverTimeZone, setServerTimeZone] = useState('');
+  const syncedActionIdsRef = useRef<Set<string>>(new Set());
 
   const serverActiveSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE') || null, [sessions]);
   const serverActiveBreak = useMemo(
@@ -218,19 +220,31 @@ export default function EmployeeDashboardPage() {
 
   // Subscribe to queue changes
   useEffect(() => {
+    const initialQueue = getQueueSnapshot();
     setPendingActions(getPendingCount());
     setFailedActions(getFailedCount());
-    setQueueActions(getQueueSnapshot());
+    setQueueActions(initialQueue);
+    syncedActionIdsRef.current = new Set(
+      initialQueue
+        .filter((item) => item.status === 'synced')
+        .map((item) => item.id)
+    );
+
     const unsub = subscribeQueue((q: QueuedAction[]) => {
       const pending = q.filter(a => a.status === 'pending' || a.status === 'syncing').length;
       const failed = q.filter(a => a.status === 'failed').length;
       setPendingActions(pending);
       setFailedActions(failed);
       setQueueActions(q);
-      // Refresh data when an action syncs
-      const synced = q.filter(a => a.status === 'synced');
-      if (synced.length > 0) {
-        void loadData();
+
+      const syncedIds = q.filter((item) => item.status === 'synced').map((item) => item.id);
+      const hadNewSynced = syncedIds.some((id) => !syncedActionIdsRef.current.has(id));
+      syncedActionIdsRef.current = new Set(syncedIds);
+
+      // Refresh once when new sync finishes, then clear synced queue entries.
+      if (hadNewSynced) {
+        void loadData({ background: true });
+        clearSynced();
       }
     });
     return unsub;
@@ -282,8 +296,11 @@ export default function EmployeeDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBreak, loading]);
 
-  async function loadData(): Promise<void> {
-    setLoading(true);
+  async function loadData(options?: { background?: boolean }): Promise<void> {
+    const background = options?.background ?? false;
+    if (!background) {
+      setLoading(true);
+    }
     setError('');
     const cache = loadDashboardCache();
 
@@ -351,7 +368,9 @@ export default function EmployeeDashboardPage() {
       setError('Some data could not be loaded. Showing available/cached data.');
     }
 
-    setLoading(false);
+    if (!background) {
+      setLoading(false);
+    }
   }
 
   async function runAction(path: string, body?: Record<string, unknown>): Promise<void> {
