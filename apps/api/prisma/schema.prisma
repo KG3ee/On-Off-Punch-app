@@ -43,6 +43,13 @@ enum ShiftChangeRequestStatus {
   REJECTED
 }
 
+enum ShiftRequestType {
+  HALF_DAY_MORNING
+  HALF_DAY_EVENING
+  FULL_DAY_OFF
+  CUSTOM
+}
+
 model Team {
   id             String  @id @default(cuid())
   name           String  @unique
@@ -252,7 +259,8 @@ model DutySession {
 model ShiftChangeRequest {
   id              String   @id @default(cuid())
   userId          String
-  shiftPresetId   String
+  shiftPresetId   String?
+  requestType     ShiftRequestType @default(CUSTOM)
   requestedDate   DateTime
   reason          String?
   status          ShiftChangeRequestStatus @default(PENDING)
@@ -263,7 +271,7 @@ model ShiftChangeRequest {
   updatedAt       DateTime @updatedAt
 
   user            User @relation(fields: [userId], references: [id])
-  shiftPreset     ShiftPreset @relation(fields: [shiftPresetId], references: [id])
+  shiftPreset     ShiftPreset? @relation(fields: [shiftPresetId], references: [id])
   reviewedBy      User? @relation("ReviewedShiftChangeRequests", fields: [reviewedById], references: [id])
 
   @@index([userId])

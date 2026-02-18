@@ -6,9 +6,11 @@ import {
 import {
   AssignmentTargetType,
   Prisma,
+  ShiftChangeRequestStatus,
   ShiftAssignment,
   ShiftPreset,
   ShiftPresetSegment,
+  ShiftRequestType,
   User
 } from '@prisma/client';
 import {
@@ -437,13 +439,39 @@ export class ShiftsService {
     return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0) / 60000;
   }
   async createRequest(userId: string, dto: CreateShiftChangeRequestDto) {
+    const requestType = dto.requestType ?? ShiftRequestType.CUSTOM;
+    let shiftPresetId: string | null = dto.shiftPresetId || null;
+
+    if (shiftPresetId) {
+      const preset = await this.prisma.shiftPreset.findFirst({
+        where: {
+          id: shiftPresetId,
+          isActive: true
+        },
+        select: { id: true }
+      });
+      if (!preset) {
+        throw new BadRequestException('Selected shift preset is not active');
+      }
+    }
+
+    if (requestType !== ShiftRequestType.CUSTOM) {
+      shiftPresetId = null;
+    }
+
+    const requestedDate = new Date(dto.requestedDate);
+    if (Number.isNaN(requestedDate.getTime())) {
+      throw new BadRequestException('requestedDate is invalid');
+    }
+
     return this.prisma.shiftChangeRequest.create({
       data: {
         userId,
-        shiftPresetId: dto.shiftPresetId,
-        requestedDate: new Date(dto.requestedDate),
+        shiftPresetId,
+        requestType,
+        requestedDate,
         reason: dto.reason,
-        status: 'PENDING'
+        status: ShiftChangeRequestStatus.PENDING
       }
     });
   }
@@ -452,44 +480,136 @@ export class ShiftsService {
     return this.prisma.shiftChangeRequest.findMany({
       where: isAdmin ? {} : { userId },
       include: {
-        user: true,
-        shiftPreset: true
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            username: true
+          }
+        },
+        shiftPreset: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        reviewedBy: {
+          select: {
+            id: true,
+            displayName: true,
+            username: true
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
   }
 
-  async approveRequest(requestId: string, reviewerId: string) {
+  async approveRequest(requestId: string, reviewerId: string, targetPresetId?: string) {
     return this.prisma.$transaction(async (tx) => {
-      const req = await tx.shiftChangeRequest.update({
+      const req = await tx.shiftChangeRequest.findUnique({
+        where: { id: requestId }
+      });
+      if (!req) {
+        throw new NotFoundException('Request not found');
+      }
+      if (req.status !== ShiftChangeRequestStatus.PENDING) {
+        throw new BadRequestException('Only pending requests can be approved');
+      }
+
+      const selectedPresetId = targetPresetId || req.shiftPresetId;
+      if (!selectedPresetId) {
+        throw new BadRequestException(
+          'This request requires selecting a target shift preset before approval'
+        );
+      }
+
+      const targetPreset = await tx.shiftPreset.findFirst({
+        where: {
+          id: selectedPresetId,
+          isActive: true
+        },
+        select: { id: true, name: true }
+      });
+      if (!targetPreset) {
+        throw new BadRequestException('Selected shift preset is not active');
+      }
+
+      const reviewedAt = new Date();
+
+      const approvedRequest = await tx.shiftChangeRequest.update({
         where: { id: requestId },
         data: {
-          status: 'APPROVED',
+          status: ShiftChangeRequestStatus.APPROVED,
           reviewedById: reviewerId,
-          reviewedAt: new Date()
+          reviewedAt,
+          shiftPresetId: targetPreset.id
         },
-        include: { shiftPreset: true }
-      });
-
-      // Create Override automatically
-      await tx.shiftOverride.create({
-        data: {
-          targetType: 'USER',
-          targetId: req.userId,
-          shiftPresetId: req.shiftPresetId,
-          overrideDate: req.requestedDate,
-          reason: `Approved request: ${req.reason || 'No reason'}`
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              username: true
+            }
+          },
+          shiftPreset: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          reviewedBy: {
+            select: {
+              id: true,
+              displayName: true,
+              username: true
+            }
+          }
         }
       });
-      return req;
+
+      await tx.shiftOverride.upsert({
+        where: {
+          targetType_targetId_overrideDate: {
+            targetType: AssignmentTargetType.USER,
+            targetId: req.userId,
+            overrideDate: req.requestedDate
+          }
+        },
+        create: {
+          targetType: 'USER',
+          targetId: req.userId,
+          shiftPresetId: targetPreset.id,
+          overrideDate: req.requestedDate,
+          reason: `Approved request (${req.requestType}): ${req.reason || 'No reason'}`
+        },
+        update: {
+          shiftPresetId: targetPreset.id,
+          reason: `Approved request (${req.requestType}): ${req.reason || 'No reason'}`
+        }
+      });
+
+      return approvedRequest;
     });
   }
 
   async rejectRequest(requestId: string, reviewerId: string) {
+    const existing = await this.prisma.shiftChangeRequest.findUnique({
+      where: { id: requestId },
+      select: { status: true }
+    });
+    if (!existing) {
+      throw new NotFoundException('Request not found');
+    }
+    if (existing.status !== ShiftChangeRequestStatus.PENDING) {
+      throw new BadRequestException('Only pending requests can be rejected');
+    }
+
     return this.prisma.shiftChangeRequest.update({
       where: { id: requestId },
       data: {
-        status: 'REJECTED',
+        status: ShiftChangeRequestStatus.REJECTED,
         reviewedById: reviewerId,
         reviewedAt: new Date()
       }

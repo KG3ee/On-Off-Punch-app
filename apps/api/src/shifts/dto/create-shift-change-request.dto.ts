@@ -1,14 +1,20 @@
 
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { ShiftRequestType } from '@prisma/client';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class CreateShiftChangeRequestDto {
-    @IsString()
-    shiftPresetId!: string;
+  @IsOptional()
+  @IsString()
+  shiftPresetId?: string;
 
-    @IsDateString()
-    requestedDate!: string;
+  @IsOptional()
+  @IsEnum(ShiftRequestType)
+  requestType?: ShiftRequestType;
 
-    @IsOptional()
-    @IsString()
-    reason?: string;
+  @IsDateString()
+  requestedDate!: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }

@@ -7,6 +7,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthUser } from '../common/interfaces/auth-user.interface';
 import { UsersService } from '../users/users.service';
 import { CreateShiftAssignmentDto } from './dto/create-shift-assignment.dto';
+import { ApproveShiftChangeRequestDto } from './dto/approve-shift-change-request.dto';
 import { CreateShiftOverrideDto } from './dto/create-shift-override.dto';
 import { CreateShiftPresetDto } from './dto/create-shift-preset.dto';
 import { CreateShiftChangeRequestDto } from './dto/create-shift-change-request.dto';
@@ -91,8 +92,12 @@ export class ShiftsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/requests/:id/approve')
-  async approveRequest(@CurrentUser() authUser: AuthUser, @Param('id') id: string) {
-    return this.shiftsService.approveRequest(id, authUser.sub);
+  async approveRequest(
+    @CurrentUser() authUser: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ApproveShiftChangeRequestDto
+  ) {
+    return this.shiftsService.approveRequest(id, authUser.sub, dto.targetPresetId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
