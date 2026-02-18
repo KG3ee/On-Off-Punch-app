@@ -8,6 +8,7 @@ import {
   subscribeQueue,
   getPendingCount,
   getFailedCount,
+  getQueueSnapshot,
   retryFailedActions,
   QueuedAction
 } from '@/lib/action-queue';
@@ -94,6 +95,14 @@ function saveDashboardCache(cache: DashboardCache): void {
   localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(cache));
 }
 
+function queueDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 export default function EmployeeDashboardPage() {
   const [me, setMe] = useState<MeUser | null>(null);
 
@@ -106,17 +115,83 @@ export default function EmployeeDashboardPage() {
   const [nowTick, setNowTick] = useState(Date.now());
   const [pendingActions, setPendingActions] = useState(0);
   const [failedActions, setFailedActions] = useState(0);
+  const [queueActions, setQueueActions] = useState<QueuedAction[]>([]);
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
   const [clockSkewMinutes, setClockSkewMinutes] = useState<number | null>(null);
   const [serverTimeZone, setServerTimeZone] = useState('');
 
-  const activeSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE'), [sessions]);
-  const activeBreak = useMemo(
-    () => breakSessions.find((session) => session.status === 'ACTIVE'),
+  const serverActiveSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE') || null, [sessions]);
+  const serverActiveBreak = useMemo(
+    () => breakSessions.find((session) => session.status === 'ACTIVE') || null,
     [breakSessions]
   );
+
+  const { activeSession, activeBreak } = useMemo(() => {
+    const pendingQueue = queueActions
+      .filter((action) => action.status === 'pending' || action.status === 'syncing')
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    let projectedSession: DutySession | null = serverActiveSession;
+    let projectedBreak: BreakSession | null = serverActiveBreak;
+
+    for (const action of pendingQueue) {
+      if (action.path === '/attendance/on') {
+        if (!projectedSession) {
+          const date = queueDate(action.clientTimestamp);
+          projectedSession = {
+            id: `local-duty-${action.id}`,
+            shiftDate: date,
+            localDate: date,
+            punchedOnAt: action.clientTimestamp,
+            status: 'ACTIVE',
+            isLate: false,
+            lateMinutes: 0,
+            overtimeMinutes: 0
+          };
+        }
+        continue;
+      }
+
+      if (action.path === '/attendance/off') {
+        projectedSession = null;
+        projectedBreak = null;
+        continue;
+      }
+
+      if (action.path === '/breaks/start') {
+        if (projectedSession && !projectedBreak) {
+          const rawCode = action.body?.code;
+          const code = typeof rawCode === 'string' ? rawCode : 'break';
+          const policy = policies.find((item) => item.code.toLowerCase() === code.toLowerCase());
+          projectedBreak = {
+            id: `local-break-${action.id}`,
+            localDate: queueDate(action.clientTimestamp),
+            dutySessionId: projectedSession.id,
+            startedAt: action.clientTimestamp,
+            expectedDurationMinutes: policy?.expectedDurationMinutes ?? 10,
+            status: 'ACTIVE',
+            isOvertime: false,
+            breakPolicy: {
+              code: policy?.code || code,
+              name: policy?.name || 'Queued Break'
+            }
+          };
+        }
+        continue;
+      }
+
+      if (action.path === '/breaks/end' || action.path === '/breaks/cancel') {
+        projectedBreak = null;
+      }
+    }
+
+    return {
+      activeSession: projectedSession,
+      activeBreak: projectedBreak
+    };
+  }, [queueActions, serverActiveBreak, serverActiveSession, policies]);
 
   const activeBreakMinutes = useMemo(() => {
     if (!activeBreak) return 0;
@@ -127,8 +202,11 @@ export default function EmployeeDashboardPage() {
   // Only show breaks linked to the current active duty session
   const sessionBreaks = useMemo(() => {
     if (!activeSession) return [];
-    return breakSessions.filter(b => b.dutySessionId === activeSession.id);
-  }, [breakSessions, activeSession]);
+    const linked = breakSessions.filter((breakItem) => breakItem.dutySessionId === activeSession.id);
+    if (!activeBreak) return linked;
+    const hasActive = linked.some((breakItem) => breakItem.id === activeBreak.id);
+    return hasActive ? linked : [activeBreak, ...linked];
+  }, [breakSessions, activeBreak, activeSession]);
 
   const activeDutyMinutes = useMemo(() => {
     if (!activeSession) return 0;
@@ -142,11 +220,13 @@ export default function EmployeeDashboardPage() {
   useEffect(() => {
     setPendingActions(getPendingCount());
     setFailedActions(getFailedCount());
+    setQueueActions(getQueueSnapshot());
     const unsub = subscribeQueue((q: QueuedAction[]) => {
       const pending = q.filter(a => a.status === 'pending' || a.status === 'syncing').length;
       const failed = q.filter(a => a.status === 'failed').length;
       setPendingActions(pending);
       setFailedActions(failed);
+      setQueueActions(q);
       // Refresh data when an action syncs
       const synced = q.filter(a => a.status === 'synced');
       if (synced.length > 0) {
