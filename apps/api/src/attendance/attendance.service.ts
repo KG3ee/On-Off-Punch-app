@@ -129,7 +129,7 @@ export class AttendanceService {
   }
 
   async punchOff(user: User, note?: string, clientTimestamp?: string) {
-    const active = await this.prisma.dutySession.findFirst({
+    let active = await this.prisma.dutySession.findFirst({
       where: {
         userId: user.id,
         status: DutySessionStatus.ACTIVE,
@@ -138,6 +138,25 @@ export class AttendanceService {
         punchedOnAt: "desc",
       },
     });
+
+    if (!active) {
+      // Fallback: Check if the session was recently auto-closed while the user was offline.
+      // This allows the offline "Punch OFF" action to correct the auto-closed record
+      // with the actual client timestamp.
+      const lastClosed = await this.prisma.dutySession.findFirst({
+        where: {
+          userId: user.id,
+          status: DutySessionStatus.CLOSED,
+        },
+        orderBy: {
+          punchedOnAt: "desc",
+        },
+      });
+
+      if (lastClosed?.note?.includes("AUTO_CLOSED_STALE_SESSION")) {
+        active = lastClosed;
+      }
+    }
 
     if (!active) {
       throw new NotFoundException("No active duty session found");
@@ -166,8 +185,8 @@ export class AttendanceService {
 
     const team = user.teamId
       ? await this.prisma.team.findUnique({
-          where: { id: user.teamId },
-        })
+        where: { id: user.teamId },
+      })
       : null;
 
     const overtimeMinutes = this.computeOvertimeMinutes(
