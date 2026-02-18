@@ -24,7 +24,7 @@ const REQUEST_PUBLIC_INCLUDE = {
       displayName: true,
       firstName: true,
       lastName: true,
-      phoneLast4: true,
+      // phoneLast4 removed
       defaultTeamId: true,
       defaultTeam: {
         select: {
@@ -66,12 +66,12 @@ const REQUEST_PUBLIC_INCLUDE = {
 
 @Injectable()
 export class RegistrationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createRequest(dto: CreateRegistrationRequestDto) {
     const desiredUsername = this.normalizeUsername(dto.username);
     const staffCode = dto.staffCode.trim().toUpperCase();
-    const phoneLast4 = this.normalizeLast4(dto.phoneLast4);
+    // phoneLast4 logic removed
 
     await this.ensureUsernameAvailable(desiredUsername);
 
@@ -112,26 +112,23 @@ export class RegistrationsService {
       }
     });
 
-    const rosterMatch = rosterByStaffCode && rosterByStaffCode.phoneLast4 === phoneLast4
-      ? rosterByStaffCode
-      : null;
+    // Verification Logic: Only verify by Staff Code now
+    const rosterMatch = rosterByStaffCode;
 
     const passwordHash = await hash(dto.password, this.bcryptRounds());
     const status = rosterMatch
       ? RegistrationRequestStatus.READY_REVIEW
       : RegistrationRequestStatus.PENDING;
 
-    const verificationScore = rosterMatch ? 100 : rosterByStaffCode ? 40 : 10;
+    const verificationScore = rosterMatch ? 100 : 10;
     const verificationNotes = rosterMatch
-      ? 'Matched active roster entry by staffCode + phoneLast4'
-      : rosterByStaffCode
-        ? 'Staff code matched but phoneLast4 did not match roster'
-        : 'No active roster match';
+      ? 'Matched active roster entry by staffCode'
+      : 'No active roster match';
 
     const created = await this.prisma.registrationRequest.create({
       data: {
         staffCode,
-        phoneLast4,
+        // phoneLast4 removed
         firstName: dto.firstName.trim(),
         lastName: dto.lastName?.trim() || null,
         displayName: dto.displayName.trim(),
@@ -288,7 +285,7 @@ export class RegistrationsService {
 
   async upsertRoster(dto: CreateRosterEntryDto) {
     const staffCode = dto.staffCode.trim().toUpperCase();
-    const phoneLast4 = this.normalizeLast4(dto.phoneLast4);
+    // phoneLast4 logic removed
 
     return this.prisma.employeeRoster.upsert({
       where: { staffCode },
@@ -296,7 +293,7 @@ export class RegistrationsService {
         firstName: dto.firstName.trim(),
         lastName: dto.lastName?.trim() || null,
         displayName: dto.displayName.trim(),
-        phoneLast4,
+        // phoneLast4 removed
         defaultTeamId: dto.defaultTeamId || null,
         isActive: dto.isActive ?? true
       },
@@ -305,7 +302,7 @@ export class RegistrationsService {
         firstName: dto.firstName.trim(),
         lastName: dto.lastName?.trim() || null,
         displayName: dto.displayName.trim(),
-        phoneLast4,
+        // phoneLast4 removed
         defaultTeamId: dto.defaultTeamId || null,
         isActive: dto.isActive ?? true
       },
@@ -350,14 +347,6 @@ export class RegistrationsService {
     const normalized = username.trim();
     if (!normalized) {
       throw new BadRequestException('username must not be blank');
-    }
-    return normalized;
-  }
-
-  private normalizeLast4(value: string): string {
-    const normalized = value.trim();
-    if (!/^\d{4}$/.test(normalized)) {
-      throw new BadRequestException('phoneLast4 must be exactly 4 digits');
     }
     return normalized;
   }

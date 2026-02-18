@@ -18,7 +18,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [staffCode, setStaffCode] = useState('');
-  const [phoneLast4, setPhoneLast4] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<RegisterRequestResult | null>(null);
@@ -39,7 +39,7 @@ export default function RegisterPage() {
           username,
           password,
           staffCode,
-          phoneLast4
+
         })
       });
       setResult(response);
@@ -68,10 +68,7 @@ export default function RegisterPage() {
             <input className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Display name" required />
             <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Desired username" required />
             <input className="input" type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              <input className="input" value={staffCode} onChange={(e) => setStaffCode(e.target.value.toUpperCase())} placeholder="Staff code" required />
-              <input className="input" value={phoneLast4} onChange={(e) => setPhoneLast4(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="Phone last 4 digits" required />
-            </div>
+            <input className="input" value={staffCode} onChange={(e) => setStaffCode(e.target.value.toUpperCase())} placeholder="Staff code" required />
             <button type="submit" className="button button-primary" disabled={loading}>
               {loading ? 'Submitting...' : 'Submit Request'}
             </button>

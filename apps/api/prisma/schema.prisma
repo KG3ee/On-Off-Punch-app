@@ -91,7 +91,7 @@ model EmployeeRoster {
   firstName     String
   lastName      String?
   displayName   String
-  phoneLast4    String
+
   defaultTeamId String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -107,7 +107,7 @@ model EmployeeRoster {
 model RegistrationRequest {
   id              String                    @id @default(cuid())
   staffCode       String
-  phoneLast4      String
+
   firstName       String
   lastName        String?
   displayName     String

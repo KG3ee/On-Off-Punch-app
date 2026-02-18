@@ -17,9 +17,7 @@ export class CreateRosterEntryDto {
   @IsNotEmpty()
   displayName!: string;
 
-  @IsString()
-  @Matches(/^\d{4}$/)
-  phoneLast4!: string;
+
 
   @IsOptional()
   @IsString()

@@ -57,7 +57,7 @@ type RegistrationRequestStatus = 'PENDING' | 'READY_REVIEW' | 'APPROVED' | 'REJE
 type RegistrationRequestRow = {
   id: string;
   staffCode: string;
-  phoneLast4: string;
+
   firstName: string;
   lastName?: string | null;
   displayName: string;
@@ -78,7 +78,7 @@ type RegistrationRosterRow = {
   firstName: string;
   lastName?: string | null;
   displayName: string;
-  phoneLast4: string;
+
   defaultTeamId?: string | null;
   defaultTeam?: { id: string; name: string } | null;
   isActive: boolean;
@@ -151,7 +151,7 @@ export default function AdminUsersPage() {
   const [rosterFirstName, setRosterFirstName] = useState('');
   const [rosterLastName, setRosterLastName] = useState('');
   const [rosterDisplayName, setRosterDisplayName] = useState('');
-  const [rosterPhoneLast4, setRosterPhoneLast4] = useState('');
+
   const [rosterTeamId, setRosterTeamId] = useState('');
 
   useEffect(() => {
@@ -464,7 +464,7 @@ export default function AdminUsersPage() {
           firstName: rosterFirstName,
           lastName: rosterLastName || undefined,
           displayName: rosterDisplayName,
-          phoneLast4: rosterPhoneLast4,
+
           defaultTeamId: rosterTeamId || undefined
         })
       });
@@ -473,7 +473,7 @@ export default function AdminUsersPage() {
       setRosterFirstName('');
       setRosterLastName('');
       setRosterDisplayName('');
-      setRosterPhoneLast4('');
+
       setRosterTeamId('');
       flash('Roster entry saved');
       await load();
@@ -577,9 +577,7 @@ export default function AdminUsersPage() {
                   <td className="mono">{request.staffCode}</td>
                   <td>
                     <div>{request.displayName}</div>
-                    <div style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>
-                      phone ****{request.phoneLast4}
-                    </div>
+
                   </td>
                   <td className="mono">{request.desiredUsername}</td>
                   <td>
@@ -651,14 +649,7 @@ export default function AdminUsersPage() {
             placeholder="Display name"
             required
           />
-          <input
-            className="input"
-            style={{ width: '120px' }}
-            value={rosterPhoneLast4}
-            onChange={(e) => setRosterPhoneLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            placeholder="Phone last4"
-            required
-          />
+
           <select className="select" style={{ width: '170px' }} value={rosterTeamId} onChange={(e) => setRosterTeamId(e.target.value)}>
             <option value="">Default team (none)</option>
             {teams.map((team) => (
@@ -674,7 +665,7 @@ export default function AdminUsersPage() {
               <tr>
                 <th>Staff Code</th>
                 <th>Name</th>
-                <th>Phone Last4</th>
+
                 <th>Default Team</th>
                 <th style={{ width: '90px' }}>Action</th>
               </tr>
@@ -684,7 +675,7 @@ export default function AdminUsersPage() {
                 <tr key={entry.id}>
                   <td className="mono">{entry.staffCode}</td>
                   <td>{entry.displayName}</td>
-                  <td className="mono">****{entry.phoneLast4}</td>
+
                   <td>{entry.defaultTeam?.name || '—'}</td>
                   <td>
                     <button type="button" className="button button-danger button-sm" onClick={() => void deleteRosterEntry(entry.id)}>

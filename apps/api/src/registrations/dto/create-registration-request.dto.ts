@@ -25,9 +25,7 @@ export class CreateRegistrationRequestDto {
   @IsNotEmpty()
   staffCode!: string;
 
-  @IsString()
-  @Matches(/^\d{4}$/)
-  phoneLast4!: string;
+
 
   @IsOptional()
   @IsString()
