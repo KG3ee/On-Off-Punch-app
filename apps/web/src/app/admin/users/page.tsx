@@ -702,6 +702,55 @@ export default function AdminUsersPage() {
       </article>
 
 
+      {/* ── Teams Table ── */}
+      <article className="card">
+        <h3>Teams</h3>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Shifts</th>
+                <th>Members</th>
+                <th style={{ width: '100px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teams.map(team => {
+                const memberCount = users.filter(u => u.team?.id === team.id).length;
+                return (
+                  <tr key={team.id}>
+                    <td style={{ fontWeight: 500 }}>{team.name}</td>
+                    <td className="mono">{getTeamShiftText(team)}</td>
+                    <td>{memberCount}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.3rem' }}>
+                        <button
+                          type="button"
+                          className="button button-ghost button-sm"
+                          onClick={() => openEditTeam(team)}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="button button-danger button-sm"
+                          onClick={() => void deleteTeam(team.id)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {teams.length === 0 ? (
+                <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </article>
       {/* ── Users Table ── */}
       <article className="card table-wrap">
         <table>
@@ -776,55 +825,6 @@ export default function AdminUsersPage() {
         </table>
       </article>
 
-      {/* ── Teams Table ── */}
-      <article className="card">
-        <h3>Teams</h3>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Shifts</th>
-                <th>Members</th>
-                <th style={{ width: '100px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teams.map(team => {
-                const memberCount = users.filter(u => u.team?.id === team.id).length;
-                return (
-                  <tr key={team.id}>
-                    <td style={{ fontWeight: 500 }}>{team.name}</td>
-                    <td className="mono">{getTeamShiftText(team)}</td>
-                    <td>{memberCount}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.3rem' }}>
-                        <button
-                          type="button"
-                          className="button button-ghost button-sm"
-                          onClick={() => openEditTeam(team)}
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="button button-danger button-sm"
-                          onClick={() => void deleteTeam(team.id)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {teams.length === 0 ? (
-                <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </article>
       {/* ══════════════════════════════════════ */}
       {/* ── MODALS ── */}
       {/* ══════════════════════════════════════ */}
