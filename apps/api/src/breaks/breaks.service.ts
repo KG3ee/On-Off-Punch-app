@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { BreakSessionStatus, DutySessionStatus, User } from "@prisma/client";
-import { formatDateInZone } from "../core";
+import { formatDateInZone, resolveEventTime, serializeEventTime } from "../core";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateBreakPolicyDto } from "./dto/create-break-policy.dto";
 
@@ -177,7 +177,20 @@ export class BreaksService {
       throw new BadRequestException("You already have an active break");
     }
 
-    const now = clientTimestamp ? new Date(clientTimestamp) : new Date();
+    const eventTime = resolveEventTime(clientTimestamp, {
+      maxPastHours: this.envNumber("MAX_CLIENT_PAST_HOURS", 72),
+      maxFutureMinutes: this.envNumber("MAX_CLIENT_FUTURE_MINUTES", 2),
+      highTrustSkewMinutes: this.envNumber("HIGH_TRUST_SKEW_MINUTES", 2),
+    });
+    let now = eventTime.effectiveAt;
+    let timeAnomaly = eventTime.anomaly;
+    if (now.getTime() < activeDuty.punchedOnAt.getTime()) {
+      now = new Date(activeDuty.punchedOnAt);
+      timeAnomaly = timeAnomaly
+        ? `${timeAnomaly}|BREAK_START_BEFORE_DUTY_START_CLAMPED`
+        : "BREAK_START_BEFORE_DUTY_START_CLAMPED";
+    }
+
     const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
     const localDate = formatDateInZone(now, timezone);
 
@@ -228,6 +241,11 @@ export class BreaksService {
           dailyLimit: policy.dailyLimit,
           isOverLimit,
           clientTimestamp: clientTimestamp || null,
+          time: {
+            ...serializeEventTime(eventTime),
+            effectiveAt: now.toISOString(),
+            anomaly: timeAnomaly,
+          },
         },
       },
     });
@@ -258,7 +276,20 @@ export class BreaksService {
       throw new NotFoundException("No active break found");
     }
 
-    const endedAt = clientTimestamp ? new Date(clientTimestamp) : new Date();
+    const eventTime = resolveEventTime(clientTimestamp, {
+      maxPastHours: this.envNumber("MAX_CLIENT_PAST_HOURS", 72),
+      maxFutureMinutes: this.envNumber("MAX_CLIENT_FUTURE_MINUTES", 2),
+      highTrustSkewMinutes: this.envNumber("HIGH_TRUST_SKEW_MINUTES", 2),
+    });
+    let endedAt = eventTime.effectiveAt;
+    let timeAnomaly = eventTime.anomaly;
+    if (endedAt.getTime() < activeBreak.startedAt.getTime()) {
+      endedAt = new Date(activeBreak.startedAt);
+      timeAnomaly = timeAnomaly
+        ? `${timeAnomaly}|BREAK_END_BEFORE_START_CLAMPED`
+        : "BREAK_END_BEFORE_START_CLAMPED";
+    }
+
     const actualMinutes = Math.max(
       0,
       Math.round((endedAt.getTime() - activeBreak.startedAt.getTime()) / 60000),
@@ -290,6 +321,11 @@ export class BreaksService {
           expectedDuration: activeBreak.expectedDurationMinutes,
           isOvertime,
           clientTimestamp: clientTimestamp || null,
+          time: {
+            ...serializeEventTime(eventTime),
+            effectiveAt: endedAt.toISOString(),
+            anomaly: timeAnomaly,
+          },
         },
       },
     });
@@ -312,7 +348,19 @@ export class BreaksService {
       throw new NotFoundException("No active break to cancel");
     }
 
-    const cancelledAt = clientTimestamp ? new Date(clientTimestamp) : new Date();
+    const eventTime = resolveEventTime(clientTimestamp, {
+      maxPastHours: this.envNumber("MAX_CLIENT_PAST_HOURS", 72),
+      maxFutureMinutes: this.envNumber("MAX_CLIENT_FUTURE_MINUTES", 2),
+      highTrustSkewMinutes: this.envNumber("HIGH_TRUST_SKEW_MINUTES", 2),
+    });
+    let cancelledAt = eventTime.effectiveAt;
+    let timeAnomaly = eventTime.anomaly;
+    if (cancelledAt.getTime() < activeBreak.startedAt.getTime()) {
+      cancelledAt = new Date(activeBreak.startedAt);
+      timeAnomaly = timeAnomaly
+        ? `${timeAnomaly}|BREAK_CANCEL_BEFORE_START_CLAMPED`
+        : "BREAK_CANCEL_BEFORE_START_CLAMPED";
+    }
 
     const updated = await this.prisma.breakSession.update({
       where: {
@@ -334,10 +382,23 @@ export class BreaksService {
         payload: {
           localDate: activeBreak.localDate,
           clientTimestamp: clientTimestamp || null,
+          time: {
+            ...serializeEventTime(eventTime),
+            effectiveAt: cancelledAt.toISOString(),
+            anomaly: timeAnomaly,
+          },
         },
       },
     });
 
     return updated;
+  }
+
+  private envNumber(name: string, fallback: number): number {
+    const parsed = Number(process.env[name]);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+    return fallback;
   }
 }

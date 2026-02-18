@@ -12,4 +12,12 @@ export class AppController {
       message: this.appService.getHello(),
     };
   }
+
+  @Get("time")
+  getTime(): { serverNow: string; timeZone: string } {
+    return {
+      serverNow: new Date().toISOString(),
+      timeZone: process.env.APP_TIMEZONE || "Asia/Dubai",
+    };
+  }
 }

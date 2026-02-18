@@ -30,17 +30,6 @@ enum BreakSessionStatus {
   AUTO_CLOSED
 }
 
-enum BreakDeductionMode {
-  NONE
-  UNPAID_ALL_BREAKS
-  UNPAID_OVERTIME_ONLY
-}
-
-enum PayrollRunStatus {
-  DRAFT
-  FINALIZED
-}
-
 model Team {
   id             String  @id @default(cuid())
   name           String  @unique
@@ -53,7 +42,6 @@ model Team {
   users         User[]
   shiftPresets  ShiftPreset[]
   dutySessions  DutySession[]
-  payrollRuns   PayrollRun[]
   monthlyReports MonthlyReport[]
 }
 
@@ -77,15 +65,10 @@ model User {
   createdBreakSessions BreakSession[] @relation("CreatedBreakSessions")
   cancelledBreakSessions BreakSession[] @relation("CancelledBreakSessions")
   auditEvents AuditEvent[]
-
-  salaryRulesCreated SalaryRule[] @relation("SalaryRulesCreatedBy")
-  payrollRunsCreated PayrollRun[] @relation("PayrollRunsCreatedBy")
-  payrollRunsFinalized PayrollRun[] @relation("PayrollRunsFinalizedBy")
   monthlyReportsGenerated MonthlyReport[] @relation("MonthlyReportsGeneratedBy")
 
   dutySessions DutySession[]
   breakSessions BreakSession[]
-  payrollItems PayrollItem[]
 
   @@index([teamId])
   @@index([role])
@@ -233,77 +216,6 @@ model BreakSession {
 
   @@index([userId, localDate])
   @@index([status])
-}
-
-model SalaryRule {
-  id                    String            @id @default(cuid())
-  name                  String
-  baseHourlyRate        Decimal           @db.Decimal(12, 2)
-  overtimeMultiplier    Decimal           @db.Decimal(6, 2)
-  latePenaltyPerMinute  Decimal           @db.Decimal(12, 4)
-  breakDeductionMode    BreakDeductionMode @default(NONE)
-  effectiveFrom         DateTime
-  effectiveTo           DateTime?
-  isActive              Boolean           @default(true)
-  createdById           String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  createdBy User? @relation("SalaryRulesCreatedBy", fields: [createdById], references: [id])
-  payrollRuns PayrollRun[]
-
-  @@index([effectiveFrom, effectiveTo])
-  @@index([isActive])
-}
-
-model PayrollRun {
-  id           String          @id @default(cuid())
-  periodStart  DateTime
-  periodEnd    DateTime
-  localDateFrom String
-  localDateTo   String
-  teamId       String?
-  status       PayrollRunStatus @default(DRAFT)
-  salaryRuleId String
-  notes        String?
-  createdById  String
-  finalizedById String?
-  finalizedAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  team Team? @relation(fields: [teamId], references: [id])
-  salaryRule SalaryRule @relation(fields: [salaryRuleId], references: [id])
-  createdBy User @relation("PayrollRunsCreatedBy", fields: [createdById], references: [id])
-  finalizedBy User? @relation("PayrollRunsFinalizedBy", fields: [finalizedById], references: [id])
-
-  items PayrollItem[]
-
-  @@index([periodStart, periodEnd])
-  @@index([teamId])
-  @@index([status])
-}
-
-model PayrollItem {
-  id             String  @id @default(cuid())
-  payrollRunId   String
-  userId         String
-  workedMinutes  Int
-  breakMinutes   Int
-  payableMinutes Int
-  overtimeMinutes Int
-  lateMinutes    Int
-  grossPay       Decimal @db.Decimal(14, 2)
-  latePenalty    Decimal @db.Decimal(14, 2)
-  finalPay       Decimal @db.Decimal(14, 2)
-  details        Json?
-  createdAt      DateTime @default(now())
-
-  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([payrollRunId, userId])
-  @@index([userId])
 }
 
 model MonthlyReport {

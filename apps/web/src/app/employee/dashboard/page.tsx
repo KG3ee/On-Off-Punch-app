@@ -43,6 +43,11 @@ type BreakSession = {
   };
 };
 
+type ServerTime = {
+  serverNow: string;
+  timeZone: string;
+};
+
 const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
 const BOTTOM_BREAK_CODES = ['cf+1', 'cf+2', 'cf+3'] as const;
 const FIXED_BREAK_CODES: ReadonlySet<string> = new Set([...TOP_BREAK_CODES, ...BOTTOM_BREAK_CODES]);
@@ -66,6 +71,8 @@ export default function EmployeeDashboardPage() {
   const [actionMessage, setActionMessage] = useState('');
   const [nowTick, setNowTick] = useState(Date.now());
   const [pendingActions, setPendingActions] = useState(0);
+  const [clockSkewMinutes, setClockSkewMinutes] = useState<number | null>(null);
+  const [serverTimeZone, setServerTimeZone] = useState('');
 
   const activeSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE'), [sessions]);
   const activeBreak = useMemo(
@@ -140,12 +147,13 @@ export default function EmployeeDashboardPage() {
   async function loadData(): Promise<void> {
     setLoading(true);
     setError('');
-    const [meResult, sessionsResult, policiesResult, breaksResult] =
+    const [meResult, sessionsResult, policiesResult, breaksResult, timeResult] =
       await Promise.allSettled([
         apiFetch<MeUser>('/me'),
         apiFetch<DutySession[]>('/attendance/me/today'),
         apiFetch<BreakPolicy[]>('/breaks/policies'),
-        apiFetch<BreakSession[]>('/breaks/me/today')
+        apiFetch<BreakSession[]>('/breaks/me/today'),
+        apiFetch<ServerTime>('/time')
       ]);
 
     let failedCount = 0;
@@ -153,6 +161,14 @@ export default function EmployeeDashboardPage() {
     if (sessionsResult.status === 'fulfilled') setSessions(sessionsResult.value); else failedCount++;
     if (policiesResult.status === 'fulfilled') setPolicies(policiesResult.value); else failedCount++;
     if (breaksResult.status === 'fulfilled') setBreakSessions(breaksResult.value); else failedCount++;
+    if (timeResult.status === 'fulfilled') {
+      const serverNow = new Date(timeResult.value.serverNow).getTime();
+      if (!Number.isNaN(serverNow)) {
+        const skew = Math.round((Date.now() - serverNow) / 60000);
+        setClockSkewMinutes(skew);
+        setServerTimeZone(timeResult.value.timeZone);
+      }
+    }
     if (failedCount > 0) setError('Some data could not be loaded. Please refresh.');
     setLoading(false);
   }
@@ -255,6 +271,12 @@ export default function EmployeeDashboardPage() {
     >
       {error ? <div className="alert alert-error">⚠ {error}</div> : null}
       {actionMessage ? <div className="alert alert-success">{actionMessage}</div> : null}
+      {clockSkewMinutes !== null && Math.abs(clockSkewMinutes) >= 3 ? (
+        <div className="alert alert-warning">
+          ⚠ Device clock differs from server by about {Math.abs(clockSkewMinutes)} min
+          {serverTimeZone ? ` (${serverTimeZone})` : ''}. Please enable automatic date/time on your device.
+        </div>
+      ) : null}
 
       {/* Pending sync banner */}
       {pendingActions > 0 ? (

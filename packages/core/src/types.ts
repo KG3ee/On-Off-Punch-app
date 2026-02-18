@@ -49,38 +49,3 @@ export interface ResolvedShiftSegment {
   scheduleEndLocal: string; // YYYY-MM-DDTHH:mm
   isLateAt: (now: Date, timeZone: string) => boolean;
 }
-
-export interface PayrollRuleSnapshot {
-  name: string;
-  baseHourlyRate: number;
-  overtimeMultiplier: number;
-  latePenaltyPerMinute: number;
-  breakDeductionMode: 'NONE' | 'UNPAID_ALL_BREAKS' | 'UNPAID_OVERTIME_ONLY';
-}
-
-export interface PayrollComputationInput {
-  employeeId: string;
-  employeeName: string;
-  workedMinutes: number;
-  breakMinutes: number;
-  overtimeMinutes: number;
-  lateMinutes: number;
-  rule: PayrollRuleSnapshot;
-}
-
-export interface PayrollComputationResult {
-  employeeId: string;
-  employeeName: string;
-  payableMinutes: number;
-  regularMinutes: number;
-  overtimeMinutes: number;
-  grossPay: number;
-  latePenalty: number;
-  finalPay: number;
-  metadata: {
-    workedMinutes: number;
-    breakMinutes: number;
-    lateMinutes: number;
-    breakDeductionMode: PayrollRuleSnapshot['breakDeductionMode'];
-  };
-}

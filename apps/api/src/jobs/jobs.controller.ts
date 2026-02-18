@@ -16,6 +16,11 @@ export class JobsController {
     return this.jobsService.runAutoCloseBreaks(secret);
   }
 
+  @Post("auto-close-stale-duty")
+  async runAutoCloseStaleDuty(@Headers("x-job-secret") secret?: string) {
+    return this.jobsService.runAutoCloseStaleDuty(secret);
+  }
+
   @Post("monthly-snapshot")
   async runMonthlySnapshot(
     @Headers("x-job-secret") secret: string | undefined,

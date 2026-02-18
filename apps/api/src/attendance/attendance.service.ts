@@ -7,8 +7,10 @@ import {
   formatDateInZone,
   minutesNowInZone,
   parseTimeToMinutes,
+  resolveEventTime,
+  serializeEventTime,
 } from "../core";
-import { DutySessionStatus, User } from "@prisma/client";
+import { DutySessionStatus, Team, User } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -18,7 +20,12 @@ export class AttendanceService {
   ) { }
 
   async punchOn(user: User, note?: string, clientTimestamp?: string) {
-    const now = clientTimestamp ? new Date(clientTimestamp) : new Date();
+    const eventTime = resolveEventTime(clientTimestamp, {
+      maxPastHours: this.envNumber("MAX_CLIENT_PAST_HOURS", 72),
+      maxFutureMinutes: this.envNumber("MAX_CLIENT_FUTURE_MINUTES", 2),
+      highTrustSkewMinutes: this.envNumber("HIGH_TRUST_SKEW_MINUTES", 2),
+    });
+    const now = eventTime.effectiveAt;
     const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
 
     // Check for existing active session
@@ -50,7 +57,10 @@ export class AttendanceService {
 
         if (punchMinutes > shiftStartMin) {
           isLate = true;
-          lateMinutes = punchMinutes - shiftStartMin;
+          lateMinutes = Math.min(
+            this.maxLateMinutes(),
+            punchMinutes - shiftStartMin,
+          );
         }
       }
     }
@@ -85,6 +95,7 @@ export class AttendanceService {
           isLate,
           lateMinutes,
           clientTimestamp: clientTimestamp || null,
+          time: serializeEventTime(eventTime),
         },
       },
     });
@@ -107,34 +118,39 @@ export class AttendanceService {
       throw new NotFoundException("No active duty session found");
     }
 
-    const now = clientTimestamp ? new Date(clientTimestamp) : new Date();
+    const eventTime = resolveEventTime(clientTimestamp, {
+      maxPastHours: this.envNumber("MAX_CLIENT_PAST_HOURS", 72),
+      maxFutureMinutes: this.envNumber("MAX_CLIENT_FUTURE_MINUTES", 2),
+      highTrustSkewMinutes: this.envNumber("HIGH_TRUST_SKEW_MINUTES", 2),
+    });
+    let now = eventTime.effectiveAt;
+    let timeAnomaly = eventTime.anomaly;
+
+    if (now.getTime() < active.punchedOnAt.getTime()) {
+      now = new Date(active.punchedOnAt);
+      timeAnomaly = timeAnomaly
+        ? `${timeAnomaly}|PUNCH_OFF_BEFORE_PUNCH_ON_CLAMPED`
+        : "PUNCH_OFF_BEFORE_PUNCH_ON_CLAMPED";
+    }
+
     const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
     const workedMinutes = Math.max(
       0,
       Math.round((now.getTime() - active.punchedOnAt.getTime()) / 60000),
     );
 
-    // Calculate overtime
-    let overtimeMinutes = 0;
+    const team = user.teamId
+      ? await this.prisma.team.findUnique({
+          where: { id: user.teamId },
+        })
+      : null;
 
-    if (user.teamId) {
-      const team = await this.prisma.team.findUnique({
-        where: { id: user.teamId },
-      });
-
-      if (team?.shiftStartTime && team?.shiftEndTime) {
-        const shiftStartMin = parseTimeToMinutes(team.shiftStartTime);
-        const shiftEndMin = parseTimeToMinutes(team.shiftEndTime);
-        const punchOnMinutes = minutesNowInZone(active.punchedOnAt, timezone);
-        const punchOffMinutes = minutesNowInZone(now, timezone);
-
-        // Early overtime: punched on before shift start
-        const earlyOT = Math.max(0, shiftStartMin - punchOnMinutes);
-        // Late overtime: punched off after shift end
-        const lateOT = Math.max(0, punchOffMinutes - shiftEndMin);
-        overtimeMinutes = earlyOT + lateOT;
-      }
-    }
+    const overtimeMinutes = this.computeOvertimeMinutes(
+      team,
+      active.punchedOnAt,
+      now,
+      timezone,
+    );
 
     const updated = await this.prisma.dutySession.update({
       where: { id: active.id },
@@ -156,6 +172,11 @@ export class AttendanceService {
           workedMinutes,
           overtimeMinutes,
           clientTimestamp: clientTimestamp || null,
+          time: {
+            ...serializeEventTime(eventTime),
+            effectiveAt: now.toISOString(),
+            anomaly: timeAnomaly,
+          },
         },
       },
     });
@@ -273,5 +294,65 @@ export class AttendanceService {
       },
       orderBy: [{ localDate: "desc" }, { punchedOnAt: "desc" }],
     });
+  }
+
+  private computeOvertimeMinutes(
+    team: Pick<Team, "shiftStartTime" | "shiftEndTime"> | null,
+    punchedOnAt: Date,
+    punchedOffAt: Date,
+    timeZone: string,
+  ): number {
+    if (!team?.shiftStartTime || !team.shiftEndTime) {
+      return 0;
+    }
+
+    const shiftStartMin = parseTimeToMinutes(team.shiftStartTime);
+    const shiftEndMin = parseTimeToMinutes(team.shiftEndTime);
+    const punchOnMinutes = minutesNowInZone(punchedOnAt, timeZone);
+    const punchOffMinutes = minutesNowInZone(punchedOffAt, timeZone);
+
+    const dayDelta = this.localDayDelta(punchedOnAt, punchedOffAt, timeZone);
+    const punchOnAbsolute = punchOnMinutes;
+    const punchOffAbsolute = Math.max(
+      punchOnAbsolute,
+      dayDelta * 1440 + punchOffMinutes,
+    );
+
+    const scheduledStartAbsolute = shiftStartMin;
+    const scheduledEndAbsolute =
+      shiftEndMin > shiftStartMin ? shiftEndMin : shiftEndMin + 1440;
+
+    const earlyOvertime = Math.max(0, scheduledStartAbsolute - punchOnAbsolute);
+    const lateOvertime = Math.max(0, punchOffAbsolute - scheduledEndAbsolute);
+    const rawOvertime = earlyOvertime + lateOvertime;
+
+    return Math.min(this.maxOvertimeMinutes(), rawOvertime);
+  }
+
+  private localDayDelta(start: Date, end: Date, timeZone: string): number {
+    const startLocalDate = formatDateInZone(start, timeZone);
+    const endLocalDate = formatDateInZone(end, timeZone);
+    const startDayMs = Date.parse(`${startLocalDate}T00:00:00.000Z`);
+    const endDayMs = Date.parse(`${endLocalDate}T00:00:00.000Z`);
+    if (Number.isNaN(startDayMs) || Number.isNaN(endDayMs)) {
+      return 0;
+    }
+    return Math.max(0, Math.round((endDayMs - startDayMs) / 86400000));
+  }
+
+  private maxLateMinutes(): number {
+    return this.envNumber("MAX_LATE_MINUTES", 720);
+  }
+
+  private maxOvertimeMinutes(): number {
+    return this.envNumber("MAX_OVERTIME_MINUTES", 720);
+  }
+
+  private envNumber(name: string, fallback: number): number {
+    const parsed = Number(process.env[name]);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+    return fallback;
   }
 }

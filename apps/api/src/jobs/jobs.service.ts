@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { BreakSessionStatus, Role } from "@prisma/client";
+import { BreakSessionStatus, DutySessionStatus, Role } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { ReportsService } from "../reports/reports.service";
 
@@ -14,11 +14,13 @@ export class JobsService {
     this.assertJobSecret(secret);
 
     const autoClose = await this.autoCloseOvertimeBreaks();
+    const staleDuty = await this.autoCloseStaleDutySessions();
     const monthly = await this.generatePreviousMonthReportIfFirstDay();
 
     return {
       ok: true,
       autoClose,
+      staleDuty,
       monthly,
     };
   }
@@ -29,6 +31,15 @@ export class JobsService {
     return {
       ok: true,
       autoClose,
+    };
+  }
+
+  async runAutoCloseStaleDuty(secret: string | undefined) {
+    this.assertJobSecret(secret);
+    const staleDuty = await this.autoCloseStaleDutySessions();
+    return {
+      ok: true,
+      staleDuty,
     };
   }
 
@@ -146,6 +157,72 @@ export class JobsService {
     return {
       checked: activeBreaks.length,
       autoClosed,
+    };
+  }
+
+  private async autoCloseStaleDutySessions(): Promise<{
+    checked: number;
+    autoClosed: number;
+    maxHours: number;
+  }> {
+    const maxHours = Number(process.env.MAX_ACTIVE_DUTY_HOURS || 20);
+    const cutoff = new Date(Date.now() - maxHours * 60 * 60 * 1000);
+
+    const staleSessions = await this.prisma.dutySession.findMany({
+      where: {
+        status: DutySessionStatus.ACTIVE,
+        punchedOnAt: {
+          lte: cutoff,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    let autoClosed = 0;
+
+    for (const session of staleSessions) {
+      const autoPunchedOffAt = new Date(
+        session.punchedOnAt.getTime() + maxHours * 60 * 60 * 1000,
+      );
+
+      await this.prisma.dutySession.update({
+        where: { id: session.id },
+        data: {
+          status: DutySessionStatus.CLOSED,
+          punchedOffAt: autoPunchedOffAt,
+          note: session.note
+            ? `${session.note} | AUTO_CLOSED_STALE_SESSION`
+            : "AUTO_CLOSED_STALE_SESSION",
+        },
+      });
+
+      await this.prisma.auditEvent.create({
+        data: {
+          actorUserId: session.userId,
+          action: "DUTY_AUTO_CLOSE_STALE",
+          entityType: "DutySession",
+          entityId: session.id,
+          payload: {
+            maxHours,
+            cutoff: cutoff.toISOString(),
+            autoPunchedOffAt: autoPunchedOffAt.toISOString(),
+          },
+        },
+      });
+
+      autoClosed++;
+    }
+
+    return {
+      checked: staleSessions.length,
+      autoClosed,
+      maxHours,
     };
   }
 

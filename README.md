@@ -1,11 +1,11 @@
 # Modern Punch (Prototype)
 
-Monorepo prototype for split-shift duty tracking, breaks, payroll, and monthly reporting.
+Monorepo prototype for split-shift duty tracking, breaks, and monthly reporting.
 
 ## Stack
 - `apps/api`: NestJS + Prisma
 - `apps/web`: Next.js
-- `packages/core`: shared pure business logic (shift resolution + payroll math)
+- `packages/core`: shared pure business logic (shift resolution + time helpers)
 
 ## Features Implemented
 - Username/password login (`POST /auth/login`)
@@ -14,8 +14,6 @@ Monorepo prototype for split-shift duty tracking, breaks, payroll, and monthly r
 - Duty punch ON/OFF with late calculation per segment
 - Break start/end/cancel with daily limit enforcement
 - Admin live board endpoint
-- Salary rules + payroll runs/items (`DRAFT` -> `FINALIZED`)
-- Payroll CSV export endpoint (`/admin/payroll/runs/:id/export.csv`)
 - Monthly snapshot reports
 - Internal cron/job endpoints secured by `x-job-secret`
 
@@ -78,6 +76,12 @@ npm run dev
 - `CORS_ORIGIN` (example: `https://your-web.vercel.app,https://*.vercel.app`)
 - optional: `SYSTEM_JOB_USER_ID`
 - optional: `BREAK_GRACE_MINUTES`
+- optional: `MAX_ACTIVE_DUTY_HOURS`
+- optional: `MAX_CLIENT_PAST_HOURS`
+- optional: `MAX_CLIENT_FUTURE_MINUTES`
+- optional: `HIGH_TRUST_SKEW_MINUTES`
+- optional: `MAX_LATE_MINUTES`
+- optional: `MAX_OVERTIME_MINUTES`
 - optional: `BCRYPT_ROUNDS`
 - optional: `SEED_ADMIN_USERNAME`
 - optional: `SEED_ADMIN_PASSWORD`
@@ -111,6 +115,7 @@ All require `x-job-secret` header with `JOB_SECRET`.
 
 - `POST /internal/jobs/run-daily`
 - `POST /internal/jobs/auto-close-breaks`
+- `POST /internal/jobs/auto-close-stale-duty`
 - `POST /internal/jobs/monthly-snapshot` (optional body: `year`, `month`, `teamId`, `force`)
 
 Example:

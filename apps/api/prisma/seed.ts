@@ -1,4 +1,4 @@
-import { BreakDeductionMode, PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -85,20 +85,6 @@ async function main(): Promise<void> {
     where: { code: 'cf+3' },
     update: {},
     create: { code: 'cf+3', name: 'Dinner', expectedDurationMinutes: 30, dailyLimit: 1 }
-  });
-
-  await prisma.salaryRule.createMany({
-    data: [
-      {
-        name: 'Default Hourly Rule',
-        baseHourlyRate: 5,
-        overtimeMultiplier: 1.5,
-        latePenaltyPerMinute: 0,
-        breakDeductionMode: BreakDeductionMode.NONE,
-        effectiveFrom: new Date('2026-01-01T00:00:00.000Z')
-      }
-    ],
-    skipDuplicates: true
   });
 
   let teamAPreset = await prisma.shiftPreset.findFirst({
