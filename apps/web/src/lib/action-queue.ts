@@ -71,6 +71,18 @@ function notify(): void {
     listeners.forEach((fn) => fn(q));
 }
 
+function hasActiveQueueActions(queue: QueuedAction[]): boolean {
+    return queue.some((a) => a.status === 'pending' || a.status === 'syncing');
+}
+
+function enqueueAction(action: QueuedAction): void {
+    const queue = loadQueue();
+    queue.push(action);
+    saveQueue(queue);
+    notify();
+    startRetryLoop();
+}
+
 // ── Core: run an action with offline fallback ──
 
 export async function runQueuedAction(
@@ -80,6 +92,29 @@ export async function runQueuedAction(
 ): Promise<{ ok: boolean; queued: boolean; data?: unknown; error?: string }> {
     const clientTimestamp = new Date().toISOString();
     const actionBody = { ...body, clientTimestamp };
+    const action: QueuedAction = {
+        id: uid(),
+        path,
+        method,
+        body: actionBody,
+        clientTimestamp,
+        status: 'pending',
+        retries: 0,
+        createdAt: clientTimestamp,
+        nextRetryAt: new Date().toISOString(),
+    };
+
+    const queueSnapshot = loadQueue();
+    const isOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+
+    // Preserve action ordering: if there are queued actions, new actions must join the queue.
+    if (isOffline || hasActiveQueueActions(queueSnapshot)) {
+        enqueueAction(action);
+        if (!isOffline) {
+            void processQueue();
+        }
+        return { ok: false, queued: true };
+    }
 
     try {
         const data = await apiFetch(path, {
@@ -92,25 +127,7 @@ export async function runQueuedAction(
         const isNetworkError = isLikelyNetworkError(err);
 
         if (isNetworkError) {
-            const nowIso = new Date().toISOString();
-            const action: QueuedAction = {
-                id: uid(),
-                path,
-                method,
-                body: actionBody,
-                clientTimestamp,
-                status: 'pending',
-                retries: 0,
-                createdAt: clientTimestamp,
-                nextRetryAt: nowIso,
-            };
-
-            const queue = loadQueue();
-            queue.push(action);
-            saveQueue(queue);
-            notify();
-            startRetryLoop();
-
+            enqueueAction(action);
             return { ok: false, queued: true };
         }
 

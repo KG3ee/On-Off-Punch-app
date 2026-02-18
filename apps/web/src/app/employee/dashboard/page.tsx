@@ -385,7 +385,7 @@ export default function EmployeeDashboardPage() {
       setTimeout(() => setActionMessage(''), 3000);
       await loadData();
     } else if (result.queued) {
-      setActionMessage('⏳ Offline — action queued. Will sync when connection is restored.');
+      setActionMessage('⏳ Action queued. It will sync automatically when connection is available.');
       setTimeout(() => setActionMessage(''), 5000);
     } else {
       setError(result.error || 'Action failed');
