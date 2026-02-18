@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "node \"$(npm root)/tsx/dist/cli.mjs\" watch src/main.ts",
-    "build": "npm run build --prefix ../../packages/core && npm run prisma:generate && node \"$(npm root)/typescript/bin/tsc\" -p tsconfig.build.json",
+    "build": "npm run build --prefix ../../packages/core && npm run prisma:migrate:deploy:if-vercel && npm run prisma:generate && node \"$(npm root)/typescript/bin/tsc\" -p tsconfig.build.json",
     "start": "node dist/main.js",
     "prisma:generate": "node \"$(npm root)/prisma/build/index.js\" generate --schema prisma/schema.prisma",
+    "prisma:migrate:deploy": "node \"$(npm root)/prisma/build/index.js\" migrate deploy --schema prisma/schema.prisma",
+    "prisma:migrate:deploy:if-vercel": "if [ \"$VERCEL\" = \"1\" ] || [ \"$VERCEL\" = \"true\" ]; then npm run prisma:migrate:deploy; else echo \"Skipping prisma migrate deploy (not Vercel build)\"; fi",
     "prisma:migrate": "node \"$(npm root)/prisma/build/index.js\" migrate dev --schema prisma/schema.prisma",
     "prisma:studio": "node \"$(npm root)/prisma/build/index.js\" studio --schema prisma/schema.prisma",
     "seed": "node \"$(npm root)/tsx/dist/cli.mjs\" prisma/seed.ts",

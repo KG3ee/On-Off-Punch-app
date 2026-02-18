@@ -68,7 +68,9 @@ npm run dev
 1. Import this repo in Vercel.
 2. Set **Root Directory** to `apps/api`.
 3. Framework Preset: `NestJS`.
-4. Configure API env vars in Vercel:
+4. Build command can stay as default `npm run build`.  
+The API build now auto-runs `prisma migrate deploy` on Vercel before compiling.
+5. Configure API env vars in Vercel:
 - `DATABASE_URL`
 - `JWT_SECRET`
 - `APP_TIMEZONE`
@@ -85,12 +87,12 @@ npm run dev
 - optional: `BCRYPT_ROUNDS`
 - optional: `SEED_ADMIN_USERNAME`
 - optional: `SEED_ADMIN_PASSWORD`
-5. Deploy and copy the API URL (example: `https://modern-punch-api.vercel.app`).
+6. Deploy and copy the API URL (example: `https://modern-punch-api.vercel.app`).
 
-### 3. Run Migration + Seed (local terminal)
-Use the same production `DATABASE_URL` and run:
+### 3. Seed (local terminal, optional)
+Migrations are auto-applied during Vercel API build.  
+If you want initial sample data, run seed once against production `DATABASE_URL`:
 ```bash
-npm run prisma:migrate
 npm run seed --workspace @modern-punch/api
 ```
 
