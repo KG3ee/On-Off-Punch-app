@@ -427,4 +427,43 @@ export class AttendanceService {
     const parts = getTimePartsInZone(date, timeZone);
     return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0) / 60000;
   }
+
+  async getMonthlySummary(userId: string) {
+    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
+    const now = new Date();
+    const parts = getTimePartsInZone(now, timezone);
+    const prefix = `${parts.year}-${parts.month.toString().padStart(2, "0")}-`;
+
+    const sessions = await this.prisma.dutySession.findMany({
+      where: {
+        userId,
+        localDate: {
+          startsWith: prefix,
+        },
+      },
+    });
+
+    let totalWorkedMinutes = 0;
+    const totalLateMinutes = sessions.reduce((acc, s) => acc + s.lateMinutes, 0);
+    const totalOvertimeMinutes = sessions.reduce((acc, s) => acc + s.overtimeMinutes, 0);
+
+    for (const s of sessions) {
+      if (s.punchedOffAt) {
+        totalWorkedMinutes += Math.round(
+          (s.punchedOffAt.getTime() - s.punchedOnAt.getTime()) / 60000,
+        );
+      } else {
+        const elapsed = Math.max(0, Math.round((now.getTime() - s.punchedOnAt.getTime()) / 60000));
+        totalWorkedMinutes += elapsed;
+      }
+    }
+
+    return {
+      month: prefix.slice(0, 7),
+      totalWorkedMinutes,
+      totalLateMinutes,
+      totalOvertimeMinutes,
+      sessionCount: sessions.length,
+    };
+  }
 }

@@ -57,12 +57,21 @@ type ServerTime = {
   timeZone: string;
 };
 
+type MonthlySummary = {
+  month: string;
+  totalWorkedMinutes: number;
+  totalLateMinutes: number;
+  totalOvertimeMinutes: number;
+  sessionCount: number;
+};
+
 type DashboardCache = {
   me: MeUser | null;
   sessions: DutySession[];
   policies: BreakPolicy[];
   breakSessions: BreakSession[];
   serverTime: ServerTime | null;
+  monthlySummary: MonthlySummary | null;
   cachedAt: string;
 };
 
@@ -110,6 +119,7 @@ export default function EmployeeDashboardPage() {
   const [sessions, setSessions] = useState<DutySession[]>([]);
   const [policies, setPolicies] = useState<BreakPolicy[]>([]);
   const [breakSessions, setBreakSessions] = useState<BreakSession[]>([]);
+  const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
@@ -304,13 +314,14 @@ export default function EmployeeDashboardPage() {
     setError('');
     const cache = loadDashboardCache();
 
-    const [meResult, sessionsResult, policiesResult, breaksResult, timeResult] =
+    const [meResult, sessionsResult, policiesResult, breaksResult, timeResult, summaryResult] =
       await Promise.allSettled([
         apiFetch<MeUser>('/me'),
         apiFetch<DutySession[]>('/attendance/me/today'),
         apiFetch<BreakPolicy[]>('/breaks/policies'),
         apiFetch<BreakSession[]>('/breaks/me/today'),
-        apiFetch<ServerTime>('/time')
+        apiFetch<ServerTime>('/time'),
+        apiFetch<MonthlySummary>('/attendance/me/summary')
       ]);
 
     const nextMe = meResult.status === 'fulfilled' ? meResult.value : (cache?.me || null);
@@ -318,11 +329,13 @@ export default function EmployeeDashboardPage() {
     const nextPolicies = policiesResult.status === 'fulfilled' ? policiesResult.value : (cache?.policies || []);
     const nextBreakSessions = breaksResult.status === 'fulfilled' ? breaksResult.value : (cache?.breakSessions || []);
     const nextServerTime = timeResult.status === 'fulfilled' ? timeResult.value : (cache?.serverTime || null);
+    const nextSummary = summaryResult.status === 'fulfilled' ? summaryResult.value : (cache?.monthlySummary || null);
 
     setMe(nextMe);
     setSessions(nextSessions);
     setPolicies(nextPolicies);
     setBreakSessions(nextBreakSessions);
+    setMonthlySummary(nextSummary);
 
     let failedCount = 0;
     if (meResult.status !== 'fulfilled') failedCount++;
@@ -330,6 +343,7 @@ export default function EmployeeDashboardPage() {
     if (policiesResult.status !== 'fulfilled') failedCount++;
     if (breaksResult.status !== 'fulfilled') failedCount++;
     if (timeResult.status !== 'fulfilled') failedCount++;
+    if (summaryResult.status !== 'fulfilled') failedCount++;
 
     if (timeResult.status === 'fulfilled' && nextServerTime) {
       const serverNow = new Date(nextServerTime.serverNow).getTime();
@@ -356,6 +370,7 @@ export default function EmployeeDashboardPage() {
         policies: nextPolicies,
         breakSessions: nextBreakSessions,
         serverTime: nextServerTime,
+        monthlySummary: nextSummary,
         cachedAt: new Date().toISOString()
       });
     }
@@ -505,7 +520,29 @@ export default function EmployeeDashboardPage() {
         </div>
       ) : null}
 
-      {/* ── KPI Row ── */}
+      {/* ── Monthly KPI Row ── */}
+      {monthlySummary ? (
+        <section className="kpi-grid" style={{ marginBottom: '1rem' }}>
+          <article className="kpi">
+            <p className="kpi-label">Month Hours</p>
+            <p className="kpi-value">{fmtDuration(monthlySummary.totalWorkedMinutes)}</p>
+          </article>
+          <article className="kpi">
+            <p className="kpi-label">Month Late</p>
+            <p className="kpi-value" style={{ color: monthlySummary.totalLateMinutes > 0 ? 'var(--danger)' : undefined }}>
+              {monthlySummary.totalLateMinutes}m
+            </p>
+          </article>
+          <article className="kpi">
+            <p className="kpi-label">Overtime</p>
+            <p className="kpi-value" style={{ color: monthlySummary.totalOvertimeMinutes > 0 ? 'var(--ok)' : undefined }}>
+              {monthlySummary.totalOvertimeMinutes}m
+            </p>
+          </article>
+        </section>
+      ) : null}
+
+      {/* ── Today KPI Row ── */}
       <section className="kpi-grid">
         <article className="kpi">
           <p className="kpi-label">Sessions</p>
