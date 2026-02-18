@@ -6,6 +6,40 @@ import { apiFetch } from '@/lib/api';
 
 type Team = { id: string; name: string; shiftStartTime?: string | null; shiftEndTime?: string | null };
 
+type ShiftPresetSegment = {
+  id: string;
+  segmentNo: number;
+  startTime: string;
+  endTime: string;
+  crossesMidnight: boolean;
+  lateGraceMinutes: number;
+};
+
+type ShiftPreset = {
+  id: string;
+  name: string;
+  timezone: string;
+  teamId?: string | null;
+  segments: ShiftPresetSegment[];
+};
+
+type ShiftAssignment = {
+  id: string;
+  targetType: 'TEAM' | 'USER';
+  targetId: string;
+  shiftPresetId: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  isActive: boolean;
+  shiftPreset: ShiftPreset;
+};
+
+type ShiftInputRow = {
+  id: string;
+  startTime: string;
+  endTime: string;
+};
+
 type UserRow = {
   id: string;
   username: string;
@@ -18,9 +52,26 @@ type UserRow = {
   mustChangePassword: boolean;
 };
 
+function createRowId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function todayStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function inferCrossesMidnight(startTime: string, endTime: string): boolean {
+  return endTime <= startTime;
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [shiftAssignments, setShiftAssignments] = useState<ShiftAssignment[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -45,8 +96,8 @@ export default function AdminUsersPage() {
   const [teamName, setTeamName] = useState('');
   const [teamShiftStart, setTeamShiftStart] = useState('');
   const [teamShiftEnd, setTeamShiftEnd] = useState('');
-  const [editShiftStart, setEditShiftStart] = useState('');
-  const [editShiftEnd, setEditShiftEnd] = useState('');
+  const [editShiftRows, setEditShiftRows] = useState<ShiftInputRow[]>([{ id: createRowId(), startTime: '', endTime: '' }]);
+  const [editEffectiveFrom, setEditEffectiveFrom] = useState(todayStr());
 
   // Action menu
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -78,12 +129,14 @@ export default function AdminUsersPage() {
 
   async function load(): Promise<void> {
     try {
-      const [userData, teamData] = await Promise.all([
+      const [userData, teamData, assignmentData] = await Promise.all([
         apiFetch<UserRow[]>('/admin/users'),
-        apiFetch<Team[]>('/teams')
+        apiFetch<Team[]>('/teams'),
+        apiFetch<ShiftAssignment[]>('/admin/shift-assignments')
       ]);
       setUsers(userData);
       setTeams(teamData);
+      setShiftAssignments(assignmentData);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -93,6 +146,48 @@ export default function AdminUsersPage() {
   function flash(msg: string) {
     setMessage(msg);
     setTimeout(() => setMessage(''), 3000);
+  }
+
+  function getCurrentTeamAssignment(teamId: string): ShiftAssignment | null {
+    const today = todayStr();
+
+    const candidates = shiftAssignments
+      .filter((assignment) => assignment.targetType === 'TEAM' && assignment.targetId === teamId && assignment.isActive)
+      .sort((a, b) => new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime());
+
+    const activeToday = candidates.find((assignment) => {
+      const from = assignment.effectiveFrom.slice(0, 10);
+      const to = assignment.effectiveTo ? assignment.effectiveTo.slice(0, 10) : null;
+      return from <= today && (!to || to >= today);
+    });
+
+    return activeToday || candidates[0] || null;
+  }
+
+  function getTeamShiftRows(team: Team): ShiftInputRow[] {
+    const currentAssignment = getCurrentTeamAssignment(team.id);
+    if (currentAssignment?.shiftPreset?.segments?.length) {
+      return [...currentAssignment.shiftPreset.segments]
+        .sort((a, b) => a.segmentNo - b.segmentNo)
+        .map((segment) => ({
+          id: createRowId(),
+          startTime: segment.startTime,
+          endTime: segment.endTime
+        }));
+    }
+
+    if (team.shiftStartTime && team.shiftEndTime) {
+      return [{ id: createRowId(), startTime: team.shiftStartTime, endTime: team.shiftEndTime }];
+    }
+
+    return [{ id: createRowId(), startTime: '', endTime: '' }];
+  }
+
+  function openEditTeam(team: Team) {
+    setEditingTeam(team);
+    setEditTeamName(team.name);
+    setEditShiftRows(getTeamShiftRows(team));
+    setEditEffectiveFrom(todayStr());
   }
 
   // ── Team CRUD ──
@@ -119,15 +214,56 @@ export default function AdminUsersPage() {
   async function renameTeam(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     if (!editingTeam) return;
+
+    const normalizedRows = editShiftRows
+      .map((row) => ({
+        startTime: row.startTime.trim(),
+        endTime: row.endTime.trim()
+      }))
+      .filter((row) => row.startTime && row.endTime);
+
+    if (normalizedRows.length === 0) {
+      setError('Please configure at least one shift segment');
+      return;
+    }
+
     try {
       await apiFetch(`/teams/admin/${editingTeam.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           name: editTeamName,
-          shiftStartTime: editShiftStart || undefined,
-          shiftEndTime: editShiftEnd || undefined,
+          shiftStartTime: normalizedRows[0].startTime,
+          shiftEndTime: normalizedRows[0].endTime,
         })
       });
+
+      const presetName = `${editTeamName} Multi Shift ${new Date().toISOString().slice(0, 10)}`;
+      const createdPreset = await apiFetch<ShiftPreset>('/admin/shift-presets', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: presetName,
+          teamId: editingTeam.id,
+          timezone: 'Asia/Dubai',
+          segments: normalizedRows.map((row, index) => ({
+            segmentNo: index + 1,
+            startTime: row.startTime,
+            endTime: row.endTime,
+            crossesMidnight: inferCrossesMidnight(row.startTime, row.endTime),
+            lateGraceMinutes: 10
+          }))
+        })
+      });
+
+      await apiFetch('/admin/shift-assignments', {
+        method: 'POST',
+        body: JSON.stringify({
+          targetType: 'TEAM',
+          targetId: editingTeam.id,
+          shiftPresetId: createdPreset.id,
+          effectiveFrom: editEffectiveFrom || todayStr()
+        })
+      });
+
       setEditingTeam(null);
       flash('Team updated');
       await load();
@@ -224,6 +360,34 @@ export default function AdminUsersPage() {
     setResetPasswordUser(user);
     setNewPassword('');
     setOpenMenuId(null);
+  }
+
+  function updateShiftRow(rowId: string, key: 'startTime' | 'endTime', value: string) {
+    setEditShiftRows((rows) =>
+      rows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row))
+    );
+  }
+
+  function addShiftRow() {
+    setEditShiftRows((rows) => [...rows, { id: createRowId(), startTime: '', endTime: '' }]);
+  }
+
+  function removeShiftRow(rowId: string) {
+    setEditShiftRows((rows) => (rows.length > 1 ? rows.filter((row) => row.id !== rowId) : rows));
+  }
+
+  function getTeamShiftText(team: Team): string {
+    const assignment = getCurrentTeamAssignment(team.id);
+    if (assignment?.shiftPreset?.segments?.length) {
+      return [...assignment.shiftPreset.segments]
+        .sort((a, b) => a.segmentNo - b.segmentNo)
+        .map((segment) => `${segment.startTime}-${segment.endTime}`)
+        .join(' | ');
+    }
+    if (team.shiftStartTime && team.shiftEndTime) {
+      return `${team.shiftStartTime}-${team.shiftEndTime}`;
+    }
+    return '—';
   }
 
   // ── Filter ──
@@ -329,8 +493,7 @@ export default function AdminUsersPage() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Shift Start</th>
-                <th>Shift End</th>
+                <th>Shifts</th>
                 <th>Members</th>
                 <th style={{ width: '100px' }}>Actions</th>
               </tr>
@@ -341,20 +504,14 @@ export default function AdminUsersPage() {
                 return (
                   <tr key={team.id}>
                     <td style={{ fontWeight: 500 }}>{team.name}</td>
-                    <td className="mono">{team.shiftStartTime || '—'}</td>
-                    <td className="mono">{team.shiftEndTime || '—'}</td>
+                    <td className="mono">{getTeamShiftText(team)}</td>
                     <td>{memberCount}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.3rem' }}>
                         <button
                           type="button"
                           className="button button-ghost button-sm"
-                          onClick={() => {
-                            setEditingTeam(team);
-                            setEditTeamName(team.name);
-                            setEditShiftStart(team.shiftStartTime || '');
-                            setEditShiftEnd(team.shiftEndTime || '');
-                          }}
+                          onClick={() => openEditTeam(team)}
                         >
                           ✏️ Edit
                         </button>
@@ -371,7 +528,7 @@ export default function AdminUsersPage() {
                 );
               })}
               {teams.length === 0 ? (
-                <tr><td colSpan={5} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
+                <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
               ) : null}
             </tbody>
           </table>
@@ -501,19 +658,55 @@ export default function AdminUsersPage() {
             <form className="form-grid" onSubmit={(e) => void renameTeam(e)}>
               <label style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Team Name</label>
               <input className="input" value={editTeamName} onChange={(e) => setEditTeamName(e.target.value)} placeholder="Team name" required autoFocus />
-              <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Shift Schedule</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Start Time</label>
-                  <input className="input" type="time" value={editShiftStart} onChange={(e) => setEditShiftStart(e.target.value)} />
+
+              <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Shift Segments</label>
+              {editShiftRows.map((row, index) => (
+                <div key={row.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Start {index + 1}</label>
+                    <input
+                      className="input"
+                      type="time"
+                      value={row.startTime}
+                      onChange={(e) => updateShiftRow(row.id, 'startTime', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>End {index + 1}</label>
+                    <input
+                      className="input"
+                      type="time"
+                      value={row.endTime}
+                      onChange={(e) => updateShiftRow(row.id, 'endTime', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'end' }}>
+                    <button
+                      type="button"
+                      className="button button-danger button-sm"
+                      onClick={() => removeShiftRow(row.id)}
+                      disabled={editShiftRows.length === 1}
+                      title="Remove shift"
+                    >
+                      -
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>End Time</label>
-                  <input className="input" type="time" value={editShiftEnd} onChange={(e) => setEditShiftEnd(e.target.value)} />
-                </div>
+              ))}
+
+              <div>
+                <button type="button" className="button button-ghost button-sm" onClick={addShiftRow}>
+                  + Add Shift
+                </button>
               </div>
+
+              <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Effective From</label>
+              <input className="input" type="date" value={editEffectiveFrom} onChange={(e) => setEditEffectiveFrom(e.target.value)} required />
+
               <p style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: '0.2rem' }}>
-                Leave empty for no shift tracking. Punch before start = early overtime, punch after end = late overtime.
+                Add as many shifts as needed. Each new save creates a new preset and assignment from the effective date.
               </p>
               <div className="modal-footer">
                 <button type="button" className="button button-ghost" onClick={() => setEditingTeam(null)}>Cancel</button>
