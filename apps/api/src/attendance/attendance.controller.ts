@@ -34,6 +34,11 @@ export class AttendanceController {
     return this.attendanceService.myTodaySessions(authUser.sub);
   }
 
+  @Get("me/summary")
+  async mySummary(@CurrentUser() authUser: AuthUser) {
+    return this.attendanceService.getMonthlySummary(authUser.sub);
+  }
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get("/admin/live")
