@@ -68,14 +68,14 @@ export class ShiftsController {
     return this.shiftsService.listPresets();
   }
   @UseGuards(JwtAuthGuard)
-  @Post('requests')
+  @Post('shifts/requests')
   async createRequest(@CurrentUser() authUser: AuthUser, @Body() dto: CreateShiftChangeRequestDto) {
     const user = await this.usersService.getOrThrow(authUser.sub);
     return this.shiftsService.createRequest(user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('requests/me')
+  @Get('shifts/requests/me')
   async listMyRequests(@CurrentUser() authUser: AuthUser) {
     const user = await this.usersService.getOrThrow(authUser.sub);
     return this.shiftsService.listRequests(false, user.id);
