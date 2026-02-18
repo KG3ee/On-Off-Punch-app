@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
-import { runQueuedAction, subscribeQueue, getPendingCount, QueuedAction } from '@/lib/action-queue';
+import {
+  runQueuedAction,
+  subscribeQueue,
+  getPendingCount,
+  getFailedCount,
+  retryFailedActions,
+  QueuedAction
+} from '@/lib/action-queue';
 import { MeUser } from '@/types/auth';
 
 
@@ -48,6 +55,17 @@ type ServerTime = {
   timeZone: string;
 };
 
+type DashboardCache = {
+  me: MeUser | null;
+  sessions: DutySession[];
+  policies: BreakPolicy[];
+  breakSessions: BreakSession[];
+  serverTime: ServerTime | null;
+  cachedAt: string;
+};
+
+const DASHBOARD_CACHE_KEY = 'employee_dashboard_cache_v1';
+
 const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
 const BOTTOM_BREAK_CODES = ['cf+1', 'cf+2', 'cf+3'] as const;
 const FIXED_BREAK_CODES: ReadonlySet<string> = new Set([...TOP_BREAK_CODES, ...BOTTOM_BREAK_CODES]);
@@ -60,6 +78,22 @@ const BREAK_EMOJI_MAP: Record<string, string> = {
   'cf+3': '🍽️'
 };
 
+function loadDashboardCache(): DashboardCache | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(DASHBOARD_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DashboardCache;
+  } catch {
+    return null;
+  }
+}
+
+function saveDashboardCache(cache: DashboardCache): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(cache));
+}
+
 export default function EmployeeDashboardPage() {
   const [me, setMe] = useState<MeUser | null>(null);
 
@@ -71,6 +105,10 @@ export default function EmployeeDashboardPage() {
   const [actionMessage, setActionMessage] = useState('');
   const [nowTick, setNowTick] = useState(Date.now());
   const [pendingActions, setPendingActions] = useState(0);
+  const [failedActions, setFailedActions] = useState(0);
+  const [isOffline, setIsOffline] = useState(
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  );
   const [clockSkewMinutes, setClockSkewMinutes] = useState<number | null>(null);
   const [serverTimeZone, setServerTimeZone] = useState('');
 
@@ -103,9 +141,12 @@ export default function EmployeeDashboardPage() {
   // Subscribe to queue changes
   useEffect(() => {
     setPendingActions(getPendingCount());
+    setFailedActions(getFailedCount());
     const unsub = subscribeQueue((q: QueuedAction[]) => {
       const pending = q.filter(a => a.status === 'pending' || a.status === 'syncing').length;
+      const failed = q.filter(a => a.status === 'failed').length;
       setPendingActions(pending);
+      setFailedActions(failed);
       // Refresh data when an action syncs
       const synced = q.filter(a => a.status === 'synced');
       if (synced.length > 0) {
@@ -120,6 +161,23 @@ export default function EmployeeDashboardPage() {
     const timer = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [activeBreak, activeSession]);
+
+  useEffect(() => {
+    function onOnline() {
+      setIsOffline(false);
+    }
+
+    function onOffline() {
+      setIsOffline(true);
+    }
+
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
 
   // Keyboard shortcuts: Space → End break, Esc → Cancel break
   useEffect(() => {
@@ -147,6 +205,8 @@ export default function EmployeeDashboardPage() {
   async function loadData(): Promise<void> {
     setLoading(true);
     setError('');
+    const cache = loadDashboardCache();
+
     const [meResult, sessionsResult, policiesResult, breaksResult, timeResult] =
       await Promise.allSettled([
         apiFetch<MeUser>('/me'),
@@ -156,20 +216,61 @@ export default function EmployeeDashboardPage() {
         apiFetch<ServerTime>('/time')
       ]);
 
+    const nextMe = meResult.status === 'fulfilled' ? meResult.value : (cache?.me || null);
+    const nextSessions = sessionsResult.status === 'fulfilled' ? sessionsResult.value : (cache?.sessions || []);
+    const nextPolicies = policiesResult.status === 'fulfilled' ? policiesResult.value : (cache?.policies || []);
+    const nextBreakSessions = breaksResult.status === 'fulfilled' ? breaksResult.value : (cache?.breakSessions || []);
+    const nextServerTime = timeResult.status === 'fulfilled' ? timeResult.value : (cache?.serverTime || null);
+
+    setMe(nextMe);
+    setSessions(nextSessions);
+    setPolicies(nextPolicies);
+    setBreakSessions(nextBreakSessions);
+
     let failedCount = 0;
-    if (meResult.status === 'fulfilled') setMe(meResult.value); else failedCount++;
-    if (sessionsResult.status === 'fulfilled') setSessions(sessionsResult.value); else failedCount++;
-    if (policiesResult.status === 'fulfilled') setPolicies(policiesResult.value); else failedCount++;
-    if (breaksResult.status === 'fulfilled') setBreakSessions(breaksResult.value); else failedCount++;
-    if (timeResult.status === 'fulfilled') {
-      const serverNow = new Date(timeResult.value.serverNow).getTime();
+    if (meResult.status !== 'fulfilled') failedCount++;
+    if (sessionsResult.status !== 'fulfilled') failedCount++;
+    if (policiesResult.status !== 'fulfilled') failedCount++;
+    if (breaksResult.status !== 'fulfilled') failedCount++;
+    if (timeResult.status !== 'fulfilled') failedCount++;
+
+    if (timeResult.status === 'fulfilled' && nextServerTime) {
+      const serverNow = new Date(nextServerTime.serverNow).getTime();
       if (!Number.isNaN(serverNow)) {
         const skew = Math.round((Date.now() - serverNow) / 60000);
         setClockSkewMinutes(skew);
-        setServerTimeZone(timeResult.value.timeZone);
+        setServerTimeZone(nextServerTime.timeZone);
       }
+    } else if (timeResult.status !== 'fulfilled') {
+      setClockSkewMinutes(null);
     }
-    if (failedCount > 0) setError('Some data could not be loaded. Please refresh.');
+
+    const hasLiveSuccess =
+      meResult.status === 'fulfilled' ||
+      sessionsResult.status === 'fulfilled' ||
+      policiesResult.status === 'fulfilled' ||
+      breaksResult.status === 'fulfilled' ||
+      timeResult.status === 'fulfilled';
+
+    if (hasLiveSuccess) {
+      saveDashboardCache({
+        me: nextMe,
+        sessions: nextSessions,
+        policies: nextPolicies,
+        breakSessions: nextBreakSessions,
+        serverTime: nextServerTime,
+        cachedAt: new Date().toISOString()
+      });
+    }
+
+    if (failedCount === 5 && cache) {
+      setError('Offline mode: showing cached data. Your actions will sync when internet is back.');
+    } else if (failedCount === 5) {
+      setError('No internet and no cached dashboard data yet.');
+    } else if (failedCount > 0) {
+      setError('Some data could not be loaded. Showing available/cached data.');
+    }
+
     setLoading(false);
   }
 
@@ -192,6 +293,12 @@ export default function EmployeeDashboardPage() {
     }
 
     setLoading(false);
+  }
+
+  function retryFailedQueueActions(): void {
+    retryFailedActions();
+    setActionMessage('Retrying failed actions…');
+    setTimeout(() => setActionMessage(''), 3000);
   }
 
   function fmtTime(iso: string): string {
@@ -277,12 +384,25 @@ export default function EmployeeDashboardPage() {
           {serverTimeZone ? ` (${serverTimeZone})` : ''}. Please enable automatic date/time on your device.
         </div>
       ) : null}
+      {isOffline ? (
+        <div className="alert alert-warning">
+          ⛔ You are offline. You can keep working; actions will queue and sync later.
+        </div>
+      ) : null}
 
       {/* Pending sync banner */}
       {pendingActions > 0 ? (
         <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span className="sync-spinner" />
           {pendingActions} action{pendingActions > 1 ? 's' : ''} waiting to sync…
+        </div>
+      ) : null}
+      {failedActions > 0 ? (
+        <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span>{failedActions} action{failedActions > 1 ? 's' : ''} need manual retry.</span>
+          <button type="button" className="button button-ghost button-sm" onClick={retryFailedQueueActions}>
+            Retry Failed
+          </button>
         </div>
       ) : null}
 

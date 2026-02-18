@@ -7,8 +7,9 @@ import { apiFetch } from './api';
  *  ─────────────────────────────────────────── */
 
 const QUEUE_KEY = 'punch_action_queue';
-const MAX_RETRIES = 5;
 const RETRY_INTERVAL_MS = 5_000;
+const BASE_RETRY_DELAY_MS = 5_000;
+const MAX_RETRY_DELAY_MS = 5 * 60_000;
 
 export type QueuedAction = {
     id: string;
@@ -19,6 +20,7 @@ export type QueuedAction = {
     status: 'pending' | 'syncing' | 'synced' | 'failed';
     retries: number;
     createdAt: string;
+    nextRetryAt?: string;
     error?: string;
 };
 
@@ -40,6 +42,18 @@ function saveQueue(queue: QueuedAction[]): void {
 
 function uid(): string {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isLikelyNetworkError(err: unknown): boolean {
+    return (
+        err instanceof TypeError ||
+        (err instanceof Error && /fetch|network|abort|offline/i.test(err.message))
+    );
+}
+
+function computeRetryDelayMs(retries: number): number {
+    const exponent = Math.min(retries, 6);
+    return Math.min(MAX_RETRY_DELAY_MS, BASE_RETRY_DELAY_MS * (2 ** exponent));
 }
 
 // ── Listeners for UI refresh ──
@@ -75,11 +89,10 @@ export async function runQueuedAction(
         return { ok: true, queued: false, data };
     } catch (err) {
         // Network error → queue for retry
-        const isNetworkError =
-            err instanceof TypeError ||
-            (err instanceof Error && /fetch|network|abort/i.test(err.message));
+        const isNetworkError = isLikelyNetworkError(err);
 
         if (isNetworkError) {
+            const nowIso = new Date().toISOString();
             const action: QueuedAction = {
                 id: uid(),
                 path,
@@ -89,6 +102,7 @@ export async function runQueuedAction(
                 status: 'pending',
                 retries: 0,
                 createdAt: clientTimestamp,
+                nextRetryAt: nowIso,
             };
 
             const queue = loadQueue();
@@ -120,13 +134,28 @@ function startRetryLoop(): void {
 
 async function processQueue(): Promise<void> {
     const queue = loadQueue();
-    const pending = queue.filter((a) => a.status === 'pending' || a.status === 'syncing');
-
-    if (pending.length === 0) {
+    const nowMs = Date.now();
+    const activeQueue = queue.filter((a) => a.status === 'pending' || a.status === 'syncing');
+    if (activeQueue.length === 0) {
         if (retryTimer) {
             clearInterval(retryTimer);
             retryTimer = null;
         }
+        return;
+    }
+
+    const pending = activeQueue.filter((a) => {
+        if (a.status !== 'pending' && a.status !== 'syncing') {
+            return false;
+        }
+        if (!a.nextRetryAt) {
+            return true;
+        }
+        const retryAtMs = Date.parse(a.nextRetryAt);
+        return Number.isNaN(retryAtMs) || retryAtMs <= nowMs;
+    });
+
+    if (pending.length === 0) {
         return;
     }
 
@@ -142,13 +171,18 @@ async function processQueue(): Promise<void> {
             });
 
             action.status = 'synced';
+            action.error = undefined;
+            action.nextRetryAt = undefined;
         } catch (err) {
-            action.retries++;
-            if (action.retries >= MAX_RETRIES) {
-                action.status = 'failed';
-                action.error = err instanceof Error ? err.message : 'Max retries reached';
-            } else {
+            if (isLikelyNetworkError(err)) {
+                action.retries += 1;
                 action.status = 'pending';
+                action.error = err instanceof Error ? err.message : 'Network unavailable';
+                action.nextRetryAt = new Date(Date.now() + computeRetryDelayMs(action.retries)).toISOString();
+            } else {
+                action.status = 'failed';
+                action.error = err instanceof Error ? err.message : 'Server rejected action';
+                action.nextRetryAt = undefined;
             }
         }
 
@@ -163,6 +197,10 @@ export function getPendingCount(): number {
     return loadQueue().filter((a) => a.status === 'pending' || a.status === 'syncing').length;
 }
 
+export function getFailedCount(): number {
+    return loadQueue().filter((a) => a.status === 'failed').length;
+}
+
 export function getQueueSnapshot(): QueuedAction[] {
     return loadQueue();
 }
@@ -174,10 +212,34 @@ export function clearSynced(): void {
     notify();
 }
 
+export function retryFailedActions(): void {
+    const queue = loadQueue();
+    const nowIso = new Date().toISOString();
+
+    let changed = false;
+    for (const action of queue) {
+        if (action.status === 'failed') {
+            action.status = 'pending';
+            action.nextRetryAt = nowIso;
+            changed = true;
+        }
+    }
+
+    if (!changed) return;
+
+    saveQueue(queue);
+    notify();
+    startRetryLoop();
+    void processQueue();
+}
+
 // ── Auto-start retry loop on page load if there are pending items ──
 
 if (typeof window !== 'undefined') {
-    window.addEventListener('online', () => void processQueue());
+    window.addEventListener('online', () => {
+        startRetryLoop();
+        void processQueue();
+    });
 
     // Check on load
     setTimeout(() => {
