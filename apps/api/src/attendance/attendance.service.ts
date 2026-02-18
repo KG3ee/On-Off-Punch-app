@@ -176,10 +176,13 @@ export class AttendanceService {
     return this.prisma.dutySession.findMany({
       where: {
         userId,
-        localDate,
+        OR: [
+          { localDate },
+          { status: DutySessionStatus.ACTIVE },
+        ],
       },
       orderBy: {
-        punchedOnAt: "asc",
+        punchedOnAt: "desc",
       },
     });
   }

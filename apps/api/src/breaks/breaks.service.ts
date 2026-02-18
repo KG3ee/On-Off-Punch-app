@@ -44,7 +44,10 @@ export class BreaksService {
     return this.prisma.breakSession.findMany({
       where: {
         userId,
-        localDate,
+        OR: [
+          { localDate },
+          { status: BreakSessionStatus.ACTIVE },
+        ],
       },
       include: {
         breakPolicy: true,
@@ -57,7 +60,7 @@ export class BreaksService {
         },
       },
       orderBy: {
-        startedAt: "asc",
+        startedAt: "desc",
       },
     });
   }
