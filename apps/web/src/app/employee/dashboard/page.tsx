@@ -545,7 +545,7 @@ export default function EmployeeDashboardPage() {
 
       {/* ── Monthly KPI Row ── */}
       {monthlySummary ? (
-        <section className="kpi-grid" style={{ marginBottom: '1rem' }}>
+        <section className="kpi-grid">
           <article className="kpi">
             <p className="kpi-label">Month Hours</p>
             <p className="kpi-value">{fmtDuration(monthlySummary.totalWorkedMinutes)}</p>
@@ -604,19 +604,21 @@ export default function EmployeeDashboardPage() {
             <div className="action-row">
               <button
                 type="button"
-                className="button button-ok"
+                className="punch-btn punch-on"
                 disabled={loading || !!activeSession}
                 onClick={() => void runAction('/attendance/on')}
               >
-                ▶ Punch ON
+                <span className="punch-icon">⏻</span>
+                <span className="punch-label">Punch ON</span>
               </button>
               <button
                 type="button"
-                className="button button-danger"
+                className="punch-btn punch-off"
                 disabled={loading || !activeSession}
                 onClick={() => void runAction('/attendance/off')}
               >
-                ■ Punch OFF
+                <span className="punch-icon">⏼</span>
+                <span className="punch-label">Punch OFF</span>
               </button>
             </div>
           </article>
@@ -625,12 +627,12 @@ export default function EmployeeDashboardPage() {
           <article className="card">
             <h3>Breaks</h3>
             {breakBlockedReason ? (
-              <div className="alert alert-warning" style={{ marginBottom: '0.4rem' }}>{breakBlockedReason}</div>
+              <div className="alert alert-warning">{breakBlockedReason}</div>
             ) : null}
 
             {/* Active break banner */}
             {activeBreak ? (
-              <div className="break-banner" style={{ marginBottom: '0.5rem' }}>
+              <div className="break-banner">
                 <span className="status-dot active" />
                 <span><strong>{activeBreak.breakPolicy.code.toUpperCase()}</strong> · {activeBreak.breakPolicy.name}</span>
                 <span className="elapsed">{activeBreakMinutes}m</span>
