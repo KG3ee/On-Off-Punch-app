@@ -50,6 +50,8 @@ export class BreaksController {
     @Query("teamId") teamId?: string,
     @Query("userId") userId?: string,
     @Query("status") status?: BreakSessionStatus,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
   ) {
     return this.breaksService.listBreakHistory({
       from,
@@ -57,6 +59,8 @@ export class BreaksController {
       teamId,
       userId,
       status,
+      limit,
+      offset,
     });
   }
 

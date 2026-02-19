@@ -66,7 +66,7 @@ export default function AdminLivePage() {
     try {
       const live = await apiFetch<LiveBoard>('/attendance/admin/live');
       const history = await apiFetch<BreakHistoryItem[]>(
-        `/breaks/admin/history?from=${encodeURIComponent(live.localDate)}&to=${encodeURIComponent(live.localDate)}`
+        `/breaks/admin/history?from=${encodeURIComponent(live.localDate)}&to=${encodeURIComponent(live.localDate)}&limit=250`
       );
       setData(live);
       setBreakHistory(history);

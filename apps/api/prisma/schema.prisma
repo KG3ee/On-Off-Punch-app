@@ -204,6 +204,7 @@ model ShiftAssignment {
   shiftPreset ShiftPreset @relation(fields: [shiftPresetId], references: [id], onDelete: Cascade)
 
   @@index([targetType, targetId, effectiveFrom])
+  @@index([targetType, targetId, isActive, effectiveFrom])
   @@index([shiftPresetId])
 }
 
@@ -252,8 +253,10 @@ model DutySession {
   breakSessions BreakSession[]
 
   @@index([userId, localDate])
+  @@index([userId, localDate, status])
   @@index([userId, status])
   @@index([status])
+  @@index([localDate, status])
   @@index([teamId, localDate])
   @@index([status, punchedOnAt])
 }
@@ -320,8 +323,11 @@ model BreakSession {
   cancelledBy User? @relation("CancelledBreakSessions", fields: [cancelledById], references: [id])
 
   @@index([userId, localDate])
+  @@index([userId, localDate, status])
   @@index([userId, status])
   @@index([status])
+  @@index([localDate, status])
+  @@index([startedAt])
 }
 
 model MonthlyReport {

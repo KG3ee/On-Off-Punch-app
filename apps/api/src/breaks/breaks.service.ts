@@ -49,13 +49,20 @@ export class BreaksService {
           { status: BreakSessionStatus.ACTIVE },
         ],
       },
-      include: {
-        breakPolicy: true,
-        dutySession: {
+      select: {
+        id: true,
+        localDate: true,
+        dutySessionId: true,
+        startedAt: true,
+        endedAt: true,
+        expectedDurationMinutes: true,
+        actualMinutes: true,
+        status: true,
+        isOvertime: true,
+        breakPolicy: {
           select: {
-            id: true,
-            shiftDate: true,
-            status: true,
+            code: true,
+            name: true,
           },
         },
       },
@@ -71,13 +78,20 @@ export class BreaksService {
         userId,
         status: BreakSessionStatus.ACTIVE,
       },
-      include: {
-        breakPolicy: true,
-        dutySession: {
+      select: {
+        id: true,
+        localDate: true,
+        dutySessionId: true,
+        startedAt: true,
+        endedAt: true,
+        expectedDurationMinutes: true,
+        actualMinutes: true,
+        status: true,
+        isOvertime: true,
+        breakPolicy: {
           select: {
-            id: true,
-            shiftDate: true,
-            status: true,
+            code: true,
+            name: true,
           },
         },
       },
@@ -93,6 +107,8 @@ export class BreaksService {
     teamId?: string;
     userId?: string;
     status?: BreakSessionStatus;
+    limit?: string;
+    offset?: string;
   }) {
     const today = formatDateInZone(
       new Date(),
@@ -100,6 +116,9 @@ export class BreaksService {
     );
     const from = params.from || today;
     const to = params.to || from;
+
+    const take = this.parseTake(params.limit);
+    const skip = this.parseSkip(params.offset);
 
     return this.prisma.breakSession.findMany({
       where: {
@@ -111,30 +130,35 @@ export class BreaksService {
         ...(params.userId ? { userId: params.userId } : {}),
         ...(params.status ? { status: params.status } : {}),
       },
-      include: {
-        breakPolicy: true,
+      select: {
+        id: true,
+        localDate: true,
+        startedAt: true,
+        endedAt: true,
+        expectedDurationMinutes: true,
+        actualMinutes: true,
+        status: true,
+        isOvertime: true,
+        breakPolicy: {
+          select: {
+            code: true,
+            name: true,
+          },
+        },
         user: {
           select: {
-            id: true,
-            username: true,
             displayName: true,
             team: {
               select: {
-                id: true,
                 name: true,
               },
             },
           },
         },
-        dutySession: {
-          select: {
-            id: true,
-            shiftDate: true,
-            status: true,
-          },
-        },
       },
       orderBy: [{ localDate: "desc" }, { startedAt: "desc" }],
+      ...(take ? { take } : {}),
+      ...(skip ? { skip } : {}),
     });
   }
 
@@ -390,5 +414,19 @@ export class BreaksService {
       return parsed;
     }
     return fallback;
+  }
+
+  private parseTake(limit?: string): number | undefined {
+    if (!limit) return undefined;
+    const parsed = Number(limit);
+    if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+    return Math.min(500, Math.trunc(parsed));
+  }
+
+  private parseSkip(offset?: string): number | undefined {
+    if (!offset) return undefined;
+    const parsed = Number(offset);
+    if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+    return Math.trunc(parsed);
   }
 }

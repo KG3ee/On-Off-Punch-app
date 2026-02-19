@@ -55,6 +55,8 @@ export class AttendanceController {
     @Query("teamId") teamId?: string,
     @Query("userId") userId?: string,
     @Query("status") status?: DutySessionStatus,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
   ) {
     return this.attendanceService.listAttendance({
       from,
@@ -62,6 +64,8 @@ export class AttendanceController {
       teamId,
       userId,
       status,
+      limit,
+      offset,
     });
   }
 }

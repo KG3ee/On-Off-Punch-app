@@ -93,8 +93,8 @@ export default function AdminHistoryPage() {
             if (userId) params.set('userId', userId);
 
             const [dutyData, breakData] = await Promise.all([
-                apiFetch<AttendanceRecord[]>(`/attendance/admin/attendance?${params.toString()}`),
-                apiFetch<BreakRecord[]>(`/breaks/admin/history?${params.toString()}`)
+                apiFetch<AttendanceRecord[]>(`/attendance/admin/attendance?${params.toString()}&limit=500`),
+                apiFetch<BreakRecord[]>(`/breaks/admin/history?${params.toString()}&limit=500`)
             ]);
             setAttendance(dutyData);
             setBreaks(breakData);

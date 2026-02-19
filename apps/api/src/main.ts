@@ -35,6 +35,21 @@ function isAllowedOrigin(origin: string, rules: string[]): boolean {
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const slowRequestMs = Number(process.env.SLOW_REQUEST_LOG_MS || 400);
+
+  app.use((req: any, res: any, next: () => void) => {
+    const startAt = process.hrtime.bigint();
+    res.on("finish", () => {
+      const endAt = process.hrtime.bigint();
+      const durationMs = Number(endAt - startAt) / 1_000_000;
+      if (durationMs >= slowRequestMs) {
+        console.warn(
+          `[SLOW] ${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${durationMs.toFixed(1)}ms`,
+        );
+      }
+    });
+    next();
+  });
 
   app.use(cookieParser());
   app.useGlobalPipes(

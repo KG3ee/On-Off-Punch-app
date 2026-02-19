@@ -254,12 +254,19 @@ export class AttendanceService {
     const [activeDutySessions, todaySummary] = await Promise.all([
       this.prisma.dutySession.findMany({
         where: { status: DutySessionStatus.ACTIVE },
-        include: {
+        select: {
+          id: true,
+          localDate: true,
+          punchedOnAt: true,
+          isLate: true,
+          lateMinutes: true,
           user: { select: { id: true, username: true, displayName: true } },
           team: { select: { id: true, name: true } },
           breakSessions: {
             where: { status: "ACTIVE" },
-            include: {
+            select: {
+              id: true,
+              startedAt: true,
               breakPolicy: {
                 select: { id: true, code: true, name: true, expectedDurationMinutes: true },
               },
@@ -294,7 +301,12 @@ export class AttendanceService {
     teamId?: string;
     userId?: string;
     status?: DutySessionStatus;
+    limit?: string;
+    offset?: string;
   }) {
+    const take = this.parseTake(params.limit);
+    const skip = this.parseSkip(params.offset);
+
     return this.prisma.dutySession.findMany({
       where: {
         localDate: {
@@ -305,13 +317,22 @@ export class AttendanceService {
         ...(params.userId ? { userId: params.userId } : {}),
         ...(params.status ? { status: params.status } : {}),
       },
-      include: {
+      select: {
+        id: true,
+        shiftDate: true,
+        localDate: true,
+        punchedOnAt: true,
+        punchedOffAt: true,
+        status: true,
+        isLate: true,
+        lateMinutes: true,
+        overtimeMinutes: true,
         user: { select: { id: true, username: true, displayName: true, role: true } },
         team: { select: { id: true, name: true } },
-        shiftPreset: { select: { id: true, name: true, timezone: true } },
-        shiftPresetSegment: { select: { id: true, segmentNo: true, startTime: true, endTime: true } },
       },
       orderBy: [{ localDate: "desc" }, { punchedOnAt: "desc" }],
+      ...(take ? { take } : {}),
+      ...(skip ? { skip } : {}),
     });
   }
 
@@ -387,6 +408,20 @@ export class AttendanceService {
       return parsed;
     }
     return fallback;
+  }
+
+  private parseTake(limit?: string): number | undefined {
+    if (!limit) return undefined;
+    const parsed = Number(limit);
+    if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+    return Math.min(500, Math.trunc(parsed));
+  }
+
+  private parseSkip(offset?: string): number | undefined {
+    if (!offset) return undefined;
+    const parsed = Number(offset);
+    if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+    return Math.trunc(parsed);
   }
 
   private localMinuteStamp(localDateTimeValue: string): number {
