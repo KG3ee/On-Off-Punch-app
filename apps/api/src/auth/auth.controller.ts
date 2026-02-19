@@ -10,7 +10,10 @@ import { LoginDto } from "./dto/login.dto";
 type SameSiteMode = "lax" | "strict" | "none";
 
 function parseSameSiteMode(): SameSiteMode {
-  const raw = (process.env.AUTH_COOKIE_SAMESITE || "lax").toLowerCase();
+  const raw = process.env.AUTH_COOKIE_SAMESITE?.toLowerCase();
+  if (!raw) {
+    return process.env.NODE_ENV === "production" ? "none" : "lax";
+  }
   if (raw === "strict" || raw === "none") {
     return raw;
   }
