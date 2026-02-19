@@ -29,16 +29,15 @@ export class AttendanceService {
       highTrustSkewMinutes: this.envNumber("HIGH_TRUST_SKEW_MINUTES", 2),
     });
     const now = eventTime.effectiveAt;
-    const resolvedShift = await this.shiftsService.getSegmentForPunch(user, now);
-    const timezone = resolvedShift?.timezone || process.env.APP_TIMEZONE || "Asia/Dubai";
 
-    // Check for existing active session
-    const existing = await this.prisma.dutySession.findFirst({
-      where: {
-        userId: user.id,
-        status: DutySessionStatus.ACTIVE,
-      },
-    });
+    // Fetch shift resolution + active-session check in parallel
+    const [resolvedShift, existing] = await Promise.all([
+      this.shiftsService.getSegmentForPunch(user, now),
+      this.prisma.dutySession.findFirst({
+        where: { userId: user.id, status: DutySessionStatus.ACTIVE },
+      }),
+    ]);
+    const timezone = resolvedShift?.timezone || process.env.APP_TIMEZONE || "Asia/Dubai";
 
     if (existing) {
       throw new BadRequestException("Already punched ON");
@@ -105,7 +104,8 @@ export class AttendanceService {
       },
     });
 
-    await this.prisma.auditEvent.create({
+    // Fire audit non-blocking — does not affect the response
+    this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
         action: "DUTY_PUNCH_ON",
@@ -123,34 +123,32 @@ export class AttendanceService {
           time: serializeEventTime(eventTime),
         },
       },
-    });
+    }).catch(() => { /* audit failure is non-critical */ });
 
     return created;
   }
 
   async punchOff(user: User, note?: string, clientTimestamp?: string) {
-    let active = await this.prisma.dutySession.findFirst({
-      where: {
-        userId: user.id,
-        status: DutySessionStatus.ACTIVE,
-      },
-      orderBy: {
-        punchedOnAt: "desc",
-      },
-    });
+    // Fetch active session and team data in parallel (team doesn't depend on session)
+    const [activeSession, team] = await Promise.all([
+      this.prisma.dutySession.findFirst({
+        where: { userId: user.id, status: DutySessionStatus.ACTIVE },
+        orderBy: { punchedOnAt: "desc" },
+      }),
+      user.teamId
+        ? this.prisma.team.findUnique({ where: { id: user.teamId } })
+        : Promise.resolve(null),
+    ]);
+
+    let active = activeSession;
 
     if (!active) {
       // Fallback: Check if the session was recently auto-closed while the user was offline.
       // This allows the offline "Punch OFF" action to correct the auto-closed record
       // with the actual client timestamp.
       const lastClosed = await this.prisma.dutySession.findFirst({
-        where: {
-          userId: user.id,
-          status: DutySessionStatus.CLOSED,
-        },
-        orderBy: {
-          punchedOnAt: "desc",
-        },
+        where: { userId: user.id, status: DutySessionStatus.CLOSED },
+        orderBy: { punchedOnAt: "desc" },
       });
 
       if (lastClosed?.note?.includes("AUTO_CLOSED_STALE_SESSION")) {
@@ -183,12 +181,6 @@ export class AttendanceService {
       Math.round((now.getTime() - active.punchedOnAt.getTime()) / 60000),
     );
 
-    const team = user.teamId
-      ? await this.prisma.team.findUnique({
-        where: { id: user.teamId },
-      })
-      : null;
-
     const overtimeMinutes = this.computeOvertimeMinutes(
       team,
       active.punchedOnAt,
@@ -208,7 +200,8 @@ export class AttendanceService {
       },
     });
 
-    await this.prisma.auditEvent.create({
+    // Fire audit non-blocking — does not affect the response
+    this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
         action: "DUTY_PUNCH_OFF",
@@ -225,7 +218,7 @@ export class AttendanceService {
           },
         },
       },
-    });
+    }).catch(() => { /* audit failure is non-critical */ });
 
     return {
       ...updated,
@@ -258,45 +251,32 @@ export class AttendanceService {
     const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
     const date = localDate || formatDateInZone(new Date(), timezone);
 
-    const activeDutySessions = await this.prisma.dutySession.findMany({
-      where: {
-        status: DutySessionStatus.ACTIVE,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
+    const [activeDutySessions, todaySummary] = await Promise.all([
+      this.prisma.dutySession.findMany({
+        where: { status: DutySessionStatus.ACTIVE },
+        include: {
+          user: { select: { id: true, username: true, displayName: true } },
+          team: { select: { id: true, name: true } },
+          breakSessions: {
+            where: { status: "ACTIVE" },
+            include: {
+              breakPolicy: {
+                select: { id: true, code: true, name: true, expectedDurationMinutes: true },
+              },
+            },
+          },
+          shiftPresetSegment: {
+            select: { id: true, segmentNo: true, startTime: true, endTime: true, crossesMidnight: true },
           },
         },
-        team: true,
-        breakSessions: {
-          where: {
-            status: "ACTIVE",
-          },
-          include: {
-            breakPolicy: true,
-          },
-        },
-        shiftPresetSegment: true,
-      },
-      orderBy: {
-        punchedOnAt: "asc",
-      },
-    });
-
-    const todaySummary = await this.prisma.dutySession.aggregate({
-      where: {
-        localDate: date,
-      },
-      _count: {
-        _all: true,
-      },
-      _sum: {
-        lateMinutes: true,
-      },
-    });
+        orderBy: { punchedOnAt: "asc" },
+      }),
+      this.prisma.dutySession.aggregate({
+        where: { localDate: date },
+        _count: { _all: true },
+        _sum: { lateMinutes: true },
+      }),
+    ]);
 
     return {
       localDate: date,
@@ -326,17 +306,10 @@ export class AttendanceService {
         ...(params.status ? { status: params.status } : {}),
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            role: true,
-          },
-        },
-        team: true,
-        shiftPreset: true,
-        shiftPresetSegment: true,
+        user: { select: { id: true, username: true, displayName: true, role: true } },
+        team: { select: { id: true, name: true } },
+        shiftPreset: { select: { id: true, name: true, timezone: true } },
+        shiftPresetSegment: { select: { id: true, segmentNo: true, startTime: true, endTime: true } },
       },
       orderBy: [{ localDate: "desc" }, { punchedOnAt: "desc" }],
     });

@@ -35,78 +35,89 @@ export function AppShell({
   const router = useRouter();
   const isAdminView = pathname?.startsWith('/admin');
   const isEmployeeView = pathname?.startsWith('/employee');
+  const hasNav = isEmployeeView || admin;
 
   async function logout(): Promise<void> {
     try {
       await apiFetch('/auth/logout', { method: 'POST' });
     } catch {
-      // Ignore logout API errors
+      // Ignore
     }
     clearAuth();
     router.push('/login');
   }
 
   function switchView(): void {
-    if (isAdminView) {
-      router.push('/employee/dashboard');
-    } else {
-      router.push('/admin/live');
-    }
+    router.push(isAdminView ? '/employee/dashboard' : '/admin/live');
   }
 
   return (
     <main>
-      <div className="shell">
-        <header className="shell-header">
-          <div>
-            <p className="eyebrow">Modern Punch</p>
-            <h2>{title}</h2>
-            {subtitle ? <p style={{ fontSize: '0.75rem' }}>{subtitle}</p> : null}
+      <header className={`shell-header${hasNav ? ' shell-header--with-nav' : ''}`}>
+        {/* Top bar: brand + actions */}
+        <div className="shell-header-top">
+          <div className="shell-brand">
+            <img src="/icon.svg" className="shell-brand-logo" alt="Punch" />
+            <span className="shell-brand-name">Punch</span>
+            <div className="shell-brand-divider" />
+            <span className="shell-page-title">{title}</span>
           </div>
-          <div className="shell-header-right">
-            <nav className="nav">
-              {isEmployeeView ? (
-                <>
-                  <Link href="/employee/dashboard" className={pathname === '/employee/dashboard' ? 'active' : ''}>
-                    Dashboard
-                  </Link>
-                  <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
-                    🔑 Password
-                  </Link>
-                  <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
-                    📅 Requests
-                  </Link>
-                </>
-              ) : null}
-              {admin
-                ? adminNav.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={pathname === item.href ? 'active' : ''}
-                  >
-                    {item.label}
-                  </Link>
-                ))
-                : null}
-            </nav>
-            <div className="header-actions">
-              {userRole === 'ADMIN' ? (
-                <button
-                  type="button"
-                  className="button button-ghost button-sm"
-                  onClick={switchView}
-                  title={isAdminView ? 'Switch to Employee view' : 'Switch to Admin view'}
-                >
-                  {isAdminView ? '👤 Employee View' : '🛡️ Admin View'}
-                </button>
-              ) : null}
-              <button type="button" className="button button-ghost button-sm" onClick={() => void logout()}>
-                Logout
+
+          <div className="shell-header-actions">
+            {subtitle ? (
+              <span className="shell-subtitle">{subtitle}</span>
+            ) : null}
+            {userRole === 'ADMIN' ? (
+              <button
+                type="button"
+                className="button button-ghost button-sm"
+                onClick={switchView}
+              >
+                {isAdminView ? 'Employee' : 'Admin'}
               </button>
-            </div>
+            ) : null}
+            <button
+              type="button"
+              className="button button-ghost button-sm"
+              onClick={() => void logout()}
+            >
+              Sign out
+            </button>
           </div>
-        </header>
+        </div>
+
+        {/* Nav row — only when there are links */}
+        {hasNav ? (
+          <nav className="shell-nav">
+            {isEmployeeView ? (
+              <>
+                <Link href="/employee/dashboard" className={pathname === '/employee/dashboard' ? 'active' : ''}>
+                  Dashboard
+                </Link>
+                <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
+                  Requests
+                </Link>
+                <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
+                  Password
+                </Link>
+              </>
+            ) : null}
+            {admin
+              ? adminNav.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={pathname === item.href ? 'active' : ''}
+                >
+                  {item.label}
+                </Link>
+              ))
+              : null}
+          </nav>
+        ) : null}
+      </header>
+
+      <div className="shell">
         {children}
       </div>
     </main>

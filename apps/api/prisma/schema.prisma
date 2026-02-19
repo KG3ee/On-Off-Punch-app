@@ -252,9 +252,12 @@ model DutySession {
   breakSessions BreakSession[]
 
   @@index([userId, localDate])
+  @@index([userId, status])
   @@index([status])
   @@index([teamId, localDate])
+  @@index([status, punchedOnAt])
 }
+
 
 model ShiftChangeRequest {
   id              String   @id @default(cuid())
@@ -317,6 +320,7 @@ model BreakSession {
   cancelledBy User? @relation("CancelledBreakSessions", fields: [cancelledById], references: [id])
 
   @@index([userId, localDate])
+  @@index([userId, status])
   @@index([status])
 }
 

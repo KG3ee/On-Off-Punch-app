@@ -140,38 +140,28 @@ export class BreaksService {
 
   async startBreak(user: User, code: string, clientTimestamp?: string) {
     const normalizedCode = code.toLowerCase().trim();
-    const policy = await this.prisma.breakPolicy.findUnique({
-      where: {
-        code: normalizedCode,
-      },
-    });
+
+    // Fetch all three prerequisites in parallel
+    const [policy, activeDuty, activeBreak] = await Promise.all([
+      this.prisma.breakPolicy.findUnique({ where: { code: normalizedCode } }),
+      this.prisma.dutySession.findFirst({
+        where: { userId: user.id, status: DutySessionStatus.ACTIVE },
+        orderBy: { punchedOnAt: "desc" },
+      }),
+      this.prisma.breakSession.findFirst({
+        where: { userId: user.id, status: BreakSessionStatus.ACTIVE },
+      }),
+    ]);
 
     if (!policy || !policy.isActive) {
       throw new NotFoundException("Break policy not found");
     }
-
-    const activeDuty = await this.prisma.dutySession.findFirst({
-      where: {
-        userId: user.id,
-        status: DutySessionStatus.ACTIVE,
-      },
-      orderBy: {
-        punchedOnAt: "desc",
-      },
-    });
 
     if (!activeDuty) {
       throw new BadRequestException(
         "Cannot start break without active duty session",
       );
     }
-
-    const activeBreak = await this.prisma.breakSession.findFirst({
-      where: {
-        userId: user.id,
-        status: BreakSessionStatus.ACTIVE,
-      },
-    });
 
     if (activeBreak) {
       throw new BadRequestException("You already have an active break");
@@ -228,7 +218,7 @@ export class BreaksService {
       },
     });
 
-    await this.prisma.auditEvent.create({
+    this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
         action: isOverLimit ? "BREAK_START_OVER_LIMIT" : "BREAK_START",
@@ -248,7 +238,7 @@ export class BreaksService {
           },
         },
       },
-    });
+    }).catch(() => { /* audit failure is non-critical */ });
 
     return {
       ...created,
@@ -309,7 +299,7 @@ export class BreaksService {
       },
     });
 
-    await this.prisma.auditEvent.create({
+    this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
         action: "BREAK_END",
@@ -328,7 +318,7 @@ export class BreaksService {
           },
         },
       },
-    });
+    }).catch(() => { /* audit failure is non-critical */ });
 
     return updated;
   }
@@ -373,7 +363,7 @@ export class BreaksService {
       },
     });
 
-    await this.prisma.auditEvent.create({
+    this.prisma.auditEvent.create({
       data: {
         actorUserId: user.id,
         action: "BREAK_CANCEL",
@@ -389,7 +379,7 @@ export class BreaksService {
           },
         },
       },
-    });
+    }).catch(() => { /* audit failure is non-critical */ });
 
     return updated;
   }

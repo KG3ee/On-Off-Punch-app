@@ -44,44 +44,63 @@ export default function LoginPage() {
 
   return (
     <main className="login-wrap">
-      <section className="login-card card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <p className="eyebrow">Authentication</p>
-            <h1>Sign In</h1>
-          </div>
+      <div className="login-card">
+        <div className="login-header">
+          <img src="/icon.svg" className="login-logo" alt="Punch" />
+          <h1>Welcome back</h1>
+          <p>Sign in with your username and password.</p>
         </div>
-        <p>Login with admin-created username and password.</p>
 
-        <form className="card form-grid" onSubmit={(event) => void handleSubmit(event)}>
-          <input
-            className="input"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder="Username"
-            autoComplete="username"
-            required
-          />
-          <input
-            className="input"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Password"
-            autoComplete="current-password"
-            required
-          />
-          <button type="submit" className="button button-primary" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign in'}
+        <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+          <div className="form-field">
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              className="input"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Enter your username"
+              autoComplete="username"
+              autoFocus
+              required
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              className="input"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          {error ? (
+            <div className="alert alert-error">{error}</div>
+          ) : null}
+
+          <button
+            type="submit"
+            className="button button-primary"
+            disabled={loading}
+            style={{ width: '100%', justifyContent: 'center', padding: '0.625rem' }}
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
-
-        <p style={{ fontSize: '0.82rem' }}>
-          New employee? <Link href="/register" className="tag brand">Request account</Link>
+        <p style={{ fontSize: '0.8125rem', textAlign: 'center' }}>
+          New employee?{' '}
+          <Link href="/register" className="tag brand" style={{ textDecoration: 'none' }}>
+            Request an account
+          </Link>
         </p>
-      </section>
+      </div>
     </main>
   );
 }

@@ -127,9 +127,7 @@ export default function EmployeeDashboardPage() {
   const [pendingActions, setPendingActions] = useState(0);
   const [failedActions, setFailedActions] = useState(0);
   const [queueActions, setQueueActions] = useState<QueuedAction[]>([]);
-  const [isOffline, setIsOffline] = useState(
-    typeof navigator !== 'undefined' ? !navigator.onLine : false
-  );
+  const [isOffline, setIsOffline] = useState(false);
   const [clockSkewMinutes, setClockSkewMinutes] = useState<number | null>(null);
   const [serverTimeZone, setServerTimeZone] = useState('');
   const syncedActionIdsRef = useRef<Set<string>>(new Set());
@@ -267,13 +265,11 @@ export default function EmployeeDashboardPage() {
   }, [activeBreak, activeSession]);
 
   useEffect(() => {
-    function onOnline() {
-      setIsOffline(false);
-    }
+    // Sync the real offline status after hydration (safe — runs client-only)
+    setIsOffline(!navigator.onLine);
 
-    function onOffline() {
-      setIsOffline(true);
-    }
+    function onOnline() { setIsOffline(false); }
+    function onOffline() { setIsOffline(true); }
 
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
@@ -388,6 +384,24 @@ export default function EmployeeDashboardPage() {
     }
   }
 
+  // Targeted refresh: only re-fetch what the action actually changed, then
+  // kick off a full background reload so everything stays in sync.
+  async function loadTargeted(endpoints: ('sessions' | 'breaks' | 'summary')[]): Promise<void> {
+    const fetchers = {
+      sessions: () => apiFetch<DutySession[]>('/attendance/me/today'),
+      breaks:   () => apiFetch<BreakSession[]>('/breaks/me/today'),
+      summary:  () => apiFetch<MonthlySummary>('/attendance/me/summary'),
+    };
+    const results = await Promise.allSettled(endpoints.map(e => fetchers[e]()));
+    endpoints.forEach((ep, i) => {
+      const r = results[i];
+      if (r.status !== 'fulfilled') return;
+      if (ep === 'sessions') setSessions(r.value as DutySession[]);
+      else if (ep === 'breaks') setBreakSessions(r.value as BreakSession[]);
+      else if (ep === 'summary') setMonthlySummary(r.value as MonthlySummary);
+    });
+  }
+
   async function runAction(path: string, body?: Record<string, unknown>): Promise<void> {
     setActionMessage('');
     setError('');
@@ -398,7 +412,16 @@ export default function EmployeeDashboardPage() {
     if (result.ok) {
       setActionMessage('✅ Action completed');
       setTimeout(() => setActionMessage(''), 3000);
-      await loadData();
+
+      // Fast targeted refresh for the changed data only, then sync the rest in background
+      if (path === '/attendance/on' || path === '/attendance/off') {
+        await loadTargeted(['sessions', 'breaks', 'summary']);
+      } else if (path.startsWith('/breaks')) {
+        await loadTargeted(['breaks']);
+      } else {
+        await loadData();
+      }
+      loadData({ background: true });
     } else if (result.queued) {
       setActionMessage('⏳ Action queued. It will sync automatically when connection is available.');
       setTimeout(() => setActionMessage(''), 5000);
@@ -577,7 +600,7 @@ export default function EmployeeDashboardPage() {
         <div className="grid">
           {/* Duty */}
           <article className="card">
-            <h3>⚡ Duty</h3>
+            <h3>Duty</h3>
             <div className="action-row">
               <button
                 type="button"
@@ -600,7 +623,7 @@ export default function EmployeeDashboardPage() {
 
           {/* Breaks */}
           <article className="card">
-            <h3>☕ Breaks</h3>
+            <h3>Breaks</h3>
             {breakBlockedReason ? (
               <div className="alert alert-warning" style={{ marginBottom: '0.4rem' }}>{breakBlockedReason}</div>
             ) : null}
@@ -640,7 +663,7 @@ export default function EmployeeDashboardPage() {
         {/* Right column — Current Session */}
         <div className="grid">
           <article className="card">
-            <h3>📋 Current Session</h3>
+            <h3>Current Session</h3>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -664,7 +687,7 @@ export default function EmployeeDashboardPage() {
                       <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
                     </tr>
                   ) : (
-                    <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>Not on duty</td></tr>
+                    <tr><td colSpan={5} className="table-empty">Not on duty</td></tr>
                   )}
                 </tbody>
               </table>
@@ -672,7 +695,7 @@ export default function EmployeeDashboardPage() {
           </article>
 
           <article className="card">
-            <h3>☕ Session Breaks</h3>
+            <h3>Session Breaks</h3>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -699,7 +722,7 @@ export default function EmployeeDashboardPage() {
                     </tr>
                   ))}
                   {sessionBreaks.length === 0 ? (
-                    <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>{activeSession ? 'No breaks this session' : 'Not on duty'}</td></tr>
+                    <tr><td colSpan={5} className="table-empty">{activeSession ? 'No breaks this session' : 'Not on duty'}</td></tr>
                   ) : null}
                 </tbody>
               </table>
