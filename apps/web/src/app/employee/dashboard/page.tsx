@@ -291,7 +291,7 @@ export default function EmployeeDashboardPage() {
       if (e.code === 'Space') {
         e.preventDefault();
         void runAction('/breaks/end');
-      } else if (e.code === 'Escape') {
+      } else if (e.code === 'Escape' && (Date.now() - new Date(activeBreak.startedAt).getTime()) < 120000) {
         e.preventDefault();
         void runAction('/breaks/cancel');
       }
@@ -626,11 +626,6 @@ export default function EmployeeDashboardPage() {
           {/* Breaks */}
           <article className="card">
             <h3>Breaks</h3>
-            {breakBlockedReason ? (
-              <div className="alert alert-warning">{breakBlockedReason}</div>
-            ) : null}
-
-            {/* Active break banner */}
             {activeBreak ? (
               <div className="break-banner">
                 <span className="status-dot active" />
@@ -641,24 +636,30 @@ export default function EmployeeDashboardPage() {
                   <button className="button button-ok button-sm" disabled={loading} onClick={() => void runAction('/breaks/end')} title="Space bar">
                     End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
                   </button>
-                  <button className="button button-danger button-sm" disabled={loading} onClick={() => void runAction('/breaks/cancel')} title="Escape">
-                    Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
-                  </button>
+                  {activeBreakMinutes < 2 ? (
+                    <button className="button button-danger button-sm" disabled={loading} onClick={() => void runAction('/breaks/cancel')} title="Escape">
+                      Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
+                    </button>
+                  ) : null}
                 </div>
               </div>
-            ) : null}
-
-            {/* Break policy chips */}
-            <div className="break-chips-layout">
-              {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
-              {bottomRowPolicies.length > 0 ? (
-                <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div>
-              ) : null}
-              {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
-              {policies.length === 0 ? (
-                <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p>
-              ) : null}
-            </div>
+            ) : (
+              <>
+                {breakBlockedReason ? (
+                  <div className="alert alert-warning">{breakBlockedReason}</div>
+                ) : null}
+                <div className="break-chips-layout">
+                  {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
+                  {bottomRowPolicies.length > 0 ? (
+                    <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div>
+                  ) : null}
+                  {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
+                  {policies.length === 0 ? (
+                    <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p>
+                  ) : null}
+                </div>
+              </>
+            )}
           </article>
         </div>
 
