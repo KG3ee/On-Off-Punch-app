@@ -1175,3 +1175,40 @@ main > .shell {
   font-size: 0.8125rem;
   text-align: center;
 }
+
+/* ── Mobile block page ── */
+.mobile-block-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.mobile-block-card {
+  width: min(420px, 94vw);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.625rem;
+  text-align: center;
+}
+
+.mobile-block-logo {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 0.125rem;
+  display: block;
+}
+
+.mobile-block-card h1 {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.mobile-block-card p {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.45;
+}

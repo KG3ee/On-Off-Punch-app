@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { clearAuth } from '@/lib/auth';
+import { MobileBlockedNotice, useIsMobileClient } from '@/components/mobile-block';
 import { UserRole } from '@/types/auth';
 
 type NavItem = {
@@ -36,6 +37,7 @@ export function AppShell({
   const isAdminView = pathname?.startsWith('/admin');
   const isEmployeeView = pathname?.startsWith('/employee');
   const hasNav = isEmployeeView || admin;
+  const isMobile = useIsMobileClient();
 
   async function logout(): Promise<void> {
     try {
@@ -49,6 +51,10 @@ export function AppShell({
 
   function switchView(): void {
     router.push(isAdminView ? '/employee/dashboard' : '/admin/live');
+  }
+
+  if (isEmployeeView && isMobile) {
+    return <MobileBlockedNotice title="Office desktop required" />;
   }
 
   return (

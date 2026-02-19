@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { MobileBlockedNotice, useIsMobileClient } from '@/components/mobile-block';
 
 type RegisterRequestResult = {
   id: string;
@@ -12,6 +13,7 @@ type RegisterRequestResult = {
 };
 
 export default function RegisterPage() {
+  const isMobile = useIsMobileClient();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -47,6 +49,10 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (isMobile) {
+    return <MobileBlockedNotice title="Office desktop required" />;
   }
 
   return (
