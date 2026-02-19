@@ -1,5 +1,3 @@
-import { getAccessToken } from './auth';
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
 type ApiFetchOptions = RequestInit & {
@@ -7,15 +5,10 @@ type ApiFetchOptions = RequestInit & {
 };
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const token = getAccessToken();
   const headers = new Headers(options.headers || {});
 
   if (!headers.has('Content-Type') && options.body) {
     headers.set('Content-Type', 'application/json');
-  }
-
-  if (!options.skipAuth && token) {
-    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_BASE}${path}`, {

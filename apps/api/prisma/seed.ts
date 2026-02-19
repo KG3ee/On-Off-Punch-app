@@ -5,9 +5,15 @@ const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
   const adminUsername = (process.env.SEED_ADMIN_USERNAME || 'admin').trim();
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD?.trim();
   if (!adminUsername) {
     throw new Error('SEED_ADMIN_USERNAME must not be blank');
+  }
+  if (!adminPassword) {
+    throw new Error('SEED_ADMIN_PASSWORD is required and must not be blank');
+  }
+  if (adminPassword.length < 12) {
+    throw new Error('SEED_ADMIN_PASSWORD must be at least 12 characters');
   }
   const parsedRounds = Number(process.env.BCRYPT_ROUNDS || 12);
   const rounds = Number.isFinite(parsedRounds) && parsedRounds > 0 ? parsedRounds : 12;
@@ -93,7 +99,6 @@ async function main(): Promise<void> {
       firstName: 'Team',
       lastName: 'A',
       displayName: 'Team A Candidate',
-      phoneLast4: '1001',
       defaultTeamId: teamA.id,
       isActive: true
     },
@@ -102,7 +107,6 @@ async function main(): Promise<void> {
       firstName: 'Team',
       lastName: 'A',
       displayName: 'Team A Candidate',
-      phoneLast4: '1001',
       defaultTeamId: teamA.id,
       isActive: true
     }
@@ -114,7 +118,6 @@ async function main(): Promise<void> {
       firstName: 'Team',
       lastName: 'B',
       displayName: 'Team B Candidate',
-      phoneLast4: '2001',
       defaultTeamId: teamB.id,
       isActive: true
     },
@@ -123,7 +126,6 @@ async function main(): Promise<void> {
       firstName: 'Team',
       lastName: 'B',
       displayName: 'Team B Candidate',
-      phoneLast4: '2001',
       defaultTeamId: teamB.id,
       isActive: true
     }
@@ -205,7 +207,7 @@ async function main(): Promise<void> {
   }
 
   // eslint-disable-next-line no-console
-  console.log(`Seed complete. Admin login: ${adminUsername} / ${adminPassword} (change it after first login).`);
+  console.log(`Seed complete. Admin username: ${adminUsername}. Password was set from SEED_ADMIN_PASSWORD.`);
 }
 
 main()

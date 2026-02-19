@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
+import { resolveJwtSecret } from "../common/config/jwt-secret";
 import { UsersModule } from "../users/users.module";
 import { BreaksController } from "./breaks.controller";
 import { BreaksService } from "./breaks.service";
@@ -8,7 +9,7 @@ import { BreaksService } from "./breaks.service";
   imports: [
     UsersModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || "dev-secret",
+      secret: resolveJwtSecret(),
       signOptions: { expiresIn: "8h" },
     }),
   ],

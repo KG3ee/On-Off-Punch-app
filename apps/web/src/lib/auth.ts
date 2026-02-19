@@ -2,12 +2,13 @@ const TOKEN_KEY = 'modern_punch_access_token';
 
 export function setAccessToken(token: string): void {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(TOKEN_KEY, token);
+  if (token) {
+    window.localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 export function getAccessToken(): string {
-  if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem(TOKEN_KEY) || '';
+  return '';
 }
 
 export function clearAuth(): void {

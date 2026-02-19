@@ -7,6 +7,23 @@ import { AuthService } from "./auth.service";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { LoginDto } from "./dto/login.dto";
 
+type SameSiteMode = "lax" | "strict" | "none";
+
+function parseSameSiteMode(): SameSiteMode {
+  const raw = (process.env.AUTH_COOKIE_SAMESITE || "lax").toLowerCase();
+  if (raw === "strict" || raw === "none") {
+    return raw;
+  }
+  return "lax";
+}
+
+function parseSecureFlag(sameSite: SameSiteMode): boolean {
+  const raw = process.env.AUTH_COOKIE_SECURE;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return process.env.NODE_ENV === "production" || sameSite === "none";
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -17,15 +34,17 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.login(dto);
+    const sameSite = parseSameSiteMode();
+    const secure = parseSecureFlag(sameSite);
 
     res.cookie("access_token", result.accessToken, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite,
+      secure,
       maxAge: 8 * 60 * 60 * 1000,
     });
 
-    return result;
+    return { user: result.user };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -39,10 +58,13 @@ export class AuthController {
 
   @Post("logout")
   logout(@Res({ passthrough: true }) res: Response) {
+    const sameSite = parseSameSiteMode();
+    const secure = parseSecureFlag(sameSite);
+
     res.clearCookie("access_token", {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite,
+      secure,
     });
 
     return {

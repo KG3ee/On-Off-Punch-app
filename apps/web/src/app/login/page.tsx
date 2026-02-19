@@ -4,11 +4,9 @@ import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { setAccessToken } from '@/lib/auth';
 import { MeUser } from '@/types/auth';
 
 type LoginResult = {
-  accessToken: string;
   user: MeUser;
 };
 
@@ -31,8 +29,6 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
         skipAuth: true
       });
-
-      setAccessToken(result.accessToken);
 
       if (result.user.role === 'ADMIN') {
         router.push('/admin/live');
