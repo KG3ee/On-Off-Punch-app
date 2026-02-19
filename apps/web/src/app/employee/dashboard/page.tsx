@@ -291,7 +291,7 @@ export default function EmployeeDashboardPage() {
       if (e.code === 'Space') {
         e.preventDefault();
         void runAction('/breaks/end');
-      } else if (e.code === 'Escape' && (Date.now() - new Date(activeBreak.startedAt).getTime()) < 120000) {
+      } else if (e.code === 'Escape' && activeBreak && (Date.now() - new Date(activeBreak.startedAt).getTime()) < 120000) {
         e.preventDefault();
         void runAction('/breaks/cancel');
       }
