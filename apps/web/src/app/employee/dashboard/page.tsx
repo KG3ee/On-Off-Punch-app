@@ -718,9 +718,15 @@ export default function EmployeeDashboardPage() {
                       <td className="mono">{session.endedAt ? fmtTime(session.endedAt) : '—'}</td>
                       <td>{formatBreakMinutes(session)}</td>
                       <td>
-                        <span className={`tag ${session.status === 'ACTIVE' ? 'ok' : session.status === 'CANCELLED' ? 'danger' : ''}`}>
-                          {session.status}
-                        </span>
+                        {session.status === 'CANCELLED' ? (
+                          <span className="tag danger">Cancelled</span>
+                        ) : session.status === 'ACTIVE' ? (
+                          <span className="tag ok">Active</span>
+                        ) : session.isOvertime ? (
+                          <span className="tag warning">Late</span>
+                        ) : (
+                          <span className="tag brand">On time</span>
+                        )}
                       </td>
                     </tr>
                   ))}
