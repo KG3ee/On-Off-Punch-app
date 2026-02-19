@@ -960,8 +960,11 @@ main > .shell {
   }
 
   .shell-header-top {
-    padding: 0 1rem;
-    height: 48px;
+    padding: 0.5rem 0.75rem;
+    min-height: 48px;
+    height: auto;
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .shell-brand-name {
@@ -974,6 +977,13 @@ main > .shell {
 
   .shell-subtitle {
     display: none; /* save space */
+  }
+
+  .shell-header-actions {
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.25rem;
   }
 
   /* Content */
@@ -1049,10 +1059,39 @@ main > .shell {
   /* Toolbar */
   .toolbar {
     gap: 0.375rem;
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
-  .toolbar .input {
-    max-width: 100%;
+  .toolbar > * {
+    min-width: 0;
+  }
+
+  .toolbar .input,
+  .toolbar .select,
+  .toolbar .button {
+    width: 100% !important;
+    max-width: none;
+  }
+
+  .toolbar .nav {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.125rem;
+  }
+
+  .toolbar-spacer {
+    display: none;
+  }
+
+  .table-wrap {
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
+  }
+
+  .table-wrap th,
+  .table-wrap td {
+    white-space: nowrap;
   }
 
   /* Landing */
