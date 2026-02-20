@@ -543,24 +543,93 @@ export default function EmployeeDashboardPage() {
     }
   }, [error, actionMessage]);
 
-  const reportMealReady = async (mealName: string) => {
+  const [mealSlideX, setMealSlideX] = useState(0);
+  const [mealSliding, setMealSliding] = useState(false);
+  const [mealSent, setMealSent] = useState(false);
+  const [mealSentTime, setMealSentTime] = useState<number | null>(null);
+  const mealTrackRef = useRef<HTMLDivElement>(null);
+  const mealStartXRef = useRef(0);
+  const mealTrackWidthRef = useRef(0);
+  const MEAL_THUMB_SIZE = 56;
+  const MEAL_CONFIRM_THRESHOLD = 0.85;
+
+  const mealCooldownRemaining = useMemo(() => {
+    if (!mealSentTime) return 0;
+    const elapsed = (nowTick - mealSentTime) / 60000;
+    return Math.max(0, Math.ceil(30 - elapsed));
+  }, [mealSentTime, nowTick]);
+
+  const handleMealTouchStart = (e: React.TouchEvent) => {
+    if (mealSent || mealCooldownRemaining > 0 || (loading && !isOffline)) return;
+    const track = mealTrackRef.current;
+    if (!track) return;
+    mealTrackWidthRef.current = track.getBoundingClientRect().width - MEAL_THUMB_SIZE;
+    mealStartXRef.current = e.touches[0].clientX;
+    setMealSliding(true);
+  };
+
+  const handleMealMouseDown = (e: React.MouseEvent) => {
+    if (mealSent || mealCooldownRemaining > 0 || (loading && !isOffline)) return;
+    const track = mealTrackRef.current;
+    if (!track) return;
+    mealTrackWidthRef.current = track.getBoundingClientRect().width - MEAL_THUMB_SIZE;
+    mealStartXRef.current = e.clientX;
+    setMealSliding(true);
+  };
+
+  useEffect(() => {
+    if (!mealSliding) return;
+    const handleMove = (clientX: number) => {
+      const dx = clientX - mealStartXRef.current;
+      setMealSlideX(Math.max(0, Math.min(mealTrackWidthRef.current, dx)));
+    };
+    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); handleMove(e.touches[0].clientX); };
+    const onMouseMove = (e: MouseEvent) => handleMove(e.clientX);
+    const onEnd = () => {
+      setMealSliding(false);
+      const ratio = mealSlideX / mealTrackWidthRef.current;
+      if (ratio >= MEAL_CONFIRM_THRESHOLD) {
+        void submitMealReady();
+      } else {
+        setMealSlideX(0);
+      }
+    };
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onEnd);
+    return () => {
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onEnd);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onEnd);
+    };
+  }, [mealSliding, mealSlideX]);
+
+  const submitMealReady = async () => {
     try {
       setLoading(true);
       setError('');
       const now = new Date();
-      const payload = {
-        requestedDate: now.toISOString(),
-        requestedTime: now.toTimeString().slice(0, 5),
-        destination: 'Kitchen',
-        purpose: `${mealName} Ready - Pickup requested`
-      };
+      const hour = now.getHours();
+      const mealName = hour < 11 ? 'Breakfast' : hour < 15 ? 'Lunch' : 'Dinner';
       await apiFetch('/driver-requests', {
         method: 'POST',
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          requestedDate: now.toISOString(),
+          requestedTime: now.toTimeString().slice(0, 5),
+          destination: 'Kitchen',
+          purpose: `${mealName} Ready - Pickup requested`
+        })
       });
+      setMealSent(true);
+      setMealSentTime(Date.now());
+      setMealSlideX(0);
       setActionMessage(`${mealName} reported ready! Driver requested.`);
+      setTimeout(() => { setMealSent(false); }, 3000);
     } catch (e: any) {
-      setError(e.message || `Failed to report ${mealName}`);
+      setError(e.message || 'Failed to report meal');
+      setMealSlideX(0);
     } finally {
       setLoading(false);
     }
@@ -653,7 +722,7 @@ export default function EmployeeDashboardPage() {
     >
 
       {/* ── Monthly KPI Row ── */}
-      {monthlySummary ? (
+      {monthlySummary && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
         <section className="kpi-grid">
           <article className="kpi">
             <p className="kpi-label">Month Hours</p>
@@ -687,15 +756,17 @@ export default function EmployeeDashboardPage() {
             {activeSession ? fmtDuration(activeDutyMinutes) : 'Off'}
           </p>
         </article>
-        <article className="kpi">
-          <p className="kpi-label">Break</p>
-          <p className="kpi-value">
-            {activeBreak ? (
-              <span style={{ color: 'var(--ok)' }}>{activeBreak.breakPolicy.code.toUpperCase()}</span>
-            ) : 'None'}
-          </p>
-        </article>
-        {activeSession?.isLate ? (
+        {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+          <article className="kpi">
+            <p className="kpi-label">Break</p>
+            <p className="kpi-value">
+              {activeBreak ? (
+                <span style={{ color: 'var(--ok)' }}>{activeBreak.breakPolicy.code.toUpperCase()}</span>
+              ) : 'None'}
+            </p>
+          </article>
+        ) : null}
+        {activeSession?.isLate && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="kpi">
             <p className="kpi-label">Late</p>
             <p className="kpi-value" style={{ color: 'var(--danger)' }}>{activeSession.lateMinutes}m</p>
@@ -734,36 +805,77 @@ export default function EmployeeDashboardPage() {
 
           {me?.role === 'CHEF' ? (
             <article className="card">
-              <h3>Meals Ready</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-                <button 
-                  type="button" 
-                  className="button button-primary" 
-                  style={{ justifyContent: 'center', padding: '1rem', fontSize: '1rem' }}
-                  onClick={() => reportMealReady('Breakfast')}
-                  disabled={loading && !isOffline}
+              <h3>🍽️ Meal Ready</h3>
+              <div
+                ref={mealTrackRef}
+                className="slide-track"
+                style={{
+                  position: 'relative',
+                  height: `${MEAL_THUMB_SIZE}px`,
+                  borderRadius: `${MEAL_THUMB_SIZE / 2}px`,
+                  background: mealSent
+                    ? 'var(--ok)'
+                    : mealCooldownRemaining > 0
+                    ? 'var(--surface-alt, #2a2a3e)'
+                    : 'linear-gradient(90deg, var(--surface-alt, #2a2a3e) 0%, var(--brand) 100%)',
+                  overflow: 'hidden',
+                  marginTop: '0.5rem',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  opacity: mealCooldownRemaining > 0 ? 0.5 : 1,
+                  transition: 'background 0.3s, opacity 0.3s',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: 'rgba(255,255,255,0.5)',
+                    pointerEvents: 'none',
+                    letterSpacing: '0.03em',
+                  }}
                 >
-                  🍳 Breakfast Ready
-                </button>
-                <button 
-                  type="button" 
-                  className="button button-primary" 
-                  style={{ justifyContent: 'center', padding: '1rem', fontSize: '1rem' }}
-                  onClick={() => reportMealReady('Lunch')}
-                  disabled={loading && !isOffline}
+                  {mealSent
+                    ? '✓ Sent!'
+                    : mealCooldownRemaining > 0
+                    ? `Wait ${mealCooldownRemaining}m`
+                    : 'Slide to report meal ready →'}
+                </div>
+
+                <div
+                  onTouchStart={handleMealTouchStart}
+                  onMouseDown={handleMealMouseDown}
+                  style={{
+                    position: 'absolute',
+                    top: 3,
+                    left: 3 + mealSlideX,
+                    width: MEAL_THUMB_SIZE - 6,
+                    height: MEAL_THUMB_SIZE - 6,
+                    borderRadius: '50%',
+                    background: mealSent ? '#fff' : 'var(--brand)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.4rem',
+                    cursor: mealCooldownRemaining > 0 ? 'not-allowed' : 'grab',
+                    transition: mealSliding ? 'none' : 'left 0.3s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    zIndex: 2,
+                  }}
                 >
-                  🍲 Lunch Ready
-                </button>
-                <button 
-                  type="button" 
-                  className="button button-primary" 
-                  style={{ justifyContent: 'center', padding: '1rem', fontSize: '1rem' }}
-                  onClick={() => reportMealReady('Dinner')}
-                  disabled={loading && !isOffline}
-                >
-                  🍽️ Dinner Ready
-                </button>
+                  {mealSent ? '✓' : '🍽️'}
+                </div>
               </div>
+              {mealCooldownRemaining > 0 && (
+                <p style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: '0.375rem', textAlign: 'center' }}>
+                  Cooldown: {mealCooldownRemaining} min remaining
+                </p>
+              )}
             </article>
           ) : null}
 
@@ -820,7 +932,7 @@ export default function EmployeeDashboardPage() {
                     <th>On</th>
                     <th>Off</th>
                     <th>Status</th>
-                    <th>Late</th>
+                    {me?.role !== 'MAID' && me?.role !== 'CHEF' ? <th>Late</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -832,10 +944,12 @@ export default function EmployeeDashboardPage() {
                       <td>
                         <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
                       </td>
-                      <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
+                      {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+                        <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
+                      ) : null}
                     </tr>
                   ) : (
-                    <tr><td colSpan={5} className="table-empty">Not on duty</td></tr>
+                    <tr><td colSpan={me?.role === 'MAID' || me?.role === 'CHEF' ? 4 : 5} className="table-empty">Not on duty</td></tr>
                   )}
                 </tbody>
               </table>
