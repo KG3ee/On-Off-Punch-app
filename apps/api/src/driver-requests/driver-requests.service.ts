@@ -93,11 +93,11 @@ export class DriverRequestsService {
     });
   }
 
-  async listAvailableForDrivers(): Promise<DriverRequestWithRelations[]> {
+  async listAvailableForDrivers(driverId: string): Promise<DriverRequestWithRelations[]> {
     return this.prisma.driverRequest.findMany({
       where: {
         status: DriverRequestStatus.APPROVED,
-        driverId: null
+        driverId
       },
       include: this.getInclude(),
       orderBy: { requestedDate: 'asc' }
@@ -115,7 +115,8 @@ export class DriverRequestsService {
   async approve(
     requestId: string,
     reviewerId: string,
-    adminNote?: string
+    adminNote?: string,
+    driverId?: string
   ): Promise<DriverRequestWithRelations> {
     const existing = await this.prisma.driverRequest.findUnique({
       where: { id: requestId },
@@ -128,13 +129,24 @@ export class DriverRequestsService {
       throw new BadRequestException('Only pending requests can be approved');
     }
 
+    if (driverId) {
+      const driver = await this.prisma.user.findUnique({
+        where: { id: driverId },
+        select: { role: true }
+      });
+      if (!driver || driver.role !== Role.DRIVER) {
+        throw new BadRequestException('Selected user is not a driver');
+      }
+    }
+
     return this.prisma.driverRequest.update({
       where: { id: requestId },
       data: {
         status: DriverRequestStatus.APPROVED,
         reviewedById: reviewerId,
         reviewedAt: new Date(),
-        adminNote: adminNote ?? null
+        adminNote: adminNote ?? null,
+        driverId: driverId ?? null
       },
       include: this.getInclude()
     });

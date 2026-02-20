@@ -78,6 +78,8 @@ export default function AdminRequestsPage() {
   const [approvingWithPreset, setApprovingWithPreset] = useState(false);
 
   const [driverActionId, setDriverActionId] = useState<string | null>(null);
+  const [driverApproveTarget, setDriverApproveTarget] = useState<DriverRequest | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState('');
 
   useEffect(() => {
     void load();
@@ -165,16 +167,30 @@ export default function AdminRequestsPage() {
     }
   }
 
-  async function approveDriverRequest(id: string) {
-    setDriverActionId(id);
+  function openDriverApproveModal(req: DriverRequest) {
+    setDriverApproveTarget(req);
+    setSelectedDriverId(drivers[0]?.id || '');
+    setError('');
+    setMessage('');
+  }
+
+  async function confirmDriverApprove() {
+    if (!driverApproveTarget) return;
+    if (!selectedDriverId) {
+      setError('Please select a driver to assign');
+      return;
+    }
+    setDriverActionId(driverApproveTarget.id);
     setError('');
     setMessage('');
     try {
-      await apiFetch(`/admin/driver-requests/${id}/approve`, {
+      await apiFetch(`/admin/driver-requests/${driverApproveTarget.id}/approve`, {
         method: 'POST',
-        body: JSON.stringify({})
+        body: JSON.stringify({ driverId: selectedDriverId })
       });
-      setMessage('Driver request approved successfully');
+      setMessage('Driver request approved and assigned');
+      setDriverApproveTarget(null);
+      setSelectedDriverId('');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve driver request');
@@ -430,9 +446,9 @@ export default function AdminRequestsPage() {
                         <button
                           className="button button-sm button-ok"
                           disabled={loading || driverActionId === req.id}
-                          onClick={() => void approveDriverRequest(req.id)}
+                          onClick={() => openDriverApproveModal(req)}
                         >
-                          {driverActionId === req.id ? '…' : 'Approve'}
+                          Approve
                         </button>
                         <button
                           className="button button-sm button-danger"
@@ -456,6 +472,51 @@ export default function AdminRequestsPage() {
             </tbody>
           </table>
         </div>
+
+        {driverApproveTarget ? (
+          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setDriverApproveTarget(null); setSelectedDriverId(''); } }}>
+            <div className="modal">
+              <h3>Approve &amp; Assign Driver</h3>
+              <p style={{ marginBottom: '0.65rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                <strong>{driverApproveTarget.user.displayName}</strong> requested a driver to{' '}
+                <strong>{driverApproveTarget.destination}</strong> on{' '}
+                <strong>{new Date(driverApproveTarget.requestedDate).toLocaleDateString()}</strong> at{' '}
+                <strong>{driverApproveTarget.requestedTime}</strong>.
+                {driverApproveTarget.purpose ? <span> Reason: {driverApproveTarget.purpose}</span> : null}
+              </p>
+              <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem', display: 'block' }}>Assign to Driver</label>
+              <select
+                className="select"
+                value={selectedDriverId}
+                onChange={(e) => setSelectedDriverId(e.target.value)}
+              >
+                <option value="">Select a driver…</option>
+                {drivers.map((d) => {
+                  const status = d.driverStatus || 'OFFLINE';
+                  const statusCfg = DRIVER_AVAIL_CONFIG[status] || DRIVER_AVAIL_CONFIG.OFFLINE;
+                  return (
+                    <option key={d.id} value={d.id}>
+                      {statusCfg.emoji} {d.displayName} — {statusCfg.label}
+                    </option>
+                  );
+                })}
+              </select>
+              <div className="modal-footer">
+                <button type="button" className="button button-ghost" onClick={() => { setDriverApproveTarget(null); setSelectedDriverId(''); }}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="button button-primary"
+                  disabled={!!driverActionId || !selectedDriverId}
+                  onClick={() => void confirmDriverApprove()}
+                >
+                  {driverActionId ? 'Approving…' : 'Approve & Assign'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         </>
       )}
     </AppShell>

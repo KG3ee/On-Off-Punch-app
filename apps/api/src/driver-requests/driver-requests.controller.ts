@@ -36,7 +36,7 @@ export class DriverRequestsController {
   @UseGuards(JwtAuthGuard)
   @Get('driver-requests/available')
   async listAvailableForDrivers(@CurrentUser() authUser: AuthUser) {
-    return this.driverRequestsService.listAvailableForDrivers();
+    return this.driverRequestsService.listAvailableForDrivers(authUser.sub);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -53,7 +53,7 @@ export class DriverRequestsController {
     @Param('id') id: string,
     @Body() dto: ApproveDriverRequestDto
   ) {
-    return this.driverRequestsService.approve(id, authUser.sub, dto.adminNote);
+    return this.driverRequestsService.approve(id, authUser.sub, dto.adminNote, dto.driverId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

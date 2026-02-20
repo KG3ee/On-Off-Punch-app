@@ -37,6 +37,8 @@ export default function DriverDashboardPage() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [tripsExpanded, setTripsExpanded] = useState(false);
+  const [confirmAcceptId, setConfirmAcceptId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -279,41 +281,105 @@ export default function DriverDashboardPage() {
 
       {/* ── Trip Cards (Upcoming first, then Active) ── */}
       <div style={{ display: 'grid', gap: '1.25rem' }}>
-        <article className="card" style={{ padding: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.375rem', marginBottom: '0.25rem', fontWeight: 700, letterSpacing: '-0.02em' }}>Upcoming Trips</h3>
-          <p style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1rem', fontWeight: 400 }}>
-            Approved requests waiting for a driver.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-            {available.map((req) => (
-              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', padding: '1.125rem', background: 'var(--card-solid)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.625rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--ink)', letterSpacing: '-0.01em' }}>{req.destination}</div>
-                  <div className="tag ok" style={{ fontSize: '0.9375rem', fontWeight: 600, padding: '0.25rem 0.625rem' }}>{req.requestedTime}</div>
+        <article className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Collapsible header */}
+          <button
+            type="button"
+            onClick={() => { setTripsExpanded(!tripsExpanded); setConfirmAcceptId(null); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1.25rem 1.5rem',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.375rem', fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Upcoming Trips</h3>
+              {available.length > 0 ? (
+                <span style={{
+                  background: 'var(--ok)',
+                  color: '#fff',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  borderRadius: '999px',
+                  padding: '0.125rem 0.625rem',
+                  minWidth: '1.5rem',
+                  textAlign: 'center',
+                }}>
+                  {available.length}
+                </span>
+              ) : null}
+            </div>
+            <svg
+              width="28" height="28" viewBox="0 0 24 24" fill="none"
+              style={{ flexShrink: 0, transition: 'transform 0.2s', transform: tripsExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            >
+              <path d="M6 9l6 6 6-6" stroke="var(--muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          {/* Expandable content */}
+          {tripsExpanded ? (
+            <div style={{ padding: '0 1.25rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+              <p style={{ fontSize: '1rem', color: 'var(--muted)', margin: 0, fontWeight: 400 }}>
+                Trips assigned to you by admin.
+              </p>
+              {available.map((req) => (
+                <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', padding: '1.125rem', background: 'var(--card-solid)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.625rem' }}>
+                    <div style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--ink)', letterSpacing: '-0.01em' }}>{req.destination}</div>
+                    <div className="tag ok" style={{ fontSize: '0.9375rem', fontWeight: 600, padding: '0.25rem 0.625rem' }}>{req.requestedTime}</div>
+                  </div>
+                  <div style={{ fontSize: '1.0625rem', color: 'var(--ink-2)', marginBottom: '0.375rem', fontWeight: 500 }}>
+                    {req.user.displayName}
+                  </div>
+                  <div style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1.125rem', fontWeight: 400 }}>
+                    {new Date(req.requestedDate).toLocaleDateString()}
+                    {req.purpose ? <span> &middot; {req.purpose}</span> : null}
+                  </div>
+
+                  {confirmAcceptId === req.id ? (
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button
+                        className="button button-ghost"
+                        style={{ flex: 1, padding: '1rem', fontSize: '1.125rem', height: 'auto', fontWeight: 700 }}
+                        onClick={() => setConfirmAcceptId(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="button button-ok"
+                        style={{ flex: 1, padding: '1rem', fontSize: '1.125rem', height: 'auto', fontWeight: 700, letterSpacing: '-0.01em' }}
+                        disabled={!!actionId}
+                        onClick={() => void acceptRequest(req.id)}
+                      >
+                        {actionId === req.id ? 'Accepting…' : 'Confirm Accept'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="button button-ok"
+                      style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', height: 'auto', fontWeight: 700, letterSpacing: '-0.01em', opacity: 0.85 }}
+                      disabled={!!actionId}
+                      onClick={() => setConfirmAcceptId(req.id)}
+                    >
+                      Accept Trip
+                    </button>
+                  )}
                 </div>
-                <div style={{ fontSize: '1.0625rem', color: 'var(--ink-2)', marginBottom: '0.375rem', fontWeight: 500 }}>
-                  {req.user.displayName}
+              ))}
+              {available.length === 0 ? (
+                <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', fontSize: '1.0625rem', fontWeight: 500 }}>
+                  No upcoming trips assigned to you.
                 </div>
-                <div style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1.125rem', fontWeight: 400 }}>
-                  {new Date(req.requestedDate).toLocaleDateString()}
-                  {req.purpose ? <span> &middot; {req.purpose}</span> : null}
-                </div>
-                <button
-                  className="button button-ok"
-                  style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', height: 'auto', fontWeight: 700, letterSpacing: '-0.01em' }}
-                  disabled={!!actionId}
-                  onClick={() => void acceptRequest(req.id)}
-                >
-                  {actionId === req.id ? 'Accepting…' : 'Accept Trip'}
-                </button>
-              </div>
-            ))}
-            {available.length === 0 ? (
-              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', fontSize: '1.0625rem', fontWeight: 500 }}>
-                No upcoming trips waiting.
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          ) : null}
         </article>
 
         <article className="card" style={{ padding: '1.25rem' }}>
