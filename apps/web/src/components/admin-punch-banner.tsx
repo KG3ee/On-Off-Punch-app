@@ -78,14 +78,7 @@ export function AdminPunchWidget() {
             color: 'var(--ok)',
             whiteSpace: 'nowrap',
           }}>
-            <span style={{
-              width: '0.4rem',
-              height: '0.4rem',
-              borderRadius: '50%',
-              background: 'var(--ok)',
-              boxShadow: '0 0 5px rgba(34,197,94,0.6)',
-              flexShrink: 0,
-            }} />
+            <span className="status-dot active" />
             {fmt(mins)}
           </span>
           <button
