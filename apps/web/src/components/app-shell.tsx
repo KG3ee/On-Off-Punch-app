@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { clearAuth } from '@/lib/auth';
 import { MobileBlockedNotice, useIsMobileClient } from '@/components/mobile-block';
 import { UserRole } from '@/types/auth';
-import { AdminPunchBanner } from '@/components/admin-punch-banner';
+import { AdminPunchWidget } from '@/components/admin-punch-banner';
 
 type NavItem = {
   href: string;
@@ -77,6 +77,7 @@ export function AppShell({
 
           <div className="shell-header-actions">
             {headerAction}
+            {admin ? <AdminPunchWidget /> : null}
             <button
               type="button"
               className="button button-ghost button-sm"
@@ -145,7 +146,6 @@ export function AppShell({
       </header>
 
       <div className="shell">
-        {admin ? <AdminPunchBanner /> : null}
         {children}
       </div>
     </main>
