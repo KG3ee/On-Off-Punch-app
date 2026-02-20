@@ -12,7 +12,8 @@ type DutySession = {
 export function AdminPunchWidget() {
   const [sessions, setSessions] = useState<DutySession[]>([]);
   const [loading, setLoading] = useState(false);
-  const [nowTick, setNowTick] = useState(Date.now());
+  const [mounted, setMounted] = useState(false);
+  const [nowTick, setNowTick] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -23,6 +24,8 @@ export function AdminPunchWidget() {
   }, []);
 
   useEffect(() => {
+    setMounted(true);
+    setNowTick(Date.now());
     void load();
     const timer = setInterval(() => void load(), 15_000);
     return () => clearInterval(timer);
@@ -64,6 +67,8 @@ export function AdminPunchWidget() {
       setLoading(false);
     }
   }
+
+  if (!mounted) return null;
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

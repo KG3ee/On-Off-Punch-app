@@ -246,16 +246,16 @@ export default function LeaderTeamPage() {
       {message ? <div className="alert alert-success">{message}</div> : null}
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1rem', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', gap: '0.375rem', marginBottom: '1rem', overflowX: 'auto' }}>
         {(['live', 'requests', 'history', 'drivers'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
-            className={`button button-sm ${tab === t ? 'button-primary' : 'button-ghost'}`}
+            className={`button ${tab === t ? 'button-primary' : 'button-ghost'}`}
             onClick={() => { setTab(t); setMessage(''); }}
-            style={{ position: 'relative' }}
+            style={{ position: 'relative', flex: 1, justifyContent: 'center', padding: '0.625rem 1rem', fontSize: '0.875rem', minHeight: '2.75rem' }}
           >
-            {t === 'live' ? 'Live' : t === 'requests' ? 'Requests' : t === 'history' ? 'History' : 'Drivers'}
+            {t === 'live' ? '📡 Live' : t === 'requests' ? '📋 Requests' : t === 'history' ? '📊 History' : '🚗 Drivers'}
             {t === 'requests' && pendingCount > 0 ? (
               <span style={{
                 position: 'absolute',
