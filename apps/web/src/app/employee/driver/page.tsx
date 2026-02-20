@@ -40,9 +40,8 @@ export default function DriverDashboardPage() {
   const [tripsExpanded, setTripsExpanded] = useState(false);
   const [confirmAcceptId, setConfirmAcceptId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const load = useCallback(async (silent = false) => {
+    if (!silent) { setLoading(true); setError(''); }
     try {
       const [meData, availableData, assignmentsData] = await Promise.all([
         apiFetch<MeUser>('/me'),
@@ -57,14 +56,16 @@ export default function DriverDashboardPage() {
         router.replace('/employee/dashboard');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load driver data');
+      if (!silent) setError(err instanceof Error ? err.message : 'Failed to load driver data');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [router]);
 
   useEffect(() => {
     void load();
+    const timer = window.setInterval(() => void load(true), 15_000);
+    return () => clearInterval(timer);
   }, [load]);
 
   async function acceptRequest(id: string) {

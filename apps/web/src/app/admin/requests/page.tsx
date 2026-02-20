@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 
@@ -81,13 +81,10 @@ export default function AdminRequestsPage() {
   const [driverApproveTarget, setDriverApproveTarget] = useState<DriverRequest | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState('');
 
-  useEffect(() => {
-    void load();
-  }, []);
+  const silentRef = useRef(false);
 
-  async function load() {
-    setLoading(true);
-    setError('');
+  const load = useCallback(async (silent = false) => {
+    if (!silent) { setLoading(true); setError(''); }
     try {
       const [requestsData, presetsData, driverRequestsData, usersData] = await Promise.all([
         apiFetch<ShiftChangeRequest[]>('/admin/requests'),
@@ -100,11 +97,17 @@ export default function AdminRequestsPage() {
       setDriverRequests(driverRequestsData);
       setDrivers(usersData.filter((u) => u.role === 'DRIVER'));
     } catch {
-      setError('Failed to load requests');
+      if (!silent) setError('Failed to load requests');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => void load(true), 15_000);
+    return () => clearInterval(timer);
+  }, [load]);
 
   async function rejectRequest(id: string) {
     setError('');

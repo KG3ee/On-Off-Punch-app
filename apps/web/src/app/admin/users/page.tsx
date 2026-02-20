@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 
@@ -154,22 +154,7 @@ export default function AdminUsersPage() {
 
   const [rosterTeamId, setRosterTeamId] = useState('');
 
-  useEffect(() => {
-    void load();
-  }, []);
-
-  // Close action menu on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenuId(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  async function load(): Promise<void> {
+  const load = useCallback(async (silent = false): Promise<void> => {
     try {
       const [userData, teamData, assignmentData, requestData, rosterData] = await Promise.all([
         apiFetch<UserRow[]>('/admin/users'),
@@ -185,8 +170,25 @@ export default function AdminUsersPage() {
       setRegistrationRoster(rosterData);
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      if (!silent) setError(err instanceof Error ? err.message : 'Failed to load data');
     }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => void load(true), 30_000);
+    return () => clearInterval(timer);
+  }, [load]);
+
+  // Close action menu on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }
 
   function flash(msg: string) {
