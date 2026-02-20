@@ -40,7 +40,7 @@ export default function DriverDashboardPage() {
       setAvailable(availableData);
       setAssignments(assignmentsData);
 
-      if (!meData.isDriver) {
+      if (!meData.isDriver && meData.role !== 'DRIVER') {
         router.replace('/employee/dashboard');
       }
     } catch (err) {
@@ -109,7 +109,7 @@ export default function DriverDashboardPage() {
     );
   }
 
-  if (!me?.isDriver) {
+  if (!me?.isDriver && me?.role !== 'DRIVER') {
     return null;
   }
 

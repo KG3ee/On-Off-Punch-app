@@ -46,7 +46,7 @@ type UserRow = {
   displayName: string;
   firstName: string;
   lastName?: string;
-  role: 'ADMIN' | 'EMPLOYEE';
+  role: 'ADMIN' | 'EMPLOYEE' | 'DRIVER';
   isDriver?: boolean;
   team?: Team | null;
   isActive: boolean;
@@ -124,7 +124,7 @@ export default function AdminUsersPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [mustChangePassword, setMustChangePassword] = useState(true);
-  const [role, setRole] = useState<'ADMIN' | 'EMPLOYEE'>('EMPLOYEE');
+  const [role, setRole] = useState<'ADMIN' | 'EMPLOYEE' | 'DRIVER'>('EMPLOYEE');
   const [teamId, setTeamId] = useState('');
 
   // Create team form
@@ -144,7 +144,7 @@ export default function AdminUsersPage() {
 
   // Edit user modal
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
-  const [editRole, setEditRole] = useState<'ADMIN' | 'EMPLOYEE'>('EMPLOYEE');
+  const [editRole, setEditRole] = useState<'ADMIN' | 'EMPLOYEE' | 'DRIVER'>('EMPLOYEE');
   const [editIsDriver, setEditIsDriver] = useState(false);
   const [editTeamId, setEditTeamId] = useState('');
 
@@ -766,7 +766,7 @@ export default function AdminUsersPage() {
                 <td className="mono">{user.username}</td>
                 <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
                 <td>
-                  <span className={`tag ${user.role === 'ADMIN' ? 'warning' : ''}`}>
+                  <span className={`tag ${user.role === 'ADMIN' ? 'warning' : user.role === 'DRIVER' ? 'brand' : ''}`}>
                     {user.role}
                   </span>
                 </td>
@@ -837,8 +837,9 @@ export default function AdminUsersPage() {
               <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" required />
               <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temporary password" minLength={6} required />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <select className="select" value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'EMPLOYEE')}>
+                <select className="select" value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'EMPLOYEE' | 'DRIVER')}>
                   <option value="EMPLOYEE">EMPLOYEE</option>
+                  <option value="DRIVER">DRIVER</option>
                   <option value="ADMIN">ADMIN</option>
                 </select>
                 <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
@@ -916,8 +917,9 @@ export default function AdminUsersPage() {
             </p>
             <form className="form-grid" onSubmit={(e) => void submitEditUser(e)}>
               <label style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Role</label>
-              <select className="select" value={editRole} onChange={(e) => setEditRole(e.target.value as 'ADMIN' | 'EMPLOYEE')}>
+              <select className="select" value={editRole} onChange={(e) => setEditRole(e.target.value as 'ADMIN' | 'EMPLOYEE' | 'DRIVER')}>
                 <option value="EMPLOYEE">EMPLOYEE</option>
+                <option value="DRIVER">DRIVER</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
               <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Team</label>

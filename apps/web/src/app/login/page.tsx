@@ -5,7 +5,6 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { setAccessToken } from '@/lib/auth';
-import { MobileBlockedNotice, useIsMobileClient } from '@/components/mobile-block';
 import { MeUser } from '@/types/auth';
 
 type LoginResult = {
@@ -15,7 +14,6 @@ type LoginResult = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const isMobile = useIsMobileClient();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -47,10 +45,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  if (isMobile) {
-    return <MobileBlockedNotice title="Office desktop required" />;
   }
 
   return (

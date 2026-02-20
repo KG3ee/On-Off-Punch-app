@@ -57,7 +57,7 @@ export function AppShell({
     router.push(isAdminView ? '/employee/dashboard' : '/admin/live');
   }
 
-  if (isEmployeeView && isMobile) {
+  if (isEmployeeView && isMobile && userRole !== 'DRIVER') {
     return <MobileBlockedNotice title="Office desktop required" />;
   }
 
@@ -112,7 +112,7 @@ export function AppShell({
                 <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
                   Requests
                 </Link>
-                {isDriver ? (
+                {(isDriver || userRole === 'DRIVER') ? (
                   <Link href="/employee/driver" className={pathname === '/employee/driver' ? 'active' : ''}>
                     Driver
                   </Link>
