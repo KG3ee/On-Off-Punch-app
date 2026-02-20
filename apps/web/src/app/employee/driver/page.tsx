@@ -20,10 +20,10 @@ type DriverRequest = {
 type DriverStatusKey = 'AVAILABLE' | 'BUSY' | 'ON_BREAK' | 'OFFLINE';
 
 const STATUS_CONFIG: Record<DriverStatusKey, { emoji: string; label: string; desc: string; color: string; bg: string; border: string }> = {
-  AVAILABLE: { emoji: '🟢', label: 'Available', desc: 'Ready to drive', color: 'var(--ok)', bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.4)' },
-  BUSY:      { emoji: '🟡', label: 'Driving',   desc: 'On a trip now',  color: 'var(--warning)', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.4)' },
-  ON_BREAK:  { emoji: '🟠', label: 'On Break',  desc: 'Lunch / rest',   color: '#f97316', bg: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.4)' },
-  OFFLINE:   { emoji: '🔴', label: 'Off Duty',  desc: 'Gone home',      color: 'var(--danger)', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.4)' },
+  AVAILABLE: { emoji: '🚗', label: 'Available', desc: 'Ready to drive', color: 'var(--ok)', bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.4)' },
+  BUSY:      { emoji: '🏎️', label: 'Driving',   desc: 'On a trip now',  color: 'var(--warning)', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.4)' },
+  ON_BREAK:  { emoji: '☕', label: 'On Break',  desc: 'Lunch / rest',   color: '#f97316', bg: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.4)' },
+  OFFLINE:   { emoji: '🏠', label: 'Off Duty',  desc: 'Gone home',      color: 'var(--danger)', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.4)' },
 };
 
 export default function DriverDashboardPage() {
@@ -141,41 +141,45 @@ export default function DriverDashboardPage() {
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
 
-      {/* ── Status Banner (25vh, tappable) ── */}
+      {/* ── Status Banner (25vh, tappable — matches popup option style) ── */}
       <button
         type="button"
         onClick={() => setStatusPickerOpen(true)}
         style={{
           width: '100%',
-          minHeight: '25vh',
+          height: '25vh',
+          minHeight: '6rem',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.5rem',
+          gap: '1.25rem',
           background: cfg.bg,
           border: `2px solid ${cfg.border}`,
           borderRadius: 'var(--radius-lg)',
           cursor: 'pointer',
-          padding: '1.5rem 1rem',
+          padding: '1rem 1.5rem',
           marginBottom: '1.5rem',
-          transition: 'transform 0.15s, box-shadow 0.15s',
+          transition: 'transform 0.15s',
           WebkitTapHighlightColor: 'transparent',
         }}
         onPointerDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
         onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.transform = ''; }}
         onPointerLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = ''; }}
       >
-        <span style={{ fontSize: '3rem', lineHeight: 1 }}>{cfg.emoji}</span>
-        <span style={{ fontSize: '1.75rem', fontWeight: 700, color: cfg.color, letterSpacing: '-0.02em' }}>
-          {cfg.label}
-        </span>
-        <span style={{ fontSize: '0.875rem', color: 'var(--muted)', fontWeight: 400 }}>
-          {cfg.desc}
-        </span>
-        <span style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '0.25rem', opacity: 0.7 }}>
-          Tap to change status
-        </span>
+        <span style={{ fontSize: '3.5rem', lineHeight: 1, flexShrink: 0 }}>{cfg.emoji}</span>
+        <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: cfg.color, letterSpacing: '-0.02em' }}>
+            {cfg.label}
+          </div>
+          <div style={{ fontSize: '0.9375rem', color: 'var(--muted)', marginTop: '0.125rem' }}>
+            {cfg.desc}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '0.5rem', opacity: 0.6 }}>
+            Tap to change status
+          </div>
+        </div>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
+          <path d="M6 9l6 6 6-6" stroke={cfg.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
 
       {/* ── Fullscreen Status Picker Overlay ── */}
@@ -272,45 +276,8 @@ export default function DriverDashboardPage() {
         </div>
       ) : null}
 
-      {/* ── Trip Cards ── */}
+      {/* ── Trip Cards (Upcoming first, then Active) ── */}
       <div style={{ display: 'grid', gap: '1.5rem' }}>
-        <article className="card" style={{ padding: '1rem' }}>
-          <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>My Active Trips</h3>
-          <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-            Trips you have accepted. Complete them when done.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {inProgress.map((req) => (
-              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '0.875rem', background: 'var(--card-solid)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--ink)' }}>{req.destination}</div>
-                  <div className="tag brand" style={{ fontSize: '0.75rem' }}>{req.requestedTime}</div>
-                </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '0.25rem' }}>
-                  <strong>Passenger:</strong> {req.user.displayName} <span style={{ color: 'var(--muted)' }}>(@{req.user.username})</span>
-                </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-                  <strong>Date:</strong> {new Date(req.requestedDate).toLocaleDateString()}
-                  {req.purpose ? <div style={{ marginTop: '0.25rem' }}><strong>Note:</strong> {req.purpose}</div> : null}
-                </div>
-                <button
-                  className="button button-primary"
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto', fontWeight: 600 }}
-                  disabled={!!actionId}
-                  onClick={() => void completeRequest(req.id)}
-                >
-                  {actionId === req.id ? 'Completing…' : 'Complete Trip'}
-                </button>
-              </div>
-            ))}
-            {inProgress.length === 0 ? (
-              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
-                No active trips right now.
-              </div>
-            ) : null}
-          </div>
-        </article>
-
         <article className="card" style={{ padding: '1rem' }}>
           <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>Upcoming Trips</h3>
           <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
@@ -343,6 +310,43 @@ export default function DriverDashboardPage() {
             {available.length === 0 ? (
               <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
                 No upcoming trips waiting.
+              </div>
+            ) : null}
+          </div>
+        </article>
+
+        <article className="card" style={{ padding: '1rem' }}>
+          <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>My Active Trips</h3>
+          <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+            Trips you have accepted. Complete them when done.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {inProgress.map((req) => (
+              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '0.875rem', background: 'var(--card-solid)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--ink)' }}>{req.destination}</div>
+                  <div className="tag brand" style={{ fontSize: '0.75rem' }}>{req.requestedTime}</div>
+                </div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '0.25rem' }}>
+                  <strong>Passenger:</strong> {req.user.displayName} <span style={{ color: 'var(--muted)' }}>(@{req.user.username})</span>
+                </div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+                  <strong>Date:</strong> {new Date(req.requestedDate).toLocaleDateString()}
+                  {req.purpose ? <div style={{ marginTop: '0.25rem' }}><strong>Note:</strong> {req.purpose}</div> : null}
+                </div>
+                <button
+                  className="button button-primary"
+                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto', fontWeight: 600 }}
+                  disabled={!!actionId}
+                  onClick={() => void completeRequest(req.id)}
+                >
+                  {actionId === req.id ? 'Completing…' : 'Complete Trip'}
+                </button>
+              </div>
+            ))}
+            {inProgress.length === 0 ? (
+              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
+                No active trips right now.
               </div>
             ) : null}
           </div>
