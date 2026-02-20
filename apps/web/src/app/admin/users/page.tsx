@@ -939,6 +939,8 @@ export default function AdminUsersPage() {
                 <option value="MEMBER">MEMBER</option>
                 <option value="LEADER">LEADER</option>
                 <option value="DRIVER">DRIVER</option>
+                <option value="MAID">MAID</option>
+                <option value="CHEF">CHEF</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
               <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Team</label>

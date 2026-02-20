@@ -1,0 +1,484 @@
+<mxfile host="app.diagrams.net" modified="2026-02-20" agent="Modern Punch" type="device">
+  <diagram id="login-flow" name="Login &amp; Role Routing">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Modern Punch — Login &amp; Role Routing" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=22;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="310" y="15" width="420" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Open App -->
+        <mxCell id="start" value="User opens app" style="ellipse;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#1a1a2e;fontColor=#ffffff;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="70" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Login -->
+        <mxCell id="login" value="Login Page&#xa;Enter username &amp; password" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333333;fontSize=12;fontStyle=0;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="430" y="155" width="210" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="s1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#333333;strokeWidth=2;" edge="1" source="start" target="login" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Decision -->
+        <mxCell id="decide" value="What is the&#xa;user's role?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="455" y="250" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#333333;strokeWidth=2;" edge="1" source="login" target="decide" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ══ ADMIN ══ -->
+        <mxCell id="admin-box" value="ADMIN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f87171;strokeColor=#dc2626;fontColor=#ffffff;fontSize=14;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="380" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="a-arrow" value="Admin" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#f87171;strokeWidth=2;fontStyle=1;fontSize=10;fontColor=#f87171;" edge="1" source="decide" target="admin-box" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="535" y="345"/><mxPoint x="100" y="345"/></Array></mxGeometry></mxCell>
+        <mxCell id="admin-dest" value="/admin/live" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#f87171;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="445" width="120" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="a2" style="rounded=1;strokeColor=#f87171;strokeWidth=1.5;" edge="1" source="admin-box" target="admin-dest" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ══ LEADER ══ -->
+        <mxCell id="leader-box" value="LEADER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a78bfa;strokeColor=#7c3aed;fontColor=#ffffff;fontSize=14;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="380" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="l-arrow" value="Leader" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#a78bfa;strokeWidth=2;fontStyle=1;fontSize=10;fontColor=#a78bfa;" edge="1" source="decide" target="leader-box" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="535" y="345"/><mxPoint x="260" y="345"/></Array></mxGeometry></mxCell>
+        <mxCell id="leader-dest" value="/employee/dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#a78bfa;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="195" y="445" width="130" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="l2" style="rounded=1;strokeColor=#a78bfa;strokeWidth=1.5;" edge="1" source="leader-box" target="leader-dest" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ══ DRIVER ══ -->
+        <mxCell id="driver-box" value="DRIVER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#38bdf8;strokeColor=#0284c7;fontColor=#ffffff;fontSize=14;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="380" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="d-arrow" value="Driver" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#38bdf8;strokeWidth=2;fontStyle=1;fontSize=10;fontColor=#38bdf8;" edge="1" source="decide" target="driver-box" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="535" y="345"/><mxPoint x="430" y="345"/></Array></mxGeometry></mxCell>
+        <mxCell id="driver-dest" value="/employee/driver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#38bdf8;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="445" width="120" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2" style="rounded=1;strokeColor=#38bdf8;strokeWidth=1.5;" edge="1" source="driver-box" target="driver-dest" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ══ MEMBER ══ -->
+        <mxCell id="member-box" value="MEMBER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4ade80;strokeColor=#16a34a;fontColor=#ffffff;fontSize=14;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="380" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="m-arrow" value="Member" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#4ade80;strokeWidth=2;fontStyle=1;fontSize=10;fontColor=#4ade80;" edge="1" source="decide" target="member-box" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="535" y="345"/><mxPoint x="600" y="345"/></Array></mxGeometry></mxCell>
+        <mxCell id="member-dest" value="/employee/dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#4ade80;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="535" y="445" width="130" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="m2" style="rounded=1;strokeColor=#4ade80;strokeWidth=1.5;" edge="1" source="member-box" target="member-dest" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ══ MAID ══ -->
+        <mxCell id="maid-box" value="MAID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f472b6;strokeColor=#db2777;fontColor=#ffffff;fontSize=14;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="380" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="ma-arrow" value="Maid" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#f472b6;strokeWidth=2;fontStyle=1;fontSize=10;fontColor=#f472b6;" edge="1" source="decide" target="maid-box" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="535" y="345"/><mxPoint x="770" y="345"/></Array></mxGeometry></mxCell>
+        <mxCell id="maid-dest" value="/employee/dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf2f8;strokeColor=#f472b6;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="705" y="445" width="130" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="ma2" style="rounded=1;strokeColor=#f472b6;strokeWidth=1.5;" edge="1" source="maid-box" target="maid-dest" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ══ CHEF ══ -->
+        <mxCell id="chef-box" value="CHEF" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbbf24;strokeColor=#d97706;fontColor=#ffffff;fontSize=14;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="380" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="ch-arrow" value="Chef" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#fbbf24;strokeWidth=2;fontStyle=1;fontSize=10;fontColor=#fbbf24;" edge="1" source="decide" target="chef-box" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="535" y="345"/><mxPoint x="940" y="345"/></Array></mxGeometry></mxCell>
+        <mxCell id="chef-dest" value="/employee/dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#fbbf24;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="875" y="445" width="130" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="ch2" style="rounded=1;strokeColor=#fbbf24;strokeWidth=1.5;" edge="1" source="chef-box" target="chef-dest" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ══ New Employee ══ -->
+        <mxCell id="new-emp" value="New Employee?&#xa;/register" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;fontStyle=2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="700" y="170" width="130" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="ne-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#999999;strokeWidth=1.5;dashed=1;" edge="1" source="login" target="new-emp" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ne-label" value="No account yet" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;fontSize=9;fontColor=#999999;" vertex="1" connectable="0" parent="ne-arrow"><mxGeometry x="-0.1" relative="1" as="geometry"/></mxCell>
+
+        <!-- Quick summary below -->
+        <mxCell id="summary-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#dee2e6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="510" width="1110" height="270" as="geometry"/>
+        </mxCell>
+        <mxCell id="sum-title" value="What Each Role Sees After Login" style="text;html=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=16;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="370" y="515" width="320" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin summary -->
+        <mxCell id="sum-admin" value="ADMIN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f87171;strokeColor=#dc2626;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="555" width="70" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sum-admin-txt" value="Live Board  →  View all active sessions in real-time&#xa;History  →  Full attendance &amp; break records + CSV export&#xa;Users  →  Create/edit users, teams, roster, registration approvals&#xa;Requests  →  Approve shift changes &amp; driver requests&#xa;Password  →  Change own password" style="text;html=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontSize=10;fontColor=#333333;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="135" y="548" width="390" height="75" as="geometry"/>
+        </mxCell>
+
+        <!-- Leader summary -->
+        <mxCell id="sum-leader" value="LEADER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a78bfa;strokeColor=#7c3aed;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="630" width="70" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sum-leader-txt" value="Dashboard  →  Punch On/Off (no breaks)&#xa;Team  →  4 tabs: Live (team sessions) | Requests (approve/reject) | History | Drivers&#xa;Requests  →  Submit own shift change &amp; driver requests&#xa;Password  →  Change own password" style="text;html=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontSize=10;fontColor=#333333;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="135" y="625" width="450" height="62" as="geometry"/>
+        </mxCell>
+
+        <!-- Driver summary -->
+        <mxCell id="sum-driver" value="DRIVER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#38bdf8;strokeColor=#0284c7;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="695" width="70" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sum-driver-txt" value="Driver Dashboard  →  Set status (Available/Busy/On Break/Off Duty)&#xa;                                   →  View &amp; accept trip requests, mark trips complete&#xa;Password  →  Change own password" style="text;html=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontSize=10;fontColor=#333333;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="135" y="690" width="420" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Member summary -->
+        <mxCell id="sum-member" value="MEMBER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4ade80;strokeColor=#16a34a;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="555" width="70" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sum-member-txt" value="Dashboard  →  Punch On/Off + Break sessions (BWC, WC, CY, etc.)&#xa;                        →  Monthly KPI (hours, late, overtime)&#xa;Requests  →  Submit shift change &amp; driver requests&#xa;Password  →  Change own password" style="text;html=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontSize=10;fontColor=#333333;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="680" y="548" width="420" height="62" as="geometry"/>
+        </mxCell>
+
+        <!-- Maid summary -->
+        <mxCell id="sum-maid" value="MAID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f472b6;strokeColor=#db2777;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="630" width="70" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sum-maid-txt" value="Dashboard  →  Punch On/Off only (no breaks)&#xa;Requests  →  Submit shift change &amp; driver requests&#xa;Password  →  Change own password" style="text;html=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontSize=10;fontColor=#333333;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="680" y="625" width="380" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Chef summary -->
+        <mxCell id="sum-chef" value="CHEF" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbbf24;strokeColor=#d97706;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="695" width="70" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="sum-chef-txt" value="Dashboard  →  Punch On/Off (no breaks)&#xa;                        →  Meal Ready buttons: 🍳 Breakfast | 🍲 Lunch | 🍽️ Dinner&#xa;                             (sends pickup request to Admin → Admin assigns Driver)&#xa;Requests  →  Submit shift change &amp; driver requests&#xa;Password  →  Change own password" style="text;html=1;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontSize=10;fontColor=#333333;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="680" y="688" width="430" height="75" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="admin-screens" name="Admin Screens">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Admin — Screen Flow" style="text;html=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=22;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="420" y="15" width="300" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Nav bar -->
+        <mxCell id="nav" value="Admin Navigation Bar" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#1a1a2e;fontColor=#ffffff;fontSize=14;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="70" width="640" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- 5 nav items -->
+        <mxCell id="nav-live" value="Live" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3b82f6;strokeColor=#2563eb;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="75" width="100" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav-history" value="History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6b7280;strokeColor=#4b5563;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="75" width="100" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav-users" value="Users" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6b7280;strokeColor=#4b5563;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="75" width="100" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav-req" value="Requests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6b7280;strokeColor=#4b5563;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="590" y="75" width="100" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="nav-pw" value="Password" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6b7280;strokeColor=#4b5563;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="700" y="75" width="100" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ── Live Board ── -->
+        <mxCell id="live-card" value="/admin/live — Live Board" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#3b82f6;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="140" width="340" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="live-kpi" value="KPI Cards&#xa;Date | Active Now | Total Today | Late Min" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93c5fd;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="175" width="310" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="live-table" value="Active Sessions Table&#xa;Employee | Group | Role | Punched On | Late | Break" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93c5fd;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="225" width="310" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="live-breaks" value="Today Break History Table&#xa;Employee | Group | Code | Start | End | Min | Status | OT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93c5fd;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="280" width="310" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="live-punch" value="Admin Punch On/Off widget (top bar)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#4ade80;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="55" y="335" width="310" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ── History ── -->
+        <mxCell id="hist-card" value="/admin/history — History" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#6b7280;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="410" y="140" width="340" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="hist-filter" value="Filters: Date range | Team | Employee" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="425" y="175" width="310" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="hist-duty" value="Duty Records Table&#xa;Date | Employee | Group | On | Off | Worked | Late | OT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="425" y="215" width="310" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="hist-break" value="Break Records Table&#xa;Date | Employee | Group | Code | Start | End | Min | Status | OT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="425" y="270" width="310" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="hist-csv" value="CSV Export (Duty &amp; Breaks)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#4ade80;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="425" y="325" width="310" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ── Users & Teams ── -->
+        <mxCell id="users-card" value="/admin/users — Users &amp; Teams" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#6b7280;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="140" width="380" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="users-search" value="Search bar + Create Team / New User buttons" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="795" y="175" width="350" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="users-approval" value="Registration Approval Queue&#xa;(Approve / Reject new account requests)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#f59e0b;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="795" y="210" width="350" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="users-roster" value="Registration Roster&#xa;(Pre-register staff: code, name, default group &amp; role)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#fbbf24;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="795" y="252" width="350" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="users-teams" value="Teams Table (name, shift times, edit/delete)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="795" y="295" width="350" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="users-table" value="Users Table: Name | Group | Role | Status | Actions (edit/delete)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="795" y="330" width="350" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ── Requests ── -->
+        <mxCell id="req-card" value="/admin/requests — Shift &amp; Driver Requests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#6b7280;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="540" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="req-shift" value="Shift Change Requests&#xa;Employee | Type (Half Day/Full Off/Custom) | Date | Status | Approve/Reject" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="455" width="510" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="req-driver" value="Driver Requests&#xa;Employee | Date/Time | Destination | Purpose | Status | Assign Driver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="505" width="510" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="req-note" value="Meal Ready requests from CHEF appear here as Driver Requests&#xa;(destination: Kitchen, purpose: &quot;Breakfast/Lunch/Dinner Ready&quot;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#fbbf24;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="55" y="553" width="510" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- ── Password ── -->
+        <mxCell id="pw-card" value="/admin/password&#xa;Change Password" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#6b7280;fontSize=12;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="620" y="450" width="180" height="55" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="employee-screens" name="Employee Screens">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Employee — Screen Flow by Role" style="text;html=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=22;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="350" y="15" width="400" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ MEMBER Dashboard ═══ -->
+        <mxCell id="mem-card" value="MEMBER / LEADER Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#4ade80;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="350" height="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="mem-kpi" value="Monthly KPI: Hours | Late | Overtime&#xa;Today KPI: Sessions | Duty Status | Break | Late" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#86efac;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="105" width="320" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="mem-punch" value="PUNCH ON / PUNCH OFF&#xa;(big tap-friendly buttons)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="155" width="320" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="mem-breaks" value="Break Chips (MEMBER only)&#xa;BWC 20m | WC 10m | CY 10m&#xa;CF+1 25m | CF+2 30m | CF+3 30m&#xa;&#xa;Active break banner with End / Cancel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#3b82f6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="205" width="320" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="mem-session" value="Current Session table (Date | On | Off | Status | Late)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#86efac;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="290" width="320" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="mem-session-breaks" value="Session Breaks table (Code | Start | End | Min | Status)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#86efac;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="328" width="320" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="mem-note" value="LEADER &amp; MAID: same but no break chips/table&#xa;CHEF: same but with Meal Ready instead of breaks" style="text;html=1;align=center;fillColor=none;strokeColor=none;fontSize=9;fontColor=#666666;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="55" y="365" width="320" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ CHEF Meal Ready ═══ -->
+        <mxCell id="chef-card" value="CHEF — Meal Ready Section" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#fbbf24;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="70" width="310" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="chef-note" value="(replaces break chips for CHEF role)" style="text;html=1;align=center;fillColor=none;strokeColor=none;fontSize=9;fontColor=#999999;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="420" y="95" width="310" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="chef-btn1" value="🍳  Breakfast Ready" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3b82f6;strokeColor=#2563eb;fontColor=#ffffff;fontSize=13;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="445" y="120" width="260" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="chef-btn2" value="🍲  Lunch Ready" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3b82f6;strokeColor=#2563eb;fontColor=#ffffff;fontSize=13;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="445" y="163" width="260" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="chef-btn3" value="🍽️  Dinner Ready" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3b82f6;strokeColor=#2563eb;fontColor=#ffffff;fontSize=13;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="445" y="206" width="260" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Chef flow arrow -->
+        <mxCell id="chef-flow" value="Creates Driver Request&#xa;automatically" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="755" y="140" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="cf1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#fbbf24;strokeWidth=2;" edge="1" source="chef-btn2" target="chef-flow" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="chef-admin" value="Admin assigns&#xa;a Driver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#f87171;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="920" y="140" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="cf2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#fbbf24;strokeWidth=2;" edge="1" source="chef-flow" target="chef-admin" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="chef-driver" value="Driver picks up&#xa;meal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#38bdf8;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="140" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="cf3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#fbbf24;strokeWidth=2;" edge="1" source="chef-admin" target="chef-driver" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ═══ DRIVER Dashboard ═══ -->
+        <mxCell id="drv-card" value="DRIVER Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#38bdf8;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="290" width="310" height="260" as="geometry"/>
+        </mxCell>
+        <mxCell id="drv-status" value="Status Selector (big tap buttons)&#xa;🚗 Available | 🏎️ Driving | ☕ On Break | 🏠 Off Duty" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#7dd3fc;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="435" y="325" width="280" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="drv-available" value="Available Requests&#xa;(destination, time, purpose — Accept button)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="435" y="380" width="280" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="drv-trips" value="My Trips&#xa;(accepted assignments — Complete button)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#7dd3fc;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="435" y="430" width="280" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="drv-hist" value="Completed trips history" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#7dd3fc;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="435" y="480" width="280" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="drv-note2" value="No breaks, no break chips" style="text;html=1;align=center;fillColor=none;strokeColor=none;fontSize=9;fontColor=#999999;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="435" y="515" width="280" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ LEADER Team Tab ═══ -->
+        <mxCell id="ldr-card" value="LEADER — Team Management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#a78bfa;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="290" width="380" height="260" as="geometry"/>
+        </mxCell>
+        <mxCell id="ldr-tabs" value="📡 Live    |    📋 Requests    |    📊 History    |    🚗 Drivers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a78bfa;strokeColor=#7c3aed;fontColor=#ffffff;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="775" y="325" width="350" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="ldr-live" value="Live Tab&#xa;Team active sessions + breaks + members list" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c4b5fd;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="775" y="365" width="170" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="ldr-req" value="Requests Tab&#xa;Team shift requests — Approve / Reject" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c4b5fd;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="955" y="365" width="170" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="ldr-hist" value="History Tab&#xa;Team attendance records with date filter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c4b5fd;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="775" y="420" width="170" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="ldr-drivers" value="Drivers Tab&#xa;Driver availability status list" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c4b5fd;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="955" y="420" width="170" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ Requests Page ═══ -->
+        <mxCell id="req-card" value="Requests Page (all employee roles)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#6b7280;verticalAlign=top;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="350" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="req-shift" value="Shift Change Request Form&#xa;Type | Date | Shift | Reason → Submit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="475" width="320" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="req-driver" value="Driver Request Form&#xa;Date | Time | Destination | Purpose → Submit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="518" width="320" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="req-hist" value="My request history (status tracking)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d1d5db;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="55" y="560" width="320" height="28" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="meal-flow" name="Chef Meal Delivery Flow">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="500" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Chef Meal Delivery — End-to-End Flow" style="text;html=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=22;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="280" y="15" width="460" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Step 1 -->
+        <mxCell id="s1" value="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fbbf24;strokeColor=#d97706;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="40" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="s1-box" value="CHEF taps&#xa;🍳 Breakfast Ready&#xa;🍲 Lunch Ready&#xa;🍽️ Dinner Ready" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#fbbf24;fontSize=12;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="135" width="180" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 1→2 -->
+        <mxCell id="a12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#d97706;strokeWidth=2.5;" edge="1" source="s1-box" target="s2-box" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a12-lbl" value="Auto-creates" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#d97706;fontStyle=2;" vertex="1" connectable="0" parent="a12"><mxGeometry x="-0.1" relative="1" as="geometry"/></mxCell>
+
+        <!-- Step 2 -->
+        <mxCell id="s2" value="2" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6b7280;strokeColor=#4b5563;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="80" width="40" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2-box" value="Driver Request created&#xa;&#xa;Destination: Kitchen&#xa;Purpose: &quot;Lunch Ready -&#xa;Pickup requested&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3f4f6;strokeColor=#6b7280;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="135" width="190" height="95" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 2→3 -->
+        <mxCell id="a23" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#f87171;strokeWidth=2.5;" edge="1" source="s2-box" target="s3-box" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a23-lbl" value="Appears in" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#f87171;fontStyle=2;" vertex="1" connectable="0" parent="a23"><mxGeometry x="-0.1" relative="1" as="geometry"/></mxCell>
+
+        <!-- Step 3 -->
+        <mxCell id="s3" value="3" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f87171;strokeColor=#dc2626;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="40" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3-box" value="ADMIN sees request&#xa;in Driver Requests tab&#xa;&#xa;→ Approves&#xa;→ Assigns a Driver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#f87171;fontSize=11;fontStyle=0;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="455" y="135" width="180" height="95" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 3→4 -->
+        <mxCell id="a34" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#38bdf8;strokeWidth=2.5;" edge="1" source="s3-box" target="s4-box" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a34-lbl" value="Notifies" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#38bdf8;fontStyle=2;" vertex="1" connectable="0" parent="a34"><mxGeometry x="-0.1" relative="1" as="geometry"/></mxCell>
+
+        <!-- Step 4 -->
+        <mxCell id="s4" value="4" style="ellipse;whiteSpace=wrap;html=1;fillColor=#38bdf8;strokeColor=#0284c7;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="80" width="40" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="s4-box" value="DRIVER sees request&#xa;in Available list&#xa;&#xa;→ Accepts trip&#xa;→ Picks up meal from Kitchen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#38bdf8;fontSize=11;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="675" y="135" width="195" height="95" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 4→5 -->
+        <mxCell id="a45" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#22c55e;strokeWidth=2.5;" edge="1" source="s4-box" target="s5-box" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Step 5 -->
+        <mxCell id="s5" value="5" style="ellipse;whiteSpace=wrap;html=1;fillColor=#22c55e;strokeColor=#16a34a;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="940" y="80" width="40" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="s5-box" value="DRIVER marks&#xa;trip Complete ✓" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#22c55e;fontSize=12;fontStyle=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="905" y="150" width="140" height="55" as="geometry"/>
+        </mxCell>
+
+        <!-- Roles legend -->
+        <mxCell id="legend-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#dee2e6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="1000" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-title" value="Who Does What" style="text;html=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=16;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="420" y="295" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="leg-chef" value="CHEF" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbbf24;strokeColor=#d97706;fontColor=#ffffff;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="335" width="80" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg-chef-txt" value="Taps one button when meal is ready. That's it — simple and fast." style="text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="150" y="335" width="400" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="leg-admin" value="ADMIN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f87171;strokeColor=#dc2626;fontColor=#ffffff;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="375" width="80" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg-admin-txt" value="Sees the meal request in the Requests tab, approves it, and picks which driver to send." style="text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="150" y="375" width="500" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="leg-driver" value="DRIVER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#38bdf8;strokeColor=#0284c7;fontColor=#ffffff;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="415" width="80" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="leg-driver-txt" value="Sees the pickup request on their phone, accepts it, picks up from kitchen, marks done." style="text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="150" y="415" width="500" height="30" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
