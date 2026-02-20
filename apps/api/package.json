@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node \"$(npm root)/tsx/dist/cli.mjs\" watch src/main.ts",
+    "dev": "node \"$(npm root)/typescript/bin/tsc\" -p tsconfig.json && node dist/main.js",
     "build": "npm run build --prefix ../../packages/core && npm run prisma:migrate:deploy:if-vercel && npm run prisma:generate && node \"$(npm root)/typescript/bin/tsc\" -p tsconfig.build.json",
     "start": "node dist/main.js",
     "prisma:generate": "node \"$(npm root)/prisma/build/index.js\" generate --schema prisma/schema.prisma",
