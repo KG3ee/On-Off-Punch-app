@@ -123,6 +123,7 @@ export default function AdminLivePage() {
               <tr>
                 <th>Employee</th>
                 <th>Group</th>
+                <th>Role</th>
                 <th>Punched On</th>
                 <th>Late</th>
                 <th>Break</th>
@@ -133,6 +134,7 @@ export default function AdminLivePage() {
                 <tr key={session.id}>
                   <td>{session.user.displayName}</td>
                   <td>{session.team?.name ? <span className="tag brand">{session.team.name}</span> : <span className="tag">Service</span>}</td>
+                  <td>{session.user.role ? <span className={`tag role-${session.user.role.toLowerCase()}`}>{session.user.role}</span> : '—'}</td>
                   <td className="mono">{fmtTime(session.punchedOnAt)}</td>
                   <td>
                     {session.lateMinutes > 0 ? (
@@ -151,7 +153,7 @@ export default function AdminLivePage() {
                 </tr>
               ))}
               {!data?.activeDutySessions.length ? (
-                <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>No active sessions</td></tr>
+                <tr><td colSpan={6} style={{ color: 'var(--muted)' }}>No active sessions</td></tr>
               ) : null}
             </tbody>
           </table>
