@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 import {
@@ -115,6 +116,7 @@ function queueDate(iso: string): string {
 }
 
 export default function EmployeeDashboardPage() {
+  const router = useRouter();
   const [me, setMe] = useState<MeUser | null>(null);
 
   const [sessions, setSessions] = useState<DutySession[]>([]);
@@ -624,7 +626,6 @@ export default function EmployeeDashboardPage() {
       title="Dashboard"
       subtitle={me ? `${me.displayName}${me.team?.name ? ` · ${me.team.name}` : ''}` : '…'}
       userRole={me?.role}
-      isDriver={me?.isDriver}
       headerAction={headerAction}
     >
 

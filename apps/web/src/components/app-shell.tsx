@@ -25,7 +25,6 @@ export function AppShell({
   children,
   admin = false,
   userRole,
-  isDriver,
   headerAction,
 }: {
   title: string;
@@ -33,7 +32,6 @@ export function AppShell({
   children: React.ReactNode;
   admin?: boolean;
   userRole?: UserRole;
-  isDriver?: boolean;
   headerAction?: React.ReactNode;
 }) {
   const pathname = usePathname();

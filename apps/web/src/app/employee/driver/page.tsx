@@ -40,7 +40,7 @@ export default function DriverDashboardPage() {
       setAvailable(availableData);
       setAssignments(assignmentsData);
 
-      if (!meData.isDriver && meData.role !== 'DRIVER') {
+      if (meData.role !== 'DRIVER') {
         router.replace('/employee/dashboard');
       }
     } catch (err) {
@@ -102,13 +102,13 @@ export default function DriverDashboardPage() {
 
   if (loading) {
     return (
-      <AppShell title="Driver" subtitle="…" userRole={me?.role} isDriver={me?.isDriver}>
+      <AppShell title="Driver" subtitle="…" userRole={me?.role}>
         <p style={{ color: 'var(--muted)' }}>Loading…</p>
       </AppShell>
     );
   }
 
-  if (!me?.isDriver && me?.role !== 'DRIVER') {
+  if (me?.role !== 'DRIVER') {
     return null;
   }
 
@@ -117,7 +117,6 @@ export default function DriverDashboardPage() {
       title="Driver"
       subtitle="Accept and complete approved trips"
       userRole={me?.role}
-      isDriver={me?.isDriver}
     >
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}

@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 import { MeUser } from '@/types/auth';
@@ -55,6 +56,7 @@ const DRIVER_STATUS_LABEL: Record<string, string> = {
 };
 
 export default function EmployeeRequestsPage() {
+  const router = useRouter();
   const [me, setMe] = useState<MeUser | null>(null);
   const [tab, setTab] = useState<'shift' | 'driver'>('shift');
 
@@ -197,7 +199,6 @@ export default function EmployeeRequestsPage() {
       title="Schedule Requests"
       subtitle="Request shift changes, time off, or driver service"
       userRole={me?.role}
-      isDriver={me?.isDriver}
     >
       {error ? <div className="alert alert-error">{error}</div> : null}
       {success ? <div className="alert alert-success">{success}</div> : null}
