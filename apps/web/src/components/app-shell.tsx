@@ -55,7 +55,7 @@ export function AppShell({
     router.push(isAdminView ? '/employee/dashboard' : '/admin/live');
   }
 
-  if (isEmployeeView && isMobile && userRole !== 'DRIVER') {
+  if (isEmployeeView && isMobile && userRole !== 'DRIVER' && userRole !== 'LEADER') {
     return <MobileBlockedNotice title="Office desktop required" />;
   }
 
@@ -107,6 +107,21 @@ export function AppShell({
                 <>
                   <Link href="/employee/driver" className={pathname === '/employee/driver' ? 'active' : ''}>
                     Dashboard
+                  </Link>
+                  <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
+                    Password
+                  </Link>
+                </>
+              ) : userRole === 'LEADER' ? (
+                <>
+                  <Link href="/employee/dashboard" className={pathname === '/employee/dashboard' ? 'active' : ''}>
+                    Dashboard
+                  </Link>
+                  <Link href="/employee/team" className={pathname?.startsWith('/employee/team') ? 'active' : ''}>
+                    Team
+                  </Link>
+                  <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
+                    Requests
                   </Link>
                   <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
                     Password

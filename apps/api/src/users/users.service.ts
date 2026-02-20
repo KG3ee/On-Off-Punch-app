@@ -61,6 +61,15 @@ export class UsersService {
         : {}),
     };
 
+    if (data.role === Role.LEADER && dto.teamId) {
+      const existingLeader = await this.prisma.user.findFirst({
+        where: { teamId: dto.teamId, role: Role.LEADER }
+      });
+      if (existingLeader) {
+        throw new BadRequestException('This team already has a leader. Remove the current leader role first.');
+      }
+    }
+
     return this.prisma.user.create({
       data,
       select: PUBLIC_USER_WITH_TEAM_SELECT,
@@ -88,6 +97,17 @@ export class UsersService {
       data.passwordHash = await this.hashPassword(dto.password);
       if (dto.mustChangePassword === undefined) {
         data.mustChangePassword = true;
+      }
+    }
+
+    const effectiveRole = dto.role ?? (await this.prisma.user.findUnique({ where: { id }, select: { role: true } }))?.role;
+    const effectiveTeamId = dto.teamId !== undefined ? dto.teamId : (await this.prisma.user.findUnique({ where: { id }, select: { teamId: true } }))?.teamId;
+    if (effectiveRole === Role.LEADER && effectiveTeamId) {
+      const existingLeader = await this.prisma.user.findFirst({
+        where: { teamId: effectiveTeamId, role: Role.LEADER, NOT: { id } }
+      });
+      if (existingLeader) {
+        throw new BadRequestException('This team already has a leader. Remove the current leader role first.');
       }
     }
 

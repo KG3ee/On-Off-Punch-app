@@ -15,6 +15,7 @@ import { JobsModule } from "./jobs/jobs.module";
 import { ShiftsModule } from "./shifts/shifts.module";
 import { RegistrationsModule } from "./registrations/registrations.module";
 import { DriverRequestsModule } from "./driver-requests/driver-requests.module";
+import { LeaderModule } from "./leader/leader.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { DriverRequestsModule } from "./driver-requests/driver-requests.module";
     ShiftsModule,
     RegistrationsModule,
     DriverRequestsModule,
+    LeaderModule,
 
     ReportsModule,
     JobsModule,
