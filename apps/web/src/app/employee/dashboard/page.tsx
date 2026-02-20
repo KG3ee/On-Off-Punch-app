@@ -130,7 +130,19 @@ export default function EmployeeDashboardPage() {
   const [isOffline, setIsOffline] = useState(false);
   const [clockSkewMinutes, setClockSkewMinutes] = useState<number | null>(null);
   const [serverTimeZone, setServerTimeZone] = useState('');
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const syncedActionIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const serverActiveSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE') || null, [sessions]);
   const serverActiveBreak = useMemo(
@@ -507,43 +519,80 @@ export default function EmployeeDashboardPage() {
     );
   }
 
+  useEffect(() => {
+    if (error || actionMessage) {
+      setNotificationsOpen(true);
+      if (actionMessage && !error) {
+        const t = setTimeout(() => setNotificationsOpen(false), 4000);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [error, actionMessage]);
+
+  const notifications = useMemo(() => {
+    const list = [];
+    if (error) list.push({ id: 'error', type: 'error', icon: '⚠', text: error });
+    if (actionMessage) list.push({ id: 'msg', type: 'success', icon: '✅', text: actionMessage });
+    if (isOffline) list.push({ id: 'offline', type: 'warning', icon: '⛔', text: 'You are offline. Actions will queue and sync later.' });
+    if (clockSkewMinutes !== null && Math.abs(clockSkewMinutes) >= 3) {
+      list.push({ id: 'clock', type: 'warning', icon: '⚠', text: `Device clock differs from server by about ${Math.abs(clockSkewMinutes)} min${serverTimeZone ? ` (${serverTimeZone})` : ''}. Please enable automatic date/time.` });
+    }
+    if (pendingActions > 0) list.push({ id: 'pending', type: 'warning', icon: '🔄', text: `${pendingActions} action${pendingActions > 1 ? 's' : ''} waiting to sync…` });
+    if (failedActions > 0) list.push({ id: 'failed', type: 'error', icon: '⚠', text: `${failedActions} action${failedActions > 1 ? 's' : ''} need manual retry.`, action: true });
+    return list;
+  }, [error, actionMessage, isOffline, clockSkewMinutes, serverTimeZone, pendingActions, failedActions]);
+
+  const headerAction = (
+    <div className="action-menu-wrap" ref={notificationsRef}>
+      <button 
+        type="button" 
+        className="button button-ghost button-sm" 
+        style={{ position: 'relative', padding: '0.25rem 0.5rem', fontSize: '1rem' }}
+        onClick={() => setNotificationsOpen(!notificationsOpen)}
+      >
+        🔔
+        {notifications.length > 0 && (
+          <span style={{
+            position: 'absolute', top: '-2px', right: '-2px', 
+            background: 'var(--danger)', color: 'white', 
+            fontSize: '0.625rem', padding: '2px 5px', 
+            borderRadius: '99px', lineHeight: 1, fontWeight: 'bold'
+          }}>
+            {notifications.length}
+          </span>
+        )}
+      </button>
+      {notificationsOpen && (
+        <div className="action-menu" style={{ right: 0, width: '300px', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', cursor: 'default' }}>
+          {notifications.length === 0 ? (
+            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--muted)', fontSize: '0.875rem' }}>No new notifications</div>
+          ) : (
+            notifications.map(n => (
+              <div key={n.id} className={`alert alert-${n.type}`} style={{ margin: 0, padding: '0.625rem', fontSize: '0.875rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                  <span>{n.icon}</span>
+                  <span style={{ flex: 1, wordBreak: 'break-word' }}>{n.text}</span>
+                </div>
+                {n.action && (
+                  <button type="button" className="button button-ghost button-sm" style={{ marginTop: '0.5rem', width: '100%', justifyContent: 'center' }} onClick={retryFailedQueueActions}>
+                    Retry Failed
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <AppShell
       title="Dashboard"
       subtitle={me ? `${me.displayName}${me.team?.name ? ` · ${me.team.name}` : ''}` : '…'}
       userRole={me?.role}
+      headerAction={headerAction}
     >
-      <div style={{ minHeight: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {error ? <div className="alert alert-error">⚠ {error}</div> : null}
-        {actionMessage ? <div className="alert alert-success">{actionMessage}</div> : null}
-        {clockSkewMinutes !== null && Math.abs(clockSkewMinutes) >= 3 ? (
-          <div className="alert alert-warning">
-            ⚠ Device clock differs from server by about {Math.abs(clockSkewMinutes)} min
-            {serverTimeZone ? ` (${serverTimeZone})` : ''}. Please enable automatic date/time on your device.
-          </div>
-        ) : null}
-        {isOffline ? (
-          <div className="alert alert-warning">
-            ⛔ You are offline. You can keep working; actions will queue and sync later.
-          </div>
-        ) : null}
-
-        {/* Pending sync banner */}
-        {pendingActions > 0 ? (
-          <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="sync-spinner" />
-            {pendingActions} action{pendingActions > 1 ? 's' : ''} waiting to sync…
-          </div>
-        ) : null}
-        {failedActions > 0 ? (
-          <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span>{failedActions} action{failedActions > 1 ? 's' : ''} need manual retry.</span>
-            <button type="button" className="button button-ghost button-sm" onClick={retryFailedQueueActions}>
-              Retry Failed
-            </button>
-          </div>
-        ) : null}
-      </div>
 
       {/* ── Monthly KPI Row ── */}
       {monthlySummary ? (

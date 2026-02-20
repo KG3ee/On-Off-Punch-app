@@ -24,13 +24,15 @@ export function AppShell({
   subtitle,
   children,
   admin = false,
-  userRole
+  userRole,
+  headerAction,
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   admin?: boolean;
   userRole?: UserRole;
+  headerAction?: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -70,6 +72,7 @@ export function AppShell({
           </div>
 
           <div className="shell-header-actions">
+            {headerAction}
             {subtitle ? (
               <span className="shell-subtitle">{subtitle}</span>
             ) : null}
