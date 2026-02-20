@@ -403,10 +403,25 @@ tbody tr:hover {
   flex-shrink: 0;
 }
 
+.shell-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .shell-page-title {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--ink-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.shell-subtitle {
+  font-size: 0.75rem;
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -417,12 +432,6 @@ tbody tr:hover {
   align-items: center;
   gap: 0.375rem;
   flex-shrink: 0;
-}
-
-.shell-subtitle {
-  font-size: 0.75rem;
-  color: var(--muted);
-  white-space: nowrap;
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -872,7 +881,7 @@ main > .shell {
 }
 
 .toolbar .input {
-  max-width: 260px;
+  max-width: 320px;
 }
 
 .toolbar-spacer {

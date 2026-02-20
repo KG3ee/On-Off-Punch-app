@@ -541,7 +541,7 @@ export default function AdminUsersPage() {
         <div className="input-search">
           <input
             className="input"
-            placeholder="Search by name, username, or team…"
+            placeholder="Search name, username, or team…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

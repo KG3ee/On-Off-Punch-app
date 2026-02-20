@@ -68,14 +68,16 @@ export function AppShell({
             <img src="/icon.png" className="shell-brand-logo" alt="Punch" />
             <span className="shell-brand-name">Punch</span>
             <div className="shell-brand-divider" />
-            <span className="shell-page-title">{title}</span>
+            <div className="shell-title-group">
+              <span className="shell-page-title">{title}</span>
+              {subtitle ? (
+                <span className="shell-subtitle">{subtitle}</span>
+              ) : null}
+            </div>
           </div>
 
           <div className="shell-header-actions">
             {headerAction}
-            {subtitle ? (
-              <span className="shell-subtitle">{subtitle}</span>
-            ) : null}
             {userRole === 'ADMIN' ? (
               <button
                 type="button"
