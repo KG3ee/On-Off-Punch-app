@@ -50,6 +50,21 @@ enum ShiftRequestType {
   CUSTOM
 }
 
+enum DriverStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+enum DriverRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model Team {
   id             String  @id @default(cuid())
   name           String  @unique
@@ -78,6 +93,8 @@ model User {
   role       Role     @default(EMPLOYEE)
   isActive   Boolean  @default(true)
   teamId     String?
+  isDriver   Boolean  @default(false)
+  driverStatus DriverStatus @default(OFFLINE)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -97,8 +114,13 @@ model User {
   shiftChangeRequests ShiftChangeRequest[]
   reviewedShiftChangeRequests ShiftChangeRequest[] @relation("ReviewedShiftChangeRequests")
 
+  driverRequestsCreated DriverRequest[] @relation("DriverRequestsCreated")
+  driverRequestsAssigned DriverRequest[] @relation("DriverRequestsAssigned")
+  driverRequestsReviewed DriverRequest[] @relation("DriverRequestsReviewed")
+
   @@index([teamId])
   @@index([role])
+  @@index([isDriver])
 }
 
 model EmployeeRoster {
@@ -282,6 +304,30 @@ model ShiftChangeRequest {
 
   @@index([userId])
   @@index([status])
+}
+
+model DriverRequest {
+  id            String             @id @default(cuid())
+  userId        String
+  requestedDate DateTime
+  requestedTime String
+  destination   String
+  purpose       String?
+  status        DriverRequestStatus @default(PENDING)
+  driverId      String?
+  adminNote     String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user        User  @relation("DriverRequestsCreated", fields: [userId], references: [id])
+  driver      User? @relation("DriverRequestsAssigned", fields: [driverId], references: [id])
+  reviewedBy  User? @relation("DriverRequestsReviewed", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([driverId])
 }
 
 model BreakPolicy {
