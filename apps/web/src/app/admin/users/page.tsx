@@ -47,6 +47,7 @@ type UserRow = {
   firstName: string;
   lastName?: string;
   role: 'ADMIN' | 'EMPLOYEE';
+  isDriver?: boolean;
   team?: Team | null;
   isActive: boolean;
   mustChangePassword: boolean;
@@ -144,6 +145,7 @@ export default function AdminUsersPage() {
   // Edit user modal
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const [editRole, setEditRole] = useState<'ADMIN' | 'EMPLOYEE'>('EMPLOYEE');
+  const [editIsDriver, setEditIsDriver] = useState(false);
   const [editTeamId, setEditTeamId] = useState('');
 
   // Registration roster form
@@ -385,7 +387,7 @@ export default function AdminUsersPage() {
     try {
       await apiFetch(`/admin/users/${editingUser.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ role: editRole, teamId: editTeamId || null })
+        body: JSON.stringify({ role: editRole, isDriver: editIsDriver, teamId: editTeamId || null })
       });
       setEditingUser(null);
       flash('User updated');
@@ -412,6 +414,7 @@ export default function AdminUsersPage() {
   function openEditUser(user: UserRow) {
     setEditingUser(user);
     setEditRole(user.role);
+    setEditIsDriver(user.isDriver || false);
     setEditTeamId(user.team?.id || '');
     setOpenMenuId(null);
   }
@@ -922,6 +925,10 @@ export default function AdminUsersPage() {
                 <option value="">No team</option>
                 {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.875rem' }}>
+                <input type="checkbox" checked={editIsDriver} onChange={(e) => setEditIsDriver(e.target.checked)} />
+                Is Driver
+              </label>
               <div className="modal-footer">
                 <button type="button" className="button button-ghost" onClick={() => setEditingUser(null)}>Cancel</button>
                 <button type="submit" className="button button-primary">Save Changes</button>
