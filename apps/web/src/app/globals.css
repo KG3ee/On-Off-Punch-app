@@ -892,7 +892,7 @@ main > .shell {
 }
 
 .toolbar .input {
-  max-width: 320px;
+  max-width: 420px;
 }
 
 .toolbar-spacer {
@@ -909,12 +909,12 @@ main > .shell {
 }
 
 .input-search::before {
-  content: '⌕';
+  content: '🔍';
   position: absolute;
   left: 0.625rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--muted);
   pointer-events: none;
   z-index: 1;
