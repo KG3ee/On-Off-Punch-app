@@ -80,6 +80,7 @@ export class UsersService {
       displayName: dto.displayName,
       username: dto.username ? this.normalizeUsername(dto.username) : undefined,
       role: dto.role,
+      isDriver: dto.isDriver,
       isActive: dto.isActive,
       teamId: dto.teamId,
       mustChangePassword: dto.mustChangePassword,
