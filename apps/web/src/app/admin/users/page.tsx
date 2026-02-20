@@ -656,6 +656,12 @@ export default function AdminUsersPage() {
             required
           />
 
+          <select className="select" style={{ width: '170px' }} value={rosterTeamId} onChange={(e) => setRosterTeamId(e.target.value)}>
+            <option value="">Default team (none)</option>
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>{team.name}</option>
+            ))}
+          </select>
           <select className="select" style={{ width: '130px' }} value={rosterRole} onChange={(e) => setRosterRole(e.target.value as any)}>
             <option value="MEMBER">MEMBER</option>
             <option value="LEADER">LEADER</option>
@@ -663,12 +669,6 @@ export default function AdminUsersPage() {
             <option value="MAID">MAID</option>
             <option value="CHEF">CHEF</option>
             <option value="ADMIN">ADMIN</option>
-          </select>
-          <select className="select" style={{ width: '170px' }} value={rosterTeamId} onChange={(e) => setRosterTeamId(e.target.value)}>
-            <option value="">Default team (none)</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>{team.name}</option>
-            ))}
           </select>
           <button type="submit" className="button button-primary">Save Roster</button>
         </form>
