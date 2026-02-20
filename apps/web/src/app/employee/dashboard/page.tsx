@@ -547,20 +547,63 @@ export default function EmployeeDashboardPage() {
   const [mealSliding, setMealSliding] = useState(false);
   const [mealSent, setMealSent] = useState(false);
   const [mealSentTime, setMealSentTime] = useState<number | null>(null);
+  const [mealRequestId, setMealRequestId] = useState<string | null>(null);
+  const [mealDeliveryStatus, setMealDeliveryStatus] = useState<string | null>(null);
   const mealTrackRef = useRef<HTMLDivElement>(null);
   const mealStartXRef = useRef(0);
   const mealTrackWidthRef = useRef(0);
   const MEAL_THUMB_SIZE = 56;
   const MEAL_CONFIRM_THRESHOLD = 0.85;
 
-  const mealCooldownRemaining = useMemo(() => {
-    if (!mealSentTime) return 0;
-    const elapsed = (nowTick - mealSentTime) / 60000;
-    return Math.max(0, Math.ceil(30 - elapsed));
-  }, [mealSentTime, nowTick]);
+  type MealDriverRequest = { id: string; status: string; purpose: string | null; driver?: { displayName: string } | null };
+
+  useEffect(() => {
+    if (me?.role !== 'CHEF') return;
+    const loadActiveMealRequest = async () => {
+      try {
+        const reqs = await apiFetch<MealDriverRequest[]>('/driver-requests/me');
+        const active = reqs.find(
+          (r) => r.purpose?.includes('Ready - Pickup requested') && ['PENDING', 'APPROVED', 'IN_PROGRESS'].includes(r.status)
+        );
+        if (active) {
+          setMealRequestId(active.id);
+          setMealDeliveryStatus(active.status);
+        }
+      } catch { /* ignore */ }
+    };
+    void loadActiveMealRequest();
+  }, [me?.role]);
+
+  useEffect(() => {
+    if (me?.role !== 'CHEF' || !mealRequestId) return;
+    const poll = async () => {
+      try {
+        const reqs = await apiFetch<MealDriverRequest[]>('/driver-requests/me');
+        const req = reqs.find((r) => r.id === mealRequestId);
+        if (req) {
+          setMealDeliveryStatus(req.status);
+          if (req.status === 'COMPLETED') {
+            setMealSentTime(null);
+            setMealRequestId(null);
+            setMealDeliveryStatus(null);
+            setActionMessage('Meal delivered! You can report the next meal.');
+          } else if (req.status === 'REJECTED') {
+            setMealSentTime(null);
+            setMealRequestId(null);
+            setMealDeliveryStatus(null);
+            setError('Meal request was rejected. You can try again.');
+          }
+        }
+      } catch { /* ignore poll errors */ }
+    };
+    const id = setInterval(poll, 10000);
+    return () => clearInterval(id);
+  }, [me?.role, mealRequestId]);
+
+  const mealBusy = mealSent || (!!mealDeliveryStatus && mealDeliveryStatus !== 'COMPLETED' && mealDeliveryStatus !== 'REJECTED') || (loading && !isOffline);
 
   const handleMealTouchStart = (e: React.TouchEvent) => {
-    if (mealSent || mealCooldownRemaining > 0 || (loading && !isOffline)) return;
+    if (mealBusy) return;
     const track = mealTrackRef.current;
     if (!track) return;
     mealTrackWidthRef.current = track.getBoundingClientRect().width - MEAL_THUMB_SIZE;
@@ -569,7 +612,7 @@ export default function EmployeeDashboardPage() {
   };
 
   const handleMealMouseDown = (e: React.MouseEvent) => {
-    if (mealSent || mealCooldownRemaining > 0 || (loading && !isOffline)) return;
+    if (mealBusy) return;
     const track = mealTrackRef.current;
     if (!track) return;
     mealTrackWidthRef.current = track.getBoundingClientRect().width - MEAL_THUMB_SIZE;
@@ -613,7 +656,7 @@ export default function EmployeeDashboardPage() {
       const now = new Date();
       const hour = now.getHours();
       const mealName = hour < 11 ? 'Breakfast' : hour < 15 ? 'Lunch' : 'Dinner';
-      await apiFetch('/driver-requests', {
+      const result = await apiFetch<{ id: string }>('/driver-requests', {
         method: 'POST',
         body: JSON.stringify({
           requestedDate: now.toISOString(),
@@ -625,6 +668,8 @@ export default function EmployeeDashboardPage() {
       setMealSent(true);
       setMealSentTime(Date.now());
       setMealSlideX(0);
+      setMealRequestId(result.id);
+      setMealDeliveryStatus('PENDING');
       setActionMessage(`${mealName} reported ready! Driver requested.`);
       setTimeout(() => { setMealSent(false); }, 3000);
     } catch (e: any) {
@@ -806,75 +851,87 @@ export default function EmployeeDashboardPage() {
           {me?.role === 'CHEF' ? (
             <article className="card">
               <h3>🍽️ Meal Ready</h3>
-              <div
-                ref={mealTrackRef}
-                className="slide-track"
-                style={{
-                  position: 'relative',
-                  height: `${MEAL_THUMB_SIZE}px`,
-                  borderRadius: `${MEAL_THUMB_SIZE / 2}px`,
-                  background: mealSent
-                    ? 'var(--ok)'
-                    : mealCooldownRemaining > 0
-                    ? 'var(--surface-alt, #2a2a3e)'
-                    : 'linear-gradient(90deg, var(--surface-alt, #2a2a3e) 0%, var(--brand) 100%)',
-                  overflow: 'hidden',
-                  marginTop: '0.5rem',
-                  touchAction: 'none',
-                  userSelect: 'none',
-                  opacity: mealCooldownRemaining > 0 ? 0.5 : 1,
-                  transition: 'background 0.3s, opacity 0.3s',
-                }}
-              >
+              {mealDeliveryStatus && mealDeliveryStatus !== 'COMPLETED' && mealDeliveryStatus !== 'REJECTED' && !mealSent ? (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  padding: '0.75rem 1rem', borderRadius: '0.75rem', marginTop: '0.5rem',
+                  background: mealDeliveryStatus === 'IN_PROGRESS' ? 'rgba(59,130,246,0.1)' : mealDeliveryStatus === 'APPROVED' ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.1)',
+                  border: `1px solid ${mealDeliveryStatus === 'IN_PROGRESS' ? 'rgba(59,130,246,0.3)' : mealDeliveryStatus === 'APPROVED' ? 'rgba(34,197,94,0.3)' : 'rgba(251,191,36,0.3)'}`,
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>
+                    {mealDeliveryStatus === 'IN_PROGRESS' ? '🚗' : mealDeliveryStatus === 'APPROVED' ? '✅' : '⏳'}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>
+                      {mealDeliveryStatus === 'PENDING' && 'Waiting for admin approval...'}
+                      {mealDeliveryStatus === 'APPROVED' && 'Approved! Waiting for driver...'}
+                      {mealDeliveryStatus === 'IN_PROGRESS' && 'Driver is on the way!'}
+                    </p>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '0.125rem 0 0' }}>
+                      Auto-refreshing every 10s
+                    </p>
+                  </div>
+                  <span className={`status-dot active`} style={{ animationDuration: '1.5s' }} />
+                </div>
+              ) : (
                 <div
+                  ref={mealTrackRef}
+                  className="slide-track"
                   style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: 'rgba(255,255,255,0.5)',
-                    pointerEvents: 'none',
-                    letterSpacing: '0.03em',
+                    position: 'relative',
+                    height: `${MEAL_THUMB_SIZE}px`,
+                    borderRadius: `${MEAL_THUMB_SIZE / 2}px`,
+                    background: mealSent
+                      ? 'var(--ok)'
+                      : 'linear-gradient(90deg, var(--surface-alt, #2a2a3e) 0%, var(--brand) 100%)',
+                    overflow: 'hidden',
+                    marginTop: '0.5rem',
+                    touchAction: 'none',
+                    userSelect: 'none',
+                    transition: 'background 0.3s',
                   }}
                 >
-                  {mealSent
-                    ? '✓ Sent!'
-                    : mealCooldownRemaining > 0
-                    ? `Wait ${mealCooldownRemaining}m`
-                    : 'Slide to report meal ready →'}
-                </div>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: 'rgba(255,255,255,0.5)',
+                      pointerEvents: 'none',
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    {mealSent ? '✓ Sent!' : 'Slide to report meal ready →'}
+                  </div>
 
-                <div
-                  onTouchStart={handleMealTouchStart}
-                  onMouseDown={handleMealMouseDown}
-                  style={{
-                    position: 'absolute',
-                    top: 3,
-                    left: 3 + mealSlideX,
-                    width: MEAL_THUMB_SIZE - 6,
-                    height: MEAL_THUMB_SIZE - 6,
-                    borderRadius: '50%',
-                    background: mealSent ? '#fff' : 'var(--brand)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.4rem',
-                    cursor: mealCooldownRemaining > 0 ? 'not-allowed' : 'grab',
-                    transition: mealSliding ? 'none' : 'left 0.3s ease',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    zIndex: 2,
-                  }}
-                >
-                  {mealSent ? '✓' : '🍽️'}
+                  <div
+                    onTouchStart={handleMealTouchStart}
+                    onMouseDown={handleMealMouseDown}
+                    style={{
+                      position: 'absolute',
+                      top: 3,
+                      left: 3 + mealSlideX,
+                      width: MEAL_THUMB_SIZE - 6,
+                      height: MEAL_THUMB_SIZE - 6,
+                      borderRadius: '50%',
+                      background: mealSent ? '#fff' : 'var(--brand)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.4rem',
+                      cursor: 'grab',
+                      transition: mealSliding ? 'none' : 'left 0.3s ease',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      zIndex: 2,
+                    }}
+                  >
+                    {mealSent ? '✓' : '🍽️'}
+                  </div>
                 </div>
-              </div>
-              {mealCooldownRemaining > 0 && (
-                <p style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: '0.375rem', textAlign: 'center' }}>
-                  Cooldown: {mealCooldownRemaining} min remaining
-                </p>
               )}
             </article>
           ) : null}
