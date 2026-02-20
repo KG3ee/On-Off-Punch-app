@@ -11,6 +11,7 @@ import {
   getFailedCount,
   getQueueSnapshot,
   retryFailedActions,
+  dismissFailedActions,
   QueuedAction
 } from '@/lib/action-queue';
 import { MeUser } from '@/types/auth';
@@ -594,9 +595,14 @@ export default function EmployeeDashboardPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span className="noti-text">{n.text}</span>
                     {n.action && (
-                      <button type="button" className="button button-ghost button-sm" style={{ marginTop: '0.375rem', fontSize: '0.75rem' }} onClick={retryFailedQueueActions}>
-                        Retry Failed
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.375rem' }}>
+                        <button type="button" className="button button-ghost button-sm" style={{ fontSize: '0.75rem' }} onClick={retryFailedQueueActions}>
+                          Retry
+                        </button>
+                        <button type="button" className="button button-ghost button-sm" style={{ fontSize: '0.75rem', color: 'var(--muted)' }} onClick={() => { dismissFailedActions(); setNotificationsOpen(false); }}>
+                          Dismiss
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

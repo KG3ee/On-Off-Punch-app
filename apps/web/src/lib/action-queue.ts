@@ -8,8 +8,10 @@ import { apiFetch } from './api';
 
 const QUEUE_KEY = 'punch_action_queue';
 const RETRY_INTERVAL_MS = 5_000;
-const BASE_RETRY_DELAY_MS = 5_000;
-const MAX_RETRY_DELAY_MS = 5 * 60_000;
+const BASE_RETRY_DELAY_MS = 3_000;
+const MAX_RETRY_DELAY_MS = 30_000;
+const MAX_ACTION_AGE_MS = 24 * 60 * 60_000;
+const MAX_SERVER_RETRIES = 3;
 
 export type QueuedAction = {
     id: string;
@@ -19,6 +21,7 @@ export type QueuedAction = {
     clientTimestamp: string;
     status: 'pending' | 'syncing' | 'synced' | 'failed';
     retries: number;
+    serverRetries?: number;
     createdAt: string;
     nextRetryAt?: string;
     error?: string;
@@ -168,11 +171,46 @@ function updateActionInQueue(id: string, updateFn: (a: QueuedAction) => void) {
 
 let isProcessing = false;
 
+function isStaleServerError(errorMsg: string): boolean {
+    const stalePatterns = /already punched|no active|not found|already .*(on|off|started|ended)|duplicate|expired|session .* closed/i;
+    return stalePatterns.test(errorMsg);
+}
+
+function cleanupQueue(): void {
+    const queue = loadQueue();
+    const nowMs = Date.now();
+    let changed = false;
+
+    for (const action of queue) {
+        const ageMs = nowMs - new Date(action.createdAt).getTime();
+
+        if (action.status === 'syncing') {
+            action.status = 'pending';
+            action.nextRetryAt = new Date().toISOString();
+            changed = true;
+        }
+
+        if (ageMs > MAX_ACTION_AGE_MS && (action.status === 'pending' || action.status === 'failed')) {
+            action.status = 'failed';
+            action.error = 'Expired — action too old to sync';
+            action.nextRetryAt = undefined;
+            changed = true;
+        }
+    }
+
+    if (changed) {
+        saveQueue(queue);
+        notify();
+    }
+}
+
 async function processQueue(): Promise<void> {
     if (isProcessing) return;
     isProcessing = true;
 
     try {
+        cleanupQueue();
+
         const queue = loadQueue();
         const nowMs = Date.now();
         const activeQueue = queue.filter((a) => a.status === 'pending' || a.status === 'syncing');
@@ -209,16 +247,29 @@ async function processQueue(): Promise<void> {
                     a.nextRetryAt = undefined;
                 });
             } catch (err) {
+                const errMsg = err instanceof Error ? err.message : 'Unknown error';
+
                 updateActionInQueue(action.id, (a) => {
-                    if (isLikelyNetworkError(err)) {
+                    if (isLikelyNetworkError(err) || (err instanceof DOMException && err.name === 'AbortError')) {
                         a.retries += 1;
                         a.status = 'pending';
-                        a.error = err instanceof Error ? err.message : 'Network unavailable';
+                        a.error = errMsg;
                         a.nextRetryAt = new Date(Date.now() + computeRetryDelayMs(a.retries)).toISOString();
-                    } else {
-                        a.status = 'failed';
-                        a.error = err instanceof Error ? err.message : 'Server rejected action';
+                    } else if (isStaleServerError(errMsg)) {
+                        a.status = 'synced';
+                        a.error = undefined;
                         a.nextRetryAt = undefined;
+                    } else {
+                        a.serverRetries = (a.serverRetries || 0) + 1;
+                        if (a.serverRetries >= MAX_SERVER_RETRIES) {
+                            a.status = 'synced';
+                            a.error = undefined;
+                            a.nextRetryAt = undefined;
+                        } else {
+                            a.status = 'failed';
+                            a.error = errMsg;
+                            a.nextRetryAt = undefined;
+                        }
                     }
                 });
             }
@@ -257,7 +308,10 @@ export function retryFailedActions(): void {
     for (const action of queue) {
         if (action.status === 'failed') {
             action.status = 'pending';
+            action.retries = 0;
+            action.serverRetries = 0;
             action.nextRetryAt = nowIso;
+            action.error = undefined;
             changed = true;
         }
     }
@@ -270,6 +324,12 @@ export function retryFailedActions(): void {
     void processQueue();
 }
 
+export function dismissFailedActions(): void {
+    const queue = loadQueue().filter((a) => a.status !== 'failed');
+    saveQueue(queue);
+    notify();
+}
+
 // ── Auto-start retry loop on page load if there are pending items ──
 
 if (typeof window !== 'undefined') {
@@ -278,10 +338,11 @@ if (typeof window !== 'undefined') {
         void processQueue();
     });
 
-    // Check on load
     setTimeout(() => {
+        cleanupQueue();
         if (getPendingCount() > 0) {
             startRetryLoop();
+            void processQueue();
         }
     }, 1000);
 }
