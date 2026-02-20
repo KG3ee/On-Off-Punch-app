@@ -513,35 +513,37 @@ export default function EmployeeDashboardPage() {
       subtitle={me ? `${me.displayName}${me.team?.name ? ` · ${me.team.name}` : ''}` : '…'}
       userRole={me?.role}
     >
-      {error ? <div className="alert alert-error">⚠ {error}</div> : null}
-      {actionMessage ? <div className="alert alert-success">{actionMessage}</div> : null}
-      {clockSkewMinutes !== null && Math.abs(clockSkewMinutes) >= 3 ? (
-        <div className="alert alert-warning">
-          ⚠ Device clock differs from server by about {Math.abs(clockSkewMinutes)} min
-          {serverTimeZone ? ` (${serverTimeZone})` : ''}. Please enable automatic date/time on your device.
-        </div>
-      ) : null}
-      {isOffline ? (
-        <div className="alert alert-warning">
-          ⛔ You are offline. You can keep working; actions will queue and sync later.
-        </div>
-      ) : null}
+      <div style={{ minHeight: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {error ? <div className="alert alert-error">⚠ {error}</div> : null}
+        {actionMessage ? <div className="alert alert-success">{actionMessage}</div> : null}
+        {clockSkewMinutes !== null && Math.abs(clockSkewMinutes) >= 3 ? (
+          <div className="alert alert-warning">
+            ⚠ Device clock differs from server by about {Math.abs(clockSkewMinutes)} min
+            {serverTimeZone ? ` (${serverTimeZone})` : ''}. Please enable automatic date/time on your device.
+          </div>
+        ) : null}
+        {isOffline ? (
+          <div className="alert alert-warning">
+            ⛔ You are offline. You can keep working; actions will queue and sync later.
+          </div>
+        ) : null}
 
-      {/* Pending sync banner */}
-      {pendingActions > 0 ? (
-        <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="sync-spinner" />
-          {pendingActions} action{pendingActions > 1 ? 's' : ''} waiting to sync…
-        </div>
-      ) : null}
-      {failedActions > 0 ? (
-        <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>{failedActions} action{failedActions > 1 ? 's' : ''} need manual retry.</span>
-          <button type="button" className="button button-ghost button-sm" onClick={retryFailedQueueActions}>
-            Retry Failed
-          </button>
-        </div>
-      ) : null}
+        {/* Pending sync banner */}
+        {pendingActions > 0 ? (
+          <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="sync-spinner" />
+            {pendingActions} action{pendingActions > 1 ? 's' : ''} waiting to sync…
+          </div>
+        ) : null}
+        {failedActions > 0 ? (
+          <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span>{failedActions} action{failedActions > 1 ? 's' : ''} need manual retry.</span>
+            <button type="button" className="button button-ghost button-sm" onClick={retryFailedQueueActions}>
+              Retry Failed
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       {/* ── Monthly KPI Row ── */}
       {monthlySummary ? (
