@@ -422,7 +422,7 @@ export default function EmployeeDashboardPage() {
     const result = await runQueuedAction(path, body);
 
     if (result.ok) {
-      setActionMessage('✅ Action completed');
+      setActionMessage('Action completed');
       setTimeout(() => setActionMessage(''), 3000);
 
       // Fast targeted refresh for the changed data only, then sync the rest in background
@@ -435,7 +435,7 @@ export default function EmployeeDashboardPage() {
       }
       loadData({ background: true });
     } else if (result.queued) {
-      setActionMessage('⏳ Action queued. It will sync automatically when connection is available.');
+      setActionMessage('Action queued. It will sync automatically when connection is available.');
       setTimeout(() => setActionMessage(''), 5000);
     } else {
       setError(result.error || 'Action failed');
@@ -530,15 +530,15 @@ export default function EmployeeDashboardPage() {
   }, [error, actionMessage]);
 
   const notifications = useMemo(() => {
-    const list = [];
-    if (error) list.push({ id: 'error', type: 'error', icon: '⚠', text: error });
-    if (actionMessage) list.push({ id: 'msg', type: 'success', icon: '✅', text: actionMessage });
-    if (isOffline) list.push({ id: 'offline', type: 'warning', icon: '⛔', text: 'You are offline. Actions will queue and sync later.' });
+    const list: { id: string; type: string; text: string; action?: boolean }[] = [];
+    if (error) list.push({ id: 'error', type: 'error', text: error });
+    if (actionMessage) list.push({ id: 'msg', type: 'success', text: actionMessage });
+    if (isOffline) list.push({ id: 'offline', type: 'warning', text: 'You are offline. Actions will queue and sync later.' });
     if (clockSkewMinutes !== null && Math.abs(clockSkewMinutes) >= 3) {
-      list.push({ id: 'clock', type: 'warning', icon: '⚠', text: `Device clock differs from server by about ${Math.abs(clockSkewMinutes)} min${serverTimeZone ? ` (${serverTimeZone})` : ''}. Please enable automatic date/time.` });
+      list.push({ id: 'clock', type: 'warning', text: `Device clock differs from server by about ${Math.abs(clockSkewMinutes)} min${serverTimeZone ? ` (${serverTimeZone})` : ''}. Please enable automatic date/time.` });
     }
-    if (pendingActions > 0) list.push({ id: 'pending', type: 'warning', icon: '🔄', text: `${pendingActions} action${pendingActions > 1 ? 's' : ''} waiting to sync…` });
-    if (failedActions > 0) list.push({ id: 'failed', type: 'error', icon: '⚠', text: `${failedActions} action${failedActions > 1 ? 's' : ''} need manual retry.`, action: true });
+    if (pendingActions > 0) list.push({ id: 'pending', type: 'warning', text: `${pendingActions} action${pendingActions > 1 ? 's' : ''} waiting to sync…` });
+    if (failedActions > 0) list.push({ id: 'failed', type: 'error', text: `${failedActions} action${failedActions > 1 ? 's' : ''} need manual retry.`, action: true });
     return list;
   }, [error, actionMessage, isOffline, clockSkewMinutes, serverTimeZone, pendingActions, failedActions]);
 
@@ -546,40 +546,43 @@ export default function EmployeeDashboardPage() {
     <div className="action-menu-wrap" ref={notificationsRef}>
       <button 
         type="button" 
-        className="button button-ghost button-sm" 
-        style={{ position: 'relative', padding: '0.25rem 0.5rem', fontSize: '1rem' }}
+        className="noti-bell" 
         onClick={() => setNotificationsOpen(!notificationsOpen)}
       >
-        🔔
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
         {notifications.length > 0 && (
-          <span style={{
-            position: 'absolute', top: '-2px', right: '-2px', 
-            background: 'var(--danger)', color: 'white', 
-            fontSize: '0.625rem', padding: '2px 5px', 
-            borderRadius: '99px', lineHeight: 1, fontWeight: 'bold'
-          }}>
-            {notifications.length}
-          </span>
+          <span className="noti-badge">{notifications.length}</span>
         )}
       </button>
       {notificationsOpen && (
-        <div className="action-menu" style={{ right: 0, width: '300px', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', cursor: 'default' }}>
+        <div className="noti-dropdown">
+          <div className="noti-dropdown-header">
+            <span style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Notifications</span>
+            {notifications.length > 0 && (
+              <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{notifications.length} active</span>
+            )}
+          </div>
           {notifications.length === 0 ? (
-            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--muted)', fontSize: '0.875rem' }}>No new notifications</div>
+            <div className="noti-empty">All clear — no notifications</div>
           ) : (
-            notifications.map(n => (
-              <div key={n.id} className={`alert alert-${n.type}`} style={{ margin: 0, padding: '0.625rem', fontSize: '0.875rem' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                  <span>{n.icon}</span>
-                  <span style={{ flex: 1, wordBreak: 'break-word' }}>{n.text}</span>
+            <div className="noti-list">
+              {notifications.map(n => (
+                <div key={n.id} className={`noti-item noti-item-${n.type}`}>
+                  <div className="noti-dot" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="noti-text">{n.text}</span>
+                    {n.action && (
+                      <button type="button" className="button button-ghost button-sm" style={{ marginTop: '0.375rem', fontSize: '0.75rem' }} onClick={retryFailedQueueActions}>
+                        Retry Failed
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {n.action && (
-                  <button type="button" className="button button-ghost button-sm" style={{ marginTop: '0.5rem', width: '100%', justifyContent: 'center' }} onClick={retryFailedQueueActions}>
-                    Retry Failed
-                  </button>
-                )}
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       )}
