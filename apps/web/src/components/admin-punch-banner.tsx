@@ -90,10 +90,20 @@ export function AdminPunchWidget() {
           </span>
           <button
             type="button"
-            className="button button-danger button-sm"
             disabled={loading}
             onClick={() => void punch('/attendance/off')}
-            style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', height: 'auto', lineHeight: '1.4' }}
+            style={{
+              fontSize: '0.625rem',
+              fontWeight: 700,
+              padding: '0.15rem 0.4rem',
+              background: 'var(--danger)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              lineHeight: '1.3',
+              letterSpacing: '0.03em',
+            }}
           >
             OFF
           </button>
@@ -101,10 +111,20 @@ export function AdminPunchWidget() {
       ) : (
         <button
           type="button"
-          className="button button-ok button-sm"
           disabled={loading}
           onClick={() => void punch('/attendance/on')}
-          style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', height: 'auto', lineHeight: '1.4' }}
+          style={{
+            fontSize: '0.625rem',
+            fontWeight: 700,
+            padding: '0.15rem 0.4rem',
+            background: 'var(--ok)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            lineHeight: '1.3',
+            letterSpacing: '0.03em',
+          }}
         >
           Punch ON
         </button>
