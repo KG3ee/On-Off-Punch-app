@@ -343,6 +343,18 @@ p {
   border-color: rgba(74, 222, 128, 0.25);
 }
 
+.tag.role-maid {
+  color: #f472b6;
+  background: rgba(244, 114, 182, 0.1);
+  border-color: rgba(244, 114, 182, 0.25);
+}
+
+.tag.role-chef {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
 /* ── Tables ── */
 .table-wrap {
   overflow-x: auto;

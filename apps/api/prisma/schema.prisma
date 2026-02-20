@@ -12,6 +12,8 @@ enum Role {
   MEMBER
   DRIVER
   LEADER
+  MAID
+  CHEF
 }
 
 enum AssignmentTargetType {

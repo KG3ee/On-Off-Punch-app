@@ -46,7 +46,7 @@ type UserRow = {
   displayName: string;
   firstName: string;
   lastName?: string;
-  role: 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER';
+  role: 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF';
   team?: Team | null;
   isActive: boolean;
   mustChangePassword: boolean;
@@ -123,7 +123,7 @@ export default function AdminUsersPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [mustChangePassword, setMustChangePassword] = useState(true);
-  const [role, setRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER'>('MEMBER');
+  const [role, setRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF'>('MEMBER');
   const [teamId, setTeamId] = useState('');
 
   // Create team form
@@ -143,7 +143,7 @@ export default function AdminUsersPage() {
 
   // Edit user modal
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
-  const [editRole, setEditRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER'>('MEMBER');
+  const [editRole, setEditRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF'>('MEMBER');
   const [editTeamId, setEditTeamId] = useState('');
 
   // Registration roster form
@@ -836,10 +836,12 @@ export default function AdminUsersPage() {
               <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" required />
               <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temporary password" minLength={6} required />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <select className="select" value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER')}>
+                <select className="select" value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF')}>
                   <option value="MEMBER">MEMBER</option>
                   <option value="LEADER">LEADER</option>
                   <option value="DRIVER">DRIVER</option>
+                  <option value="MAID">MAID</option>
+                  <option value="CHEF">CHEF</option>
                   <option value="ADMIN">ADMIN</option>
                 </select>
                 <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
@@ -917,7 +919,7 @@ export default function AdminUsersPage() {
             </p>
             <form className="form-grid" onSubmit={(e) => void submitEditUser(e)}>
               <label style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Role</label>
-              <select className="select" value={editRole} onChange={(e) => setEditRole(e.target.value as 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER')}>
+              <select className="select" value={editRole} onChange={(e) => setEditRole(e.target.value as 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF')}>
                 <option value="MEMBER">MEMBER</option>
                 <option value="LEADER">LEADER</option>
                 <option value="DRIVER">DRIVER</option>

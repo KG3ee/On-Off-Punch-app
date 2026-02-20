@@ -543,6 +543,29 @@ export default function EmployeeDashboardPage() {
     }
   }, [error, actionMessage]);
 
+  const reportMealReady = async (mealName: string) => {
+    try {
+      setLoading(true);
+      setError('');
+      const now = new Date();
+      const payload = {
+        requestedDate: now.toISOString(),
+        requestedTime: now.toTimeString().slice(0, 5),
+        destination: 'Kitchen',
+        purpose: `${mealName} Ready - Pickup requested`
+      };
+      await apiFetch('/driver-requests', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      setActionMessage(`${mealName} reported ready! Driver requested.`);
+    } catch (e: any) {
+      setError(e.message || `Failed to report ${mealName}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const notifications = useMemo(() => {
     const list: { id: string; type: string; text: string; action?: boolean }[] = [];
     if (error) list.push({ id: 'error', type: 'error', text: error });
@@ -709,7 +732,42 @@ export default function EmployeeDashboardPage() {
             </div>
           </article>
 
-          {me?.role !== 'LEADER' ? (
+          {me?.role === 'CHEF' ? (
+            <article className="card">
+              <h3>Meals Ready</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  className="button button-primary" 
+                  style={{ justifyContent: 'center', padding: '1rem', fontSize: '1rem' }}
+                  onClick={() => reportMealReady('Breakfast')}
+                  disabled={loading && !isOffline}
+                >
+                  🍳 Breakfast Ready
+                </button>
+                <button 
+                  type="button" 
+                  className="button button-primary" 
+                  style={{ justifyContent: 'center', padding: '1rem', fontSize: '1rem' }}
+                  onClick={() => reportMealReady('Lunch')}
+                  disabled={loading && !isOffline}
+                >
+                  🍲 Lunch Ready
+                </button>
+                <button 
+                  type="button" 
+                  className="button button-primary" 
+                  style={{ justifyContent: 'center', padding: '1rem', fontSize: '1rem' }}
+                  onClick={() => reportMealReady('Dinner')}
+                  disabled={loading && !isOffline}
+                >
+                  🍽️ Dinner Ready
+                </button>
+              </div>
+            </article>
+          ) : null}
+
+          {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="card">
             <h3>Breaks</h3>
             {activeBreak ? (
@@ -784,7 +842,7 @@ export default function EmployeeDashboardPage() {
             </div>
           </article>
 
-          {me?.role !== 'LEADER' ? (
+          {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="card">
             <h3>Session Breaks</h3>
             <div className="table-wrap">
