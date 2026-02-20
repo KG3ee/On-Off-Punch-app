@@ -55,9 +55,10 @@ export function AppShell({
     router.push(isAdminView ? '/employee/dashboard' : '/admin/live');
   }
 
-  if (isEmployeeView && isMobile) {
-    return <MobileBlockedNotice title="Office desktop required" />;
-  }
+  // Mobile soft-block disabled temporarily
+  // if (isEmployeeView && isMobile) {
+  //   return <MobileBlockedNotice title="Office desktop required" />;
+  // }
 
   return (
     <main>
