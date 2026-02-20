@@ -619,6 +619,7 @@ export default function EmployeeDashboardPage() {
       title="Dashboard"
       subtitle={me ? `${me.displayName}${me.team?.name ? ` · ${me.team.name}` : ''}` : '…'}
       userRole={me?.role}
+      isDriver={me?.isDriver}
       headerAction={headerAction}
     >
 

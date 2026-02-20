@@ -1,5 +1,5 @@
 import { Body, Controller, Param, Post, Get, UseGuards } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Role, DriverStatus } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -31,6 +31,18 @@ export class DriverRequestsController {
   @Get('admin/driver-requests')
   async listAllRequests() {
     return this.driverRequestsService.listAllRequests();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('driver-requests/available')
+  async listAvailableForDrivers(@CurrentUser() authUser: AuthUser) {
+    return this.driverRequestsService.listAvailableForDrivers();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('driver-requests/my-assignments')
+  async listMyAssignments(@CurrentUser() authUser: AuthUser) {
+    return this.driverRequestsService.listMyAssignments(authUser.sub);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -65,5 +77,11 @@ export class DriverRequestsController {
   @Post('driver-requests/:id/complete')
   async complete(@CurrentUser() authUser: AuthUser, @Param('id') id: string) {
     return this.driverRequestsService.complete(id, authUser.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('driver-requests/status')
+  async setStatus(@CurrentUser() authUser: AuthUser, @Body() dto: { status: DriverStatus }) {
+    return this.driverRequestsService.setDriverStatus(authUser.sub, dto.status);
   }
 }

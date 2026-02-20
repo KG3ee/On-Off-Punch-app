@@ -92,6 +92,25 @@ export class DriverRequestsService {
     });
   }
 
+  async listAvailableForDrivers(): Promise<DriverRequestWithRelations[]> {
+    return this.prisma.driverRequest.findMany({
+      where: {
+        status: DriverRequestStatus.APPROVED,
+        driverId: null
+      },
+      include: this.getInclude(),
+      orderBy: { requestedDate: 'asc' }
+    });
+  }
+
+  async listMyAssignments(driverId: string): Promise<DriverRequestWithRelations[]> {
+    return this.prisma.driverRequest.findMany({
+      where: { driverId },
+      include: this.getInclude(),
+      orderBy: { requestedDate: 'asc' }
+    });
+  }
+
   async approve(
     requestId: string,
     reviewerId: string,
@@ -219,5 +238,24 @@ export class DriverRequestsService {
 
       return updated;
     });
+  }
+
+  async setDriverStatus(userId: string, status: DriverStatus): Promise<{ driverStatus: DriverStatus }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isDriver: true }
+    });
+
+    if (!user?.isDriver) {
+      throw new ForbiddenException('Only drivers can update driver status');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { driverStatus: status },
+      select: { driverStatus: true }
+    });
+
+    return updated;
   }
 }

@@ -60,6 +60,7 @@ export default function ChangePasswordPage() {
       title="Password"
       subtitle={me ? me.displayName : undefined}
       userRole={me?.role}
+      isDriver={me?.isDriver}
     >
       <div className="password-card">
         <div className="card" style={{ display: 'grid', gap: '1rem' }}>

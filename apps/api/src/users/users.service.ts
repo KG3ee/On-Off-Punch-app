@@ -16,6 +16,8 @@ const PUBLIC_USER_WITH_TEAM_SELECT = {
   lastName: true,
   displayName: true,
   role: true,
+  isDriver: true,
+  driverStatus: true,
   isActive: true,
   mustChangePassword: true,
   teamId: true,

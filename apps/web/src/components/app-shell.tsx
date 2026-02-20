@@ -25,6 +25,7 @@ export function AppShell({
   children,
   admin = false,
   userRole,
+  isDriver,
   headerAction,
 }: {
   title: string;
@@ -32,6 +33,7 @@ export function AppShell({
   children: React.ReactNode;
   admin?: boolean;
   userRole?: UserRole;
+  isDriver?: boolean;
   headerAction?: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -110,6 +112,11 @@ export function AppShell({
                 <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
                   Requests
                 </Link>
+                {isDriver ? (
+                  <Link href="/employee/driver" className={pathname === '/employee/driver' ? 'active' : ''}>
+                    Driver
+                  </Link>
+                ) : null}
                 <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
                   Password
                 </Link>
