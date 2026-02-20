@@ -54,6 +54,7 @@ enum ShiftRequestType {
 enum DriverStatus {
   AVAILABLE
   BUSY
+  ON_BREAK
   OFFLINE
 }
 
@@ -94,7 +95,6 @@ model User {
   role       Role     @default(EMPLOYEE)
   isActive   Boolean  @default(true)
   teamId     String?
-  isDriver   Boolean  @default(false)
   driverStatus DriverStatus @default(OFFLINE)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -121,7 +121,6 @@ model User {
 
   @@index([teamId])
   @@index([role])
-  @@index([isDriver])
 }
 
 model EmployeeRoster {

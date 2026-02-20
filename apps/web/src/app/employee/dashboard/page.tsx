@@ -343,6 +343,11 @@ export default function EmployeeDashboardPage() {
     const nextServerTime = timeResult.status === 'fulfilled' ? timeResult.value : (cache?.serverTime || null);
     const nextSummary = summaryResult.status === 'fulfilled' ? summaryResult.value : (cache?.monthlySummary || null);
 
+    if (nextMe?.role === 'DRIVER') {
+      router.replace('/employee/driver');
+      return;
+    }
+
     setMe(nextMe);
     setSessions(nextSessions);
     setPolicies(nextPolicies);

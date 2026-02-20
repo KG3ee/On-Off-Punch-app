@@ -105,22 +105,28 @@ export function AppShell({
         {hasNav ? (
           <nav className="shell-nav">
             {isEmployeeView ? (
-              <>
-                <Link href="/employee/dashboard" className={pathname === '/employee/dashboard' ? 'active' : ''}>
-                  Dashboard
-                </Link>
-                <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
-                  Requests
-                </Link>
-                {(isDriver || userRole === 'DRIVER') ? (
+              userRole === 'DRIVER' ? (
+                <>
                   <Link href="/employee/driver" className={pathname === '/employee/driver' ? 'active' : ''}>
-                    Driver
+                    Dashboard
                   </Link>
-                ) : null}
-                <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
-                  Password
-                </Link>
-              </>
+                  <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
+                    Password
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/employee/dashboard" className={pathname === '/employee/dashboard' ? 'active' : ''}>
+                    Dashboard
+                  </Link>
+                  <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
+                    Requests
+                  </Link>
+                  <Link href="/employee/change-password" className={pathname === '/employee/change-password' ? 'active' : ''}>
+                    Password
+                  </Link>
+                </>
+              )
             ) : null}
             {admin
               ? adminNav.map((item) => (

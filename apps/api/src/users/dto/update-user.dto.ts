@@ -39,10 +39,6 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsBoolean()
-  isDriver?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   isActive?: boolean;
 
   @IsOptional()

@@ -78,7 +78,13 @@ export default function EmployeeRequestsPage() {
   const [roundTrip, setRoundTrip] = useState(false);
 
   useEffect(() => {
-    void apiFetch<MeUser>('/me').then(setMe).catch(() => {});
+    void apiFetch<MeUser>('/me').then((data) => {
+      if (data.role === 'DRIVER') {
+        router.replace('/employee/driver');
+      } else {
+        setMe(data);
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {

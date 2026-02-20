@@ -84,9 +84,8 @@ export default function DriverDashboardPage() {
     }
   }
 
-  async function toggleStatus() {
+  async function changeStatus(newStatus: string) {
     if (!me) return;
-    const newStatus = me.driverStatus === 'AVAILABLE' ? 'OFFLINE' : 'AVAILABLE';
     setError('');
     try {
       await apiFetch('/driver-requests/status', {
@@ -127,17 +126,20 @@ export default function DriverDashboardPage() {
         <div>
           <h2 style={{ fontSize: '1.25rem', margin: 0, marginBottom: '0.25rem' }}>Driver Status</h2>
           <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.875rem' }}>
-            Current status: <strong style={{ color: me.driverStatus === 'AVAILABLE' ? 'var(--ok)' : me.driverStatus === 'BUSY' ? 'var(--warn)' : 'var(--muted)' }}>{me.driverStatus}</strong>
+            Set your current availability below.
           </p>
         </div>
-        <button
-          className={`button ${me.driverStatus === 'AVAILABLE' ? 'button-danger' : 'button-ok'}`}
-          style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto' }}
-          onClick={() => void toggleStatus()}
-          disabled={me.driverStatus === 'BUSY'}
+        <select
+          className="select"
+          style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto', fontWeight: 600 }}
+          value={me.driverStatus}
+          onChange={(e) => void changeStatus(e.target.value)}
         >
-          {me.driverStatus === 'AVAILABLE' ? 'Go Offline' : 'Go Available'}
-        </button>
+          <option value="AVAILABLE">🟢 Available</option>
+          <option value="BUSY">🟡 Busy (Driving Boss/Guest)</option>
+          <option value="ON_BREAK">🟠 On Break / Lunch</option>
+          <option value="OFFLINE">🔴 Off Duty (Gone home)</option>
+        </select>
       </div>
 
       <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -179,7 +181,7 @@ export default function DriverDashboardPage() {
         </article>
 
         <article className="card" style={{ padding: '1rem' }}>
-          <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>Available Trips</h3>
+          <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>Upcoming Trips</h3>
           <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
             Approved requests waiting for a driver.
           </p>
@@ -209,7 +211,7 @@ export default function DriverDashboardPage() {
             ))}
             {available.length === 0 ? (
               <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
-                No available trips waiting.
+                No upcoming trips waiting.
               </div>
             ) : null}
           </div>

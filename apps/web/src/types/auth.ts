@@ -7,8 +7,7 @@ export interface MeUser {
   firstName: string;
   lastName?: string | null;
   role: UserRole;
-  isDriver?: boolean;
-  driverStatus?: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
+  driverStatus?: 'AVAILABLE' | 'BUSY' | 'ON_BREAK' | 'OFFLINE';
   mustChangePassword: boolean;
   teamId?: string | null;
   team?: {

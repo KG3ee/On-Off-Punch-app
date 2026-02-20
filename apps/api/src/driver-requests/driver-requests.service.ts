@@ -171,9 +171,9 @@ export class DriverRequestsService {
   async accept(requestId: string, driverId: string): Promise<DriverRequestWithRelations> {
     const user = await this.prisma.user.findUnique({
       where: { id: driverId },
-      select: { isDriver: true, role: true }
+      select: { role: true }
     });
-    if (!user?.isDriver && user?.role !== Role.DRIVER) {
+    if (user?.role !== Role.DRIVER) {
       throw new ForbiddenException('Only drivers can accept requests');
     }
 
@@ -244,10 +244,10 @@ export class DriverRequestsService {
   async setDriverStatus(userId: string, status: DriverStatus): Promise<{ driverStatus: DriverStatus }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { isDriver: true, role: true }
+      select: { role: true }
     });
 
-    if (!user?.isDriver && user?.role !== Role.DRIVER) {
+    if (user?.role !== Role.DRIVER) {
       throw new ForbiddenException('Only drivers can update driver status');
     }
 
