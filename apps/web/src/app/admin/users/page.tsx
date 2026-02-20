@@ -553,7 +553,7 @@ export default function AdminUsersPage() {
           />
         </div>
         <div className="toolbar-spacer" />
-        <button type="button" className="button button-ghost button-sm" onClick={() => setShowCreateTeam(true)}>
+        <button type="button" className="button button-ghost" onClick={() => setShowCreateTeam(true)}>
           + Team
         </button>
         <button type="button" className="button button-primary" onClick={() => setShowCreateUser(true)}>
@@ -657,7 +657,7 @@ export default function AdminUsersPage() {
           />
 
           <select className="select" style={{ width: '170px' }} value={rosterTeamId} onChange={(e) => setRosterTeamId(e.target.value)}>
-            <option value="">Default team (none)</option>
+            <option value="">Service (no team)</option>
             {teams.map((team) => (
               <option key={team.id} value={team.id}>{team.name}</option>
             ))}
@@ -861,7 +861,7 @@ export default function AdminUsersPage() {
                   <option value="ADMIN">ADMIN</option>
                 </select>
                 <select className="select" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-                  <option value="">No team</option>
+                  <option value="">Service (no team)</option>
                   {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
@@ -943,7 +943,7 @@ export default function AdminUsersPage() {
               </select>
               <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Team</label>
               <select className="select" value={editTeamId} onChange={(e) => setEditTeamId(e.target.value)}>
-                <option value="">No team</option>
+                <option value="">Service (no team)</option>
                 {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
               <div className="modal-footer">
