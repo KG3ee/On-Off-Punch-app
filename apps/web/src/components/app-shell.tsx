@@ -16,7 +16,9 @@ const adminNav: NavItem[] = [
   { href: '/admin/live', label: 'Live' },
   { href: '/admin/history', label: 'History' },
   { href: '/admin/users', label: 'Users' },
-  { href: '/admin/requests', label: 'Requests' }
+  { href: '/admin/requests', label: 'Requests' },
+  { href: '/admin/punch', label: 'My Punch' },
+  { href: '/admin/password', label: 'Password' }
 ];
 
 export function AppShell({
@@ -36,7 +38,6 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isAdminView = pathname?.startsWith('/admin');
   const isEmployeeView = pathname?.startsWith('/employee');
   const hasNav = isEmployeeView || admin;
   const isMobile = useIsMobileClient();
@@ -49,10 +50,6 @@ export function AppShell({
     }
     clearAuth();
     router.push('/login');
-  }
-
-  function switchView(): void {
-    router.push(isAdminView ? '/employee/dashboard' : '/admin/live');
   }
 
   if (isEmployeeView && isMobile && userRole !== 'DRIVER' && userRole !== 'LEADER') {
@@ -80,15 +77,6 @@ export function AppShell({
 
           <div className="shell-header-actions">
             {headerAction}
-            {userRole === 'ADMIN' ? (
-              <button
-                type="button"
-                className="button button-ghost button-sm"
-                onClick={switchView}
-              >
-                {isAdminView ? 'Employee' : 'Admin'}
-              </button>
-            ) : null}
             <button
               type="button"
               className="button button-ghost button-sm"
