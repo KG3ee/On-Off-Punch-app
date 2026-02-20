@@ -751,7 +751,7 @@ export default function AdminUsersPage() {
             <tr>
               <th>Name</th>
               <th>Username</th>
-              <th>Team</th>
+              <th>Group</th>
               <th>Role</th>
               <th>Status</th>
               <th>PW Change</th>
@@ -763,7 +763,7 @@ export default function AdminUsersPage() {
               <tr key={user.id}>
                 <td style={{ fontWeight: 500 }}>{user.displayName}</td>
                 <td className="mono">{user.username}</td>
-                <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
+                <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span className={`tag ${user.role === 'ADMIN' ? 'warning' : user.role === 'DRIVER' ? 'brand' : user.role === 'LEADER' ? 'ok' : ''}`}>{user.role}</span>}</td>
                 <td>
                   <span className={`tag ${user.role === 'ADMIN' ? 'warning' : user.role === 'DRIVER' ? 'brand' : user.role === 'LEADER' ? 'ok' : ''}`}>
                     {user.role}

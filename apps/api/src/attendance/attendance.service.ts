@@ -260,7 +260,7 @@ export class AttendanceService {
           punchedOnAt: true,
           isLate: true,
           lateMinutes: true,
-          user: { select: { id: true, username: true, displayName: true } },
+          user: { select: { id: true, username: true, displayName: true, role: true } },
           team: { select: { id: true, name: true } },
           breakSessions: {
             where: { status: "ACTIVE" },

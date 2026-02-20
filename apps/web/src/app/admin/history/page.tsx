@@ -138,11 +138,11 @@ export default function AdminHistoryPage() {
 
     // ── CSV Export ──
     function exportDutyCSV(): void {
-        const header = ['Date', 'Employee', 'Team', 'Punch On', 'Punch Off', 'Status', 'Late', 'Late Minutes', 'Overtime Minutes'];
+        const header = ['Date', 'Employee', 'Group', 'Punch On', 'Punch Off', 'Status', 'Late', 'Late Minutes', 'Overtime Minutes'];
         const rows = attendance.map(r => [
             r.localDate,
             r.user.displayName,
-            r.team?.name || '',
+            r.team?.name || r.user.role,
             fmtTime(r.punchedOnAt),
             r.punchedOffAt ? fmtTime(r.punchedOffAt) : '',
             r.status,
@@ -154,7 +154,7 @@ export default function AdminHistoryPage() {
     }
 
     function exportBreaksCSV(): void {
-        const header = ['Date', 'Employee', 'Team', 'Code', 'Name', 'Start', 'End', 'Expected Min', 'Actual Min', 'Status', 'Overtime'];
+        const header = ['Date', 'Employee', 'Group', 'Code', 'Name', 'Start', 'End', 'Expected Min', 'Actual Min', 'Status', 'Overtime'];
         const rows = breaks.map(b => [
             b.localDate,
             b.user.displayName,
@@ -267,7 +267,7 @@ export default function AdminHistoryPage() {
                             <tr>
                                 <th>Date</th>
                                 <th>Employee</th>
-                                <th>Team</th>
+                                <th>Group</th>
                                 <th>Punch On</th>
                                 <th>Punch Off</th>
                                 <th>Status</th>
@@ -280,7 +280,7 @@ export default function AdminHistoryPage() {
                                 <tr key={r.id}>
                                     <td className="mono">{r.localDate}</td>
                                     <td>{r.user.displayName}</td>
-                                    <td>{r.team?.name || '—'}</td>
+                                    <td>{r.team?.name ? <span className="tag brand">{r.team.name}</span> : <span className={`tag ${r.user.role === 'ADMIN' ? 'warning' : r.user.role === 'DRIVER' ? 'brand' : r.user.role === 'LEADER' ? 'ok' : ''}`}>{r.user.role}</span>}</td>
                                     <td className="mono">{fmtTime(r.punchedOnAt)}</td>
                                     <td className="mono">{r.punchedOffAt ? fmtTime(r.punchedOffAt) : '—'}</td>
                                     <td><span className={`tag ${r.status === 'ACTIVE' ? 'ok' : ''}`}>{r.status}</span></td>
@@ -304,7 +304,7 @@ export default function AdminHistoryPage() {
                             <tr>
                                 <th>Date</th>
                                 <th>Employee</th>
-                                <th>Team</th>
+                                <th>Group</th>
                                 <th>Code</th>
                                 <th>Start</th>
                                 <th>End</th>
@@ -319,7 +319,7 @@ export default function AdminHistoryPage() {
                                 <tr key={b.id}>
                                     <td className="mono">{b.localDate}</td>
                                     <td>{b.user.displayName}</td>
-                                    <td>{b.user.team?.name || '—'}</td>
+                                    <td>{b.user.team?.name ? <span className="tag brand">{b.user.team.name}</span> : '—'}</td>
                                     <td><span className="tag">{b.breakPolicy.code.toUpperCase()}</span></td>
                                     <td className="mono">{fmtTime(b.startedAt)}</td>
                                     <td className="mono">{b.endedAt ? fmtTime(b.endedAt) : '—'}</td>

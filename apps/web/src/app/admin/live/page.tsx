@@ -16,7 +16,7 @@ type LiveDuty = {
   punchedOnAt: string;
   isLate: boolean;
   lateMinutes: number;
-  user: { displayName: string };
+  user: { displayName: string; role?: string };
   team?: { name: string } | null;
   breakSessions: LiveBreak[];
 };
@@ -122,7 +122,7 @@ export default function AdminLivePage() {
             <thead>
               <tr>
                 <th>Employee</th>
-                <th>Team</th>
+                <th>Group</th>
                 <th>Punched On</th>
                 <th>Late</th>
                 <th>Break</th>
@@ -132,7 +132,7 @@ export default function AdminLivePage() {
               {data?.activeDutySessions.map((session) => (
                 <tr key={session.id}>
                   <td>{session.user.displayName}</td>
-                  <td>{session.team?.name || '—'}</td>
+                  <td>{session.team?.name ? <span className="tag brand">{session.team.name}</span> : <span className={`tag ${session.user.role === 'ADMIN' ? 'warning' : session.user.role === 'DRIVER' ? 'brand' : session.user.role === 'LEADER' ? 'ok' : ''}`}>{session.user.role || '—'}</span>}</td>
                   <td className="mono">{fmtTime(session.punchedOnAt)}</td>
                   <td>
                     {session.lateMinutes > 0 ? (
@@ -165,7 +165,7 @@ export default function AdminLivePage() {
             <thead>
               <tr>
                 <th>Employee</th>
-                <th>Team</th>
+                <th>Group</th>
                 <th>Code</th>
                 <th>Start</th>
                 <th>End</th>
@@ -178,7 +178,7 @@ export default function AdminLivePage() {
               {breakHistory.map((item) => (
                 <tr key={item.id}>
                   <td>{item.user.displayName}</td>
-                  <td>{item.user.team?.name || '—'}</td>
+                  <td>{item.user.team?.name ? <span className="tag brand">{item.user.team.name}</span> : '—'}</td>
                   <td><span className="tag">{item.breakPolicy.code.toUpperCase()}</span></td>
                   <td className="mono">{fmtTime(item.startedAt)}</td>
                   <td className="mono">{item.endedAt ? fmtTime(item.endedAt) : '—'}</td>
