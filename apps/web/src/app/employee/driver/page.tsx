@@ -123,15 +123,16 @@ export default function DriverDashboardPage() {
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', background: 'var(--surface)', padding: '1rem', borderRadius: 'var(--radius-lg)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', background: 'var(--surface)', padding: '1rem', borderRadius: 'var(--radius-lg)' }}>
         <div>
-          <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Driver Status</h2>
+          <h2 style={{ fontSize: '1.25rem', margin: 0, marginBottom: '0.25rem' }}>Driver Status</h2>
           <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.875rem' }}>
             Current status: <strong style={{ color: me.driverStatus === 'AVAILABLE' ? 'var(--ok)' : me.driverStatus === 'BUSY' ? 'var(--warn)' : 'var(--muted)' }}>{me.driverStatus}</strong>
           </p>
         </div>
         <button
           className={`button ${me.driverStatus === 'AVAILABLE' ? 'button-danger' : 'button-ok'}`}
+          style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto' }}
           onClick={() => void toggleStatus()}
           disabled={me.driverStatus === 'BUSY'}
         >
@@ -139,105 +140,81 @@ export default function DriverDashboardPage() {
         </button>
       </div>
 
-      <section className="split">
-        <article className="card">
-          <h3>Available Trips</h3>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>
-            Approved requests waiting for a driver. Click Accept to take the trip.
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <article className="card" style={{ padding: '1rem' }}>
+          <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>My Active Trips</h3>
+          <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+            Trips you have accepted. Complete them when done.
           </p>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Destination</th>
-                  <th>Requester</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {available.map((req) => (
-                  <tr key={req.id}>
-                    <td>{new Date(req.requestedDate).toLocaleDateString()}</td>
-                    <td className="mono">{req.requestedTime}</td>
-                    <td>{req.destination}</td>
-                    <td>
-                      <div>{req.user.displayName}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>@{req.user.username}</div>
-                    </td>
-                    <td>
-                      <button
-                        className="button button-sm button-ok"
-                        disabled={!!actionId}
-                        onClick={() => void acceptRequest(req.id)}
-                      >
-                        {actionId === req.id ? '…' : 'Accept'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {available.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)' }}>
-                      No available trips
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {inProgress.map((req) => (
+              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '0.875rem', background: 'var(--card-solid)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--ink)' }}>{req.destination}</div>
+                  <div className="tag brand" style={{ fontSize: '0.75rem' }}>{req.requestedTime}</div>
+                </div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '0.25rem' }}>
+                  <strong>Passenger:</strong> {req.user.displayName} <span style={{ color: 'var(--muted)' }}>(@{req.user.username})</span>
+                </div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+                  <strong>Date:</strong> {new Date(req.requestedDate).toLocaleDateString()}
+                  {req.purpose ? <div style={{ marginTop: '0.25rem' }}><strong>Note:</strong> {req.purpose}</div> : null}
+                </div>
+                <button
+                  className="button button-primary"
+                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto', fontWeight: 600 }}
+                  disabled={!!actionId}
+                  onClick={() => void completeRequest(req.id)}
+                >
+                  {actionId === req.id ? 'Completing…' : 'Complete Trip'}
+                </button>
+              </div>
+            ))}
+            {inProgress.length === 0 ? (
+              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
+                No active trips right now.
+              </div>
+            ) : null}
           </div>
         </article>
 
-        <article className="card">
-          <h3>My Active Trips</h3>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', marginBottom: '0.75rem' }}>
-            Trips you have accepted. Click Complete when done.
+        <article className="card" style={{ padding: '1rem' }}>
+          <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>Available Trips</h3>
+          <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+            Approved requests waiting for a driver.
           </p>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Destination</th>
-                  <th>Requester</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inProgress.map((req) => (
-                  <tr key={req.id}>
-                    <td>{new Date(req.requestedDate).toLocaleDateString()}</td>
-                    <td className="mono">{req.requestedTime}</td>
-                    <td>{req.destination}</td>
-                    <td>
-                      <div>{req.user.displayName}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>@{req.user.username}</div>
-                    </td>
-                    <td>
-                      <button
-                        className="button button-sm button-primary"
-                        disabled={!!actionId}
-                        onClick={() => void completeRequest(req.id)}
-                      >
-                        {actionId === req.id ? '…' : 'Complete'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {inProgress.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)' }}>
-                      No active trips
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {available.map((req) => (
+              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '0.875rem', background: 'var(--card-solid)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--ink)' }}>{req.destination}</div>
+                  <div className="tag ok" style={{ fontSize: '0.75rem' }}>{req.requestedTime}</div>
+                </div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '0.25rem' }}>
+                  <strong>Passenger:</strong> {req.user.displayName} <span style={{ color: 'var(--muted)' }}>(@{req.user.username})</span>
+                </div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+                  <strong>Date:</strong> {new Date(req.requestedDate).toLocaleDateString()}
+                  {req.purpose ? <div style={{ marginTop: '0.25rem' }}><strong>Note:</strong> {req.purpose}</div> : null}
+                </div>
+                <button
+                  className="button button-ok"
+                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto', fontWeight: 600 }}
+                  disabled={!!actionId}
+                  onClick={() => void acceptRequest(req.id)}
+                >
+                  {actionId === req.id ? 'Accepting…' : 'Accept Trip'}
+                </button>
+              </div>
+            ))}
+            {available.length === 0 ? (
+              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
+                No available trips waiting.
+              </div>
+            ) : null}
           </div>
         </article>
-      </section>
+      </div>
     </AppShell>
   );
 }
