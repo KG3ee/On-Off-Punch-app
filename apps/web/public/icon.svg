@@ -1,24 +1,57 @@
 <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="switchGradient" x1="24" y1="40" x2="232" y2="216" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#40D86B"/>
-      <stop offset="1" stop-color="#1EC55B"/>
+    <linearGradient id="onBg" x1="40" y1="28" x2="216" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4ADE6B"/>
+      <stop offset="1" stop-color="#22C55E"/>
     </linearGradient>
-    <filter id="knobShadow" x="110" y="40" width="140" height="140" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-      <feOffset dy="3"/>
-      <feGaussianBlur stdDeviation="3"/>
-      <feComposite in2="hardAlpha" operator="out"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.08 0 0 0 0 0.28 0 0 0 0 0.16 0 0 0 0.24 0"/>
-      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
-      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    <linearGradient id="offBg" x1="40" y1="144" x2="216" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D4D4D8"/>
+      <stop offset="1" stop-color="#C0C0C8"/>
+    </linearGradient>
+    <filter id="knobShadowOn" x="120" y="32" width="116" height="116" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="bg"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="a"/>
+      <feOffset dy="4"/>
+      <feGaussianBlur stdDeviation="5"/>
+      <feComposite in2="a" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.05 0 0 0 0 0.2 0 0 0 0 0.1 0 0 0 0.3 0"/>
+      <feBlend in2="bg" result="shadow"/>
+      <feBlend in="SourceGraphic" in2="shadow"/>
+    </filter>
+    <filter id="knobShadowOff" x="20" y="148" width="116" height="116" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="bg"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="a"/>
+      <feOffset dy="4"/>
+      <feGaussianBlur stdDeviation="5"/>
+      <feComposite in2="a" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.15 0 0 0 0 0.15 0 0 0 0 0.15 0 0 0 0.25 0"/>
+      <feBlend in2="bg" result="shadow"/>
+      <feBlend in="SourceGraphic" in2="shadow"/>
+    </filter>
+    <filter id="trackInset" x="38" y="142" width="180" height="90" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="bg"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="a"/>
+      <feOffset dy="2"/>
+      <feGaussianBlur stdDeviation="1.5"/>
+      <feComposite in2="a" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.6 0 0 0 0 0.6 0 0 0 0 0.6 0 0 0 0.15 0"/>
+      <feBlend in2="bg" result="shadow"/>
+      <feBlend in="SourceGraphic" in2="shadow"/>
     </filter>
   </defs>
 
-  <rect x="16" y="64" width="224" height="128" rx="64" fill="url(#switchGradient)"/>
-  <g filter="url(#knobShadow)">
-    <circle cx="176" cy="128" r="56" fill="#FFFFFF"/>
+  <!-- ON toggle (green, knob right) -->
+  <rect x="40" y="30" width="176" height="88" rx="44" fill="url(#onBg)"/>
+  <text x="90" y="86" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="rgba(21, 128, 61, 0.5)">ON</text>
+  <g filter="url(#knobShadowOn)">
+    <circle cx="172" cy="74" r="36" fill="#FFFFFF"/>
   </g>
-  <text x="78" y="143" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700" fill="#15A44D">ON</text>
+
+  <!-- OFF toggle (gray, knob left) -->
+  <g filter="url(#trackInset)">
+    <rect x="40" y="138" width="176" height="88" rx="44" fill="url(#offBg)"/>
+  </g>
+  <g filter="url(#knobShadowOff)">
+    <circle cx="84" cy="182" r="36" fill="#FFFFFF"/>
+  </g>
 </svg>
