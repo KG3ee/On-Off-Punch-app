@@ -47,7 +47,7 @@ function uid(): string {
 function isLikelyNetworkError(err: unknown): boolean {
     return (
         err instanceof TypeError ||
-        (err instanceof Error && /fetch|network|abort|offline/i.test(err.message))
+        (err instanceof Error && /fetch|network|abort|offline|502|503|504|timeout/i.test(err.message))
     );
 }
 
@@ -149,62 +149,75 @@ function startRetryLoop(): void {
     retryTimer = setInterval(() => void processQueue(), RETRY_INTERVAL_MS);
 }
 
-async function processQueue(): Promise<void> {
+function updateActionInQueue(id: string, updateFn: (a: QueuedAction) => void) {
     const queue = loadQueue();
-    const nowMs = Date.now();
-    const activeQueue = queue.filter((a) => a.status === 'pending' || a.status === 'syncing');
-    if (activeQueue.length === 0) {
-        if (retryTimer) {
-            clearInterval(retryTimer);
-            retryTimer = null;
-        }
-        return;
-    }
-
-    const pending = activeQueue.filter((a) => {
-        if (a.status !== 'pending' && a.status !== 'syncing') {
-            return false;
-        }
-        if (!a.nextRetryAt) {
-            return true;
-        }
-        const retryAtMs = Date.parse(a.nextRetryAt);
-        return Number.isNaN(retryAtMs) || retryAtMs <= nowMs;
-    });
-
-    if (pending.length === 0) {
-        return;
-    }
-
-    for (const action of pending) {
-        action.status = 'syncing';
+    const action = queue.find((a) => a.id === id);
+    if (action) {
+        updateFn(action);
         saveQueue(queue);
         notify();
+    }
+}
 
-        try {
-            await apiFetch(action.path, {
-                method: action.method,
-                body: JSON.stringify(action.body),
-            });
+let isProcessing = false;
 
-            action.status = 'synced';
-            action.error = undefined;
-            action.nextRetryAt = undefined;
-        } catch (err) {
-            if (isLikelyNetworkError(err)) {
-                action.retries += 1;
-                action.status = 'pending';
-                action.error = err instanceof Error ? err.message : 'Network unavailable';
-                action.nextRetryAt = new Date(Date.now() + computeRetryDelayMs(action.retries)).toISOString();
-            } else {
-                action.status = 'failed';
-                action.error = err instanceof Error ? err.message : 'Server rejected action';
-                action.nextRetryAt = undefined;
+async function processQueue(): Promise<void> {
+    if (isProcessing) return;
+    isProcessing = true;
+
+    try {
+        const queue = loadQueue();
+        const nowMs = Date.now();
+        const activeQueue = queue.filter((a) => a.status === 'pending' || a.status === 'syncing');
+        if (activeQueue.length === 0) {
+            if (retryTimer) {
+                clearInterval(retryTimer);
+                retryTimer = null;
+            }
+            return;
+        }
+
+        const pending = activeQueue.filter((a) => {
+            if (!a.nextRetryAt) return true;
+            const retryAtMs = Date.parse(a.nextRetryAt);
+            return Number.isNaN(retryAtMs) || retryAtMs <= nowMs;
+        });
+
+        if (pending.length === 0) {
+            return;
+        }
+
+        for (const action of pending) {
+            updateActionInQueue(action.id, (a) => { a.status = 'syncing'; });
+
+            try {
+                await apiFetch(action.path, {
+                    method: action.method,
+                    body: JSON.stringify(action.body),
+                });
+
+                updateActionInQueue(action.id, (a) => {
+                    a.status = 'synced';
+                    a.error = undefined;
+                    a.nextRetryAt = undefined;
+                });
+            } catch (err) {
+                updateActionInQueue(action.id, (a) => {
+                    if (isLikelyNetworkError(err)) {
+                        a.retries += 1;
+                        a.status = 'pending';
+                        a.error = err instanceof Error ? err.message : 'Network unavailable';
+                        a.nextRetryAt = new Date(Date.now() + computeRetryDelayMs(a.retries)).toISOString();
+                    } else {
+                        a.status = 'failed';
+                        a.error = err instanceof Error ? err.message : 'Server rejected action';
+                        a.nextRetryAt = undefined;
+                    }
+                });
             }
         }
-
-        saveQueue(queue);
-        notify();
+    } finally {
+        isProcessing = false;
     }
 }
 
