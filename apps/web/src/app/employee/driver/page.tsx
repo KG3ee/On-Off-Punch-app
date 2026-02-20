@@ -190,21 +190,18 @@ export default function DriverDashboardPage() {
             WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             flexDirection: 'column',
-            padding: '1.5rem',
-            gap: '1rem',
+            padding: '1rem 1rem env(safe-area-inset-bottom, 1rem)',
+            gap: '0.75rem',
             animation: 'driverPickerIn 0.2s ease-out',
           }}
         >
-          <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff', margin: 0 }}>
+          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', margin: 0 }}>
               Set Your Status
             </h2>
-            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', margin: '0.25rem 0 0' }}>
-              Tap one to update
-            </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
             {(Object.keys(STATUS_CONFIG) as DriverStatusKey[]).map((key) => {
               const s = STATUS_CONFIG[key];
               const isActive = key === currentStatus;
@@ -216,7 +213,8 @@ export default function DriverDashboardPage() {
                   onClick={() => void changeStatus(key)}
                   style={{
                     width: '100%',
-                    minHeight: '5rem',
+                    height: '15vh',
+                    minHeight: '4.5rem',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '1rem',
@@ -258,15 +256,15 @@ export default function DriverDashboardPage() {
             onClick={() => setStatusPickerOpen(false)}
             style={{
               width: '100%',
-              padding: '0.875rem',
-              fontSize: '1rem',
+              padding: '0.625rem',
+              fontSize: '0.875rem',
               fontWeight: 600,
-              color: 'rgba(255,255,255,0.6)',
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              color: 'rgba(255,255,255,0.5)',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 'var(--radius-lg)',
               cursor: 'pointer',
-              marginTop: '0.25rem',
+              flexShrink: 0,
             }}
           >
             Cancel
