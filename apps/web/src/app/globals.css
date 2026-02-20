@@ -318,6 +318,31 @@ p {
   background: var(--brand-dim);
 }
 
+/* ── Role Colors ── */
+.tag.role-admin {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.25);
+}
+
+.tag.role-leader {
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.25);
+}
+
+.tag.role-driver {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+.tag.role-member {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.25);
+}
+
 /* ── Tables ── */
 .table-wrap {
   overflow-x: auto;

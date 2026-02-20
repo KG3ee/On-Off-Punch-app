@@ -1,4 +1,4 @@
-export type Role = "ADMIN" | "EMPLOYEE";
+export type Role = "ADMIN" | "MEMBER";
 
 export type AssignmentTargetType = "TEAM" | "USER";
 

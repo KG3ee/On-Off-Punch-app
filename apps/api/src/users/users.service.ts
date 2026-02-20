@@ -48,7 +48,7 @@ export class UsersService {
       username: this.normalizeUsername(dto.username),
       passwordHash,
       mustChangePassword: dto.mustChangePassword ?? true,
-      role: dto.role ?? Role.EMPLOYEE,
+      role: dto.role ?? Role.MEMBER,
       isActive: dto.isActive ?? true,
       ...(dto.teamId
         ? {

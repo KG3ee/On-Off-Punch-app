@@ -46,7 +46,7 @@ type UserRow = {
   displayName: string;
   firstName: string;
   lastName?: string;
-  role: 'ADMIN' | 'EMPLOYEE' | 'DRIVER' | 'LEADER';
+  role: 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER';
   team?: Team | null;
   isActive: boolean;
   mustChangePassword: boolean;
@@ -123,7 +123,7 @@ export default function AdminUsersPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [mustChangePassword, setMustChangePassword] = useState(true);
-  const [role, setRole] = useState<'ADMIN' | 'EMPLOYEE' | 'DRIVER' | 'LEADER'>('EMPLOYEE');
+  const [role, setRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER'>('MEMBER');
   const [teamId, setTeamId] = useState('');
 
   // Create team form
@@ -143,7 +143,7 @@ export default function AdminUsersPage() {
 
   // Edit user modal
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
-  const [editRole, setEditRole] = useState<'ADMIN' | 'EMPLOYEE' | 'DRIVER' | 'LEADER'>('EMPLOYEE');
+  const [editRole, setEditRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER'>('MEMBER');
   const [editTeamId, setEditTeamId] = useState('');
 
   // Registration roster form
@@ -343,7 +343,7 @@ export default function AdminUsersPage() {
         })
       });
       setFirstName(''); setLastName(''); setDisplayName('');
-      setUsername(''); setPassword(''); setRole('EMPLOYEE');
+      setUsername(''); setPassword(''); setRole('MEMBER');
       setTeamId(''); setMustChangePassword(true);
       setShowCreateUser(false);
       flash('User created');
@@ -763,9 +763,9 @@ export default function AdminUsersPage() {
               <tr key={user.id}>
                 <td style={{ fontWeight: 500 }}>{user.displayName}</td>
                 <td className="mono">{user.username}</td>
-                <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span className={`tag ${user.role === 'ADMIN' ? 'warning' : user.role === 'DRIVER' ? 'brand' : user.role === 'LEADER' ? 'ok' : ''}`}>{user.role}</span>}</td>
+                <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span className="tag">Service</span>}</td>
                 <td>
-                  <span className={`tag ${user.role === 'ADMIN' ? 'warning' : user.role === 'DRIVER' ? 'brand' : user.role === 'LEADER' ? 'ok' : ''}`}>
+                  <span className={`tag role-${user.role.toLowerCase()}`}>
                     {user.role}
                   </span>
                 </td>
@@ -836,8 +836,8 @@ export default function AdminUsersPage() {
               <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" required />
               <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temporary password" minLength={6} required />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <select className="select" value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'EMPLOYEE' | 'DRIVER' | 'LEADER')}>
-                  <option value="EMPLOYEE">EMPLOYEE</option>
+                <select className="select" value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER')}>
+                  <option value="MEMBER">MEMBER</option>
                   <option value="LEADER">LEADER</option>
                   <option value="DRIVER">DRIVER</option>
                   <option value="ADMIN">ADMIN</option>
@@ -917,8 +917,8 @@ export default function AdminUsersPage() {
             </p>
             <form className="form-grid" onSubmit={(e) => void submitEditUser(e)}>
               <label style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Role</label>
-              <select className="select" value={editRole} onChange={(e) => setEditRole(e.target.value as 'ADMIN' | 'EMPLOYEE' | 'DRIVER' | 'LEADER')}>
-                <option value="EMPLOYEE">EMPLOYEE</option>
+              <select className="select" value={editRole} onChange={(e) => setEditRole(e.target.value as 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER')}>
+                <option value="MEMBER">MEMBER</option>
                 <option value="LEADER">LEADER</option>
                 <option value="DRIVER">DRIVER</option>
                 <option value="ADMIN">ADMIN</option>

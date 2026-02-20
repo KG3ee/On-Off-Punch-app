@@ -142,7 +142,7 @@ export default function AdminHistoryPage() {
         const rows = attendance.map(r => [
             r.localDate,
             r.user.displayName,
-            r.team?.name || r.user.role,
+            r.team?.name || 'Service',
             fmtTime(r.punchedOnAt),
             r.punchedOffAt ? fmtTime(r.punchedOffAt) : '',
             r.status,
@@ -280,7 +280,7 @@ export default function AdminHistoryPage() {
                                 <tr key={r.id}>
                                     <td className="mono">{r.localDate}</td>
                                     <td>{r.user.displayName}</td>
-                                    <td>{r.team?.name ? <span className="tag brand">{r.team.name}</span> : <span className={`tag ${r.user.role === 'ADMIN' ? 'warning' : r.user.role === 'DRIVER' ? 'brand' : r.user.role === 'LEADER' ? 'ok' : ''}`}>{r.user.role}</span>}</td>
+                                    <td>{r.team?.name ? <span className="tag brand">{r.team.name}</span> : <span className="tag">Service</span>}</td>
                                     <td className="mono">{fmtTime(r.punchedOnAt)}</td>
                                     <td className="mono">{r.punchedOffAt ? fmtTime(r.punchedOffAt) : '—'}</td>
                                     <td><span className={`tag ${r.status === 'ACTIVE' ? 'ok' : ''}`}>{r.status}</span></td>

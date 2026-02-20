@@ -196,7 +196,7 @@ export class RegistrationsService {
           firstName: request.firstName,
           lastName: request.lastName,
           displayName: request.displayName,
-          role: Role.EMPLOYEE,
+          role: Role.MEMBER,
           isActive: true,
           teamId
         },

@@ -9,7 +9,7 @@ datasource db {
 
 enum Role {
   ADMIN
-  EMPLOYEE
+  MEMBER
   DRIVER
   LEADER
 }
@@ -93,7 +93,7 @@ model User {
   firstName  String
   lastName   String?
   displayName String
-  role       Role     @default(EMPLOYEE)
+  role       Role     @default(MEMBER)
   isActive   Boolean  @default(true)
   teamId     String?
   driverStatus DriverStatus @default(OFFLINE)

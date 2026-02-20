@@ -132,7 +132,7 @@ export default function AdminLivePage() {
               {data?.activeDutySessions.map((session) => (
                 <tr key={session.id}>
                   <td>{session.user.displayName}</td>
-                  <td>{session.team?.name ? <span className="tag brand">{session.team.name}</span> : <span className={`tag ${session.user.role === 'ADMIN' ? 'warning' : session.user.role === 'DRIVER' ? 'brand' : session.user.role === 'LEADER' ? 'ok' : ''}`}>{session.user.role || '—'}</span>}</td>
+                  <td>{session.team?.name ? <span className="tag brand">{session.team.name}</span> : <span className="tag">Service</span>}</td>
                   <td className="mono">{fmtTime(session.punchedOnAt)}</td>
                   <td>
                     {session.lateMinutes > 0 ? (
