@@ -438,9 +438,14 @@ tbody tr:hover {
   align-items: center;
   gap: 0.375rem;
   flex-shrink: 0;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.shell-header-actions .button {
+  height: 32px;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
 }
 
 /* Nav row — underline tab style, horizontally scrollable */
