@@ -384,6 +384,8 @@ tbody tr:hover {
   height: 22px;
   flex-shrink: 0;
   display: block;
+  border-radius: 4px;
+  object-fit: cover;
 }
 
 .shell-brand-name {

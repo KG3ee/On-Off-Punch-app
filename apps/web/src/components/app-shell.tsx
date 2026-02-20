@@ -65,7 +65,7 @@ export function AppShell({
         {/* Top bar: brand + actions */}
         <div className="shell-header-top">
           <div className="shell-brand">
-            <img src="/icon.svg" className="shell-brand-logo" alt="Punch" />
+            <img src="/icon.png" className="shell-brand-logo" alt="Punch" />
             <span className="shell-brand-name">Punch</span>
             <div className="shell-brand-divider" />
             <span className="shell-page-title">{title}</span>

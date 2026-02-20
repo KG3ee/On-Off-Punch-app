@@ -57,7 +57,7 @@ export default function LoginPage() {
     <main className="login-wrap">
       <div className="login-card">
         <div className="login-header">
-          <img src="/icon.svg" className="login-logo" alt="Punch" />
+          <img src="/icon.png" className="login-logo" alt="Punch" />
           <h1>Welcome back</h1>
           <p>Sign in with your username and password.</p>
         </div>

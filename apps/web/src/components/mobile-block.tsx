@@ -33,7 +33,7 @@ export function MobileBlockedNotice({ title = 'Desktop only' }: { title?: string
   return (
     <main className="mobile-block-page">
       <section className="mobile-block-card">
-        <img src="/icon.svg" className="mobile-block-logo" alt="Punch" />
+        <img src="/icon.png" className="mobile-block-logo" alt="Punch" />
         <h1>{title}</h1>
         <p>{subtitle}</p>
       </section>

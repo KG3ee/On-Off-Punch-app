@@ -59,7 +59,7 @@ export default function RegisterPage() {
     <main className="login-wrap">
       <div className="login-card" style={{ maxWidth: 460 }}>
         <div className="login-header">
-          <img src="/icon.svg" className="login-logo" alt="Punch" />
+          <img src="/icon.png" className="login-logo" alt="Punch" />
           <h1>Request an account</h1>
           <p>Submit your details — an admin will review and approve your account.</p>
         </div>
