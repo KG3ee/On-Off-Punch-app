@@ -199,8 +199,8 @@ export class DriverRequestsService {
     if (existing.status !== DriverRequestStatus.APPROVED) {
       throw new BadRequestException('Only approved requests can be accepted by a driver');
     }
-    if (existing.driverId) {
-      throw new BadRequestException('This request has already been accepted by another driver');
+    if (existing.driverId && existing.driverId !== driverId) {
+      throw new BadRequestException('This trip is assigned to a different driver');
     }
 
     return this.prisma.$transaction(async (tx) => {
