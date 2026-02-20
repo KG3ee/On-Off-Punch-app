@@ -141,23 +141,23 @@ export default function DriverDashboardPage() {
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
 
-      {/* ── Status Banner (25vh, tappable — matches popup option style) ── */}
+      {/* ── Status Banner (25vh, tappable) ── */}
       <button
         type="button"
         onClick={() => setStatusPickerOpen(true)}
         style={{
           width: '100%',
           height: '25vh',
-          minHeight: '6rem',
+          minHeight: '7rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '1.25rem',
+          gap: '1.5rem',
           background: cfg.bg,
           border: `2px solid ${cfg.border}`,
           borderRadius: 'var(--radius-lg)',
           cursor: 'pointer',
-          padding: '1rem 1.5rem',
-          marginBottom: '1.5rem',
+          padding: '1.25rem 1.75rem',
+          marginBottom: '1.25rem',
           transition: 'transform 0.15s',
           WebkitTapHighlightColor: 'transparent',
         }}
@@ -165,19 +165,19 @@ export default function DriverDashboardPage() {
         onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.transform = ''; }}
         onPointerLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = ''; }}
       >
-        <span style={{ fontSize: '3.5rem', lineHeight: 1, flexShrink: 0 }}>{cfg.emoji}</span>
+        <span style={{ fontSize: '4rem', lineHeight: 1, flexShrink: 0 }}>{cfg.emoji}</span>
         <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: cfg.color, letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '2.25rem', fontWeight: 700, color: cfg.color, letterSpacing: '-0.03em' }}>
             {cfg.label}
           </div>
-          <div style={{ fontSize: '0.9375rem', color: 'var(--muted)', marginTop: '0.125rem' }}>
+          <div style={{ fontSize: '1.125rem', color: 'var(--muted)', marginTop: '0.25rem', fontWeight: 500 }}>
             {cfg.desc}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '0.5rem', opacity: 0.6 }}>
-            Tap to change status
+          <div style={{ fontSize: '0.8125rem', color: 'var(--muted)', marginTop: '0.5rem', opacity: 0.5, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
+            Tap to change
           </div>
         </div>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.35 }}>
           <path d="M6 9l6 6 6-6" stroke={cfg.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
@@ -200,7 +200,7 @@ export default function DriverDashboardPage() {
           }}
         >
           <div style={{ textAlign: 'center', flexShrink: 0 }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', margin: 0 }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.02em' }}>
               Set Your Status
             </h2>
           </div>
@@ -218,11 +218,11 @@ export default function DriverDashboardPage() {
                   style={{
                     width: '100%',
                     height: '15vh',
-                    minHeight: '4.5rem',
+                    minHeight: '5rem',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '1rem',
-                    padding: '1rem 1.25rem',
+                    gap: '1.25rem',
+                    padding: '1rem 1.5rem',
                     background: isActive ? s.bg : 'rgba(255,255,255,0.05)',
                     border: isActive ? `2px solid ${s.border}` : '2px solid rgba(255,255,255,0.1)',
                     borderRadius: 'var(--radius-lg)',
@@ -235,17 +235,17 @@ export default function DriverDashboardPage() {
                   onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.transform = ''; }}
                   onPointerLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = ''; }}
                 >
-                  <span style={{ fontSize: '2rem', lineHeight: 1, flexShrink: 0 }}>{s.emoji}</span>
+                  <span style={{ fontSize: '2.5rem', lineHeight: 1, flexShrink: 0 }}>{s.emoji}</span>
                   <div style={{ textAlign: 'left', flex: 1 }}>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: isActive ? s.color : 'rgba(255,255,255,0.9)' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: isActive ? s.color : 'rgba(255,255,255,0.9)', letterSpacing: '-0.02em' }}>
                       {s.label}
                     </div>
-                    <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.125rem' }}>
+                    <div style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.125rem', fontWeight: 500 }}>
                       {s.desc}
                     </div>
                   </div>
                   {isActive ? (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
                       <circle cx="12" cy="12" r="11" stroke={s.color} strokeWidth="2" />
                       <path d="M7 12.5l3 3 7-7" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -260,8 +260,8 @@ export default function DriverDashboardPage() {
             onClick={() => setStatusPickerOpen(false)}
             style={{
               width: '100%',
-              padding: '0.625rem',
-              fontSize: '0.875rem',
+              padding: '0.75rem',
+              fontSize: '1rem',
               fontWeight: 600,
               color: 'rgba(255,255,255,0.5)',
               background: 'transparent',
@@ -269,6 +269,7 @@ export default function DriverDashboardPage() {
               borderRadius: 'var(--radius-lg)',
               cursor: 'pointer',
               flexShrink: 0,
+              letterSpacing: '-0.01em',
             }}
           >
             Cancel
@@ -277,29 +278,29 @@ export default function DriverDashboardPage() {
       ) : null}
 
       {/* ── Trip Cards (Upcoming first, then Active) ── */}
-      <div style={{ display: 'grid', gap: '1.5rem' }}>
-        <article className="card" style={{ padding: '1rem' }}>
-          <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>Upcoming Trips</h3>
-          <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+      <div style={{ display: 'grid', gap: '1.25rem' }}>
+        <article className="card" style={{ padding: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.375rem', marginBottom: '0.25rem', fontWeight: 700, letterSpacing: '-0.02em' }}>Upcoming Trips</h3>
+          <p style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1rem', fontWeight: 400 }}>
             Approved requests waiting for a driver.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             {available.map((req) => (
-              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '0.875rem', background: 'var(--card-solid)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--ink)' }}>{req.destination}</div>
-                  <div className="tag ok" style={{ fontSize: '0.75rem' }}>{req.requestedTime}</div>
+              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', padding: '1.125rem', background: 'var(--card-solid)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.625rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--ink)', letterSpacing: '-0.01em' }}>{req.destination}</div>
+                  <div className="tag ok" style={{ fontSize: '0.9375rem', fontWeight: 600, padding: '0.25rem 0.625rem' }}>{req.requestedTime}</div>
                 </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '0.25rem' }}>
-                  <strong>Passenger:</strong> {req.user.displayName} <span style={{ color: 'var(--muted)' }}>(@{req.user.username})</span>
+                <div style={{ fontSize: '1.0625rem', color: 'var(--ink-2)', marginBottom: '0.375rem', fontWeight: 500 }}>
+                  {req.user.displayName}
                 </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-                  <strong>Date:</strong> {new Date(req.requestedDate).toLocaleDateString()}
-                  {req.purpose ? <div style={{ marginTop: '0.25rem' }}><strong>Note:</strong> {req.purpose}</div> : null}
+                <div style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1.125rem', fontWeight: 400 }}>
+                  {new Date(req.requestedDate).toLocaleDateString()}
+                  {req.purpose ? <span> &middot; {req.purpose}</span> : null}
                 </div>
                 <button
                   className="button button-ok"
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto', fontWeight: 600 }}
+                  style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', height: 'auto', fontWeight: 700, letterSpacing: '-0.01em' }}
                   disabled={!!actionId}
                   onClick={() => void acceptRequest(req.id)}
                 >
@@ -308,35 +309,35 @@ export default function DriverDashboardPage() {
               </div>
             ))}
             {available.length === 0 ? (
-              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
+              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', fontSize: '1.0625rem', fontWeight: 500 }}>
                 No upcoming trips waiting.
               </div>
             ) : null}
           </div>
         </article>
 
-        <article className="card" style={{ padding: '1rem' }}>
-          <h3 style={{ fontSize: '1.125rem', marginBottom: '0.25rem' }}>My Active Trips</h3>
-          <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+        <article className="card" style={{ padding: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.375rem', marginBottom: '0.25rem', fontWeight: 700, letterSpacing: '-0.02em' }}>My Active Trips</h3>
+          <p style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1rem', fontWeight: 400 }}>
             Trips you have accepted. Complete them when done.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             {inProgress.map((req) => (
-              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '0.875rem', background: 'var(--card-solid)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--ink)' }}>{req.destination}</div>
-                  <div className="tag brand" style={{ fontSize: '0.75rem' }}>{req.requestedTime}</div>
+              <div key={req.id} style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', padding: '1.125rem', background: 'var(--card-solid)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.625rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--ink)', letterSpacing: '-0.01em' }}>{req.destination}</div>
+                  <div className="tag brand" style={{ fontSize: '0.9375rem', fontWeight: 600, padding: '0.25rem 0.625rem' }}>{req.requestedTime}</div>
                 </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '0.25rem' }}>
-                  <strong>Passenger:</strong> {req.user.displayName} <span style={{ color: 'var(--muted)' }}>(@{req.user.username})</span>
+                <div style={{ fontSize: '1.0625rem', color: 'var(--ink-2)', marginBottom: '0.375rem', fontWeight: 500 }}>
+                  {req.user.displayName}
                 </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-                  <strong>Date:</strong> {new Date(req.requestedDate).toLocaleDateString()}
-                  {req.purpose ? <div style={{ marginTop: '0.25rem' }}><strong>Note:</strong> {req.purpose}</div> : null}
+                <div style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1.125rem', fontWeight: 400 }}>
+                  {new Date(req.requestedDate).toLocaleDateString()}
+                  {req.purpose ? <span> &middot; {req.purpose}</span> : null}
                 </div>
                 <button
                   className="button button-primary"
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', height: 'auto', fontWeight: 600 }}
+                  style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', height: 'auto', fontWeight: 700, letterSpacing: '-0.01em' }}
                   disabled={!!actionId}
                   onClick={() => void completeRequest(req.id)}
                 >
@@ -345,7 +346,7 @@ export default function DriverDashboardPage() {
               </div>
             ))}
             {inProgress.length === 0 ? (
-              <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: '0.875rem' }}>
+              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', fontSize: '1.0625rem', fontWeight: 500 }}>
                 No active trips right now.
               </div>
             ) : null}
