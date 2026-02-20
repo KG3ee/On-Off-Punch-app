@@ -47,11 +47,27 @@ const DRIVER_STATUS_LABEL: Record<string, string> = {
   COMPLETED: 'Completed'
 };
 
+type DriverUser = {
+  id: string;
+  displayName: string;
+  username: string;
+  role: string;
+  driverStatus?: string;
+};
+
+const DRIVER_AVAIL_CONFIG: Record<string, { emoji: string; label: string; color: string; bg: string }> = {
+  AVAILABLE: { emoji: '🚗', label: 'Available', color: 'var(--ok)', bg: 'rgba(34,197,94,0.12)' },
+  BUSY:      { emoji: '🏎️', label: 'Driving',   color: 'var(--warning)', bg: 'rgba(245,158,11,0.12)' },
+  ON_BREAK:  { emoji: '☕', label: 'On Break',  color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  OFFLINE:   { emoji: '🏠', label: 'Off Duty',  color: 'var(--danger)', bg: 'rgba(239,68,68,0.12)' },
+};
+
 export default function AdminRequestsPage() {
   const [tab, setTab] = useState<'shift' | 'driver'>('shift');
 
   const [requests, setRequests] = useState<ShiftChangeRequest[]>([]);
   const [driverRequests, setDriverRequests] = useState<DriverRequest[]>([]);
+  const [drivers, setDrivers] = useState<DriverUser[]>([]);
   const [presets, setPresets] = useState<ShiftPreset[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -71,14 +87,16 @@ export default function AdminRequestsPage() {
     setLoading(true);
     setError('');
     try {
-      const [requestsData, presetsData, driverRequestsData] = await Promise.all([
+      const [requestsData, presetsData, driverRequestsData, usersData] = await Promise.all([
         apiFetch<ShiftChangeRequest[]>('/admin/requests'),
         apiFetch<ShiftPreset[]>('/admin/shift-presets'),
-        apiFetch<DriverRequest[]>('/admin/driver-requests')
+        apiFetch<DriverRequest[]>('/admin/driver-requests'),
+        apiFetch<DriverUser[]>('/admin/users')
       ]);
       setRequests(requestsData);
       setPresets(presetsData);
       setDriverRequests(driverRequestsData);
+      setDrivers(usersData.filter((u) => u.role === 'DRIVER'));
     } catch {
       setError('Failed to load requests');
     } finally {
@@ -323,6 +341,46 @@ export default function AdminRequestsPage() {
           ) : null}
         </>
       ) : (
+        <>
+        {/* ── Driver Availability Panel ── */}
+        <article className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '0.9375rem', marginBottom: '0.75rem', fontWeight: 600 }}>Driver Availability</h3>
+          {drivers.length === 0 ? (
+            <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>No users with DRIVER role found.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem' }}>
+              {drivers.map((d) => {
+                const status = d.driverStatus || 'OFFLINE';
+                const cfg = DRIVER_AVAIL_CONFIG[status] || DRIVER_AVAIL_CONFIG.OFFLINE;
+                return (
+                  <div
+                    key={d.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.625rem',
+                      padding: '0.625rem 0.75rem',
+                      background: cfg.bg,
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid transparent',
+                    }}
+                  >
+                    <span style={{ fontSize: '1.25rem', lineHeight: 1, flexShrink: 0 }}>{cfg.emoji}</span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {d.displayName}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: cfg.color, fontWeight: 600 }}>
+                        {cfg.label}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </article>
+
         <div className="table-wrap">
           <table>
             <thead>
@@ -398,6 +456,7 @@ export default function AdminRequestsPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </AppShell>
   );
