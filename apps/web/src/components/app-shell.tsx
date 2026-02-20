@@ -52,7 +52,7 @@ export function AppShell({
     router.push('/login');
   }
 
-  if (isEmployeeView && isMobile && userRole !== 'DRIVER' && userRole !== 'LEADER') {
+  if (isEmployeeView && isMobile && userRole !== 'DRIVER' && userRole !== 'LEADER' && userRole !== 'MAID' && userRole !== 'CHEF') {
     return <MobileBlockedNotice title="Office desktop required" />;
   }
 
