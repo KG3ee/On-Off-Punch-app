@@ -85,6 +85,8 @@ function enqueueAction(action: QueuedAction): void {
 
 // ── Core: run an action with offline fallback ──
 
+const ACTION_TIMEOUT_MS = 6_000;
+
 export async function runQueuedAction(
     path: string,
     body?: Record<string, unknown>,
@@ -116,27 +118,32 @@ export async function runQueuedAction(
         return { ok: false, queued: true };
     }
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ACTION_TIMEOUT_MS);
+
     try {
         const data = await apiFetch(path, {
             method,
             body: JSON.stringify(actionBody),
+            signal: controller.signal,
         });
         return { ok: true, queued: false, data };
     } catch (err) {
-        // Network error → queue for retry
-        const isNetworkError = isLikelyNetworkError(err);
+        const isNetworkError = isLikelyNetworkError(err) ||
+            (err instanceof DOMException && err.name === 'AbortError');
 
         if (isNetworkError) {
             enqueueAction(action);
             return { ok: false, queued: true };
         }
 
-        // Server returned an error (not network) → don't queue
         return {
             ok: false,
             queued: false,
             error: err instanceof Error ? err.message : 'Action failed',
         };
+    } finally {
+        clearTimeout(timeout);
     }
 }
 

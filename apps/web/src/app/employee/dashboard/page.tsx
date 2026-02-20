@@ -277,10 +277,12 @@ export default function EmployeeDashboardPage() {
   }, [activeBreak, activeSession]);
 
   useEffect(() => {
-    // Sync the real offline status after hydration (safe — runs client-only)
     setIsOffline(!navigator.onLine);
 
-    function onOnline() { setIsOffline(false); }
+    function onOnline() {
+      setIsOffline(false);
+      void loadData({ background: true });
+    }
     function onOffline() { setIsOffline(true); }
 
     window.addEventListener('online', onOnline);
@@ -289,6 +291,7 @@ export default function EmployeeDashboardPage() {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keyboard shortcuts: Space → End break, Esc → Cancel break
@@ -417,7 +420,11 @@ export default function EmployeeDashboardPage() {
   async function runAction(path: string, body?: Record<string, unknown>): Promise<void> {
     setActionMessage('');
     setError('');
-    setLoading(true);
+
+    const knownOffline = !navigator.onLine;
+    if (!knownOffline) {
+      setLoading(true);
+    }
 
     const result = await runQueuedAction(path, body);
 
@@ -425,7 +432,6 @@ export default function EmployeeDashboardPage() {
       setActionMessage('Action completed');
       setTimeout(() => setActionMessage(''), 3000);
 
-      // Fast targeted refresh for the changed data only, then sync the rest in background
       if (path === '/attendance/on' || path === '/attendance/off') {
         await loadTargeted(['sessions', 'breaks', 'summary']);
       } else if (path.startsWith('/breaks')) {
@@ -435,8 +441,8 @@ export default function EmployeeDashboardPage() {
       }
       loadData({ background: true });
     } else if (result.queued) {
-      setActionMessage('Action queued. It will sync automatically when connection is available.');
-      setTimeout(() => setActionMessage(''), 5000);
+      setActionMessage('Action queued — will sync when online.');
+      setTimeout(() => setActionMessage(''), 4000);
     } else {
       setError(result.error || 'Action failed');
     }
@@ -508,7 +514,7 @@ export default function EmployeeDashboardPage() {
         key={policy.id}
         type="button"
         className="button-chip"
-        disabled={loading || !activeSession || !!activeBreak}
+        disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
         onClick={() => void runAction('/breaks/start', { code: policy.code })}
         title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/day`}
       >
@@ -672,7 +678,7 @@ export default function EmployeeDashboardPage() {
               <button
                 type="button"
                 className="punch-btn punch-on"
-                disabled={loading || !!activeSession}
+                disabled={(loading && !isOffline) || !!activeSession}
                 onClick={() => void runAction('/attendance/on')}
               >
                 <span className="punch-icon">⏻</span>
@@ -681,7 +687,7 @@ export default function EmployeeDashboardPage() {
               <button
                 type="button"
                 className="punch-btn punch-off"
-                disabled={loading || !activeSession}
+                disabled={(loading && !isOffline) || !activeSession}
                 onClick={() => void runAction('/attendance/off')}
               >
                 <span className="punch-icon">⏼</span>
@@ -700,11 +706,11 @@ export default function EmployeeDashboardPage() {
                 <span className="elapsed">{activeBreakMinutes}m</span>
                 <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-                  <button className="button button-ok button-sm" disabled={loading} onClick={() => void runAction('/breaks/end')} title="Space bar">
+                  <button className="button button-ok button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/end')} title="Space bar">
                     End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
                   </button>
                   {activeBreakMinutes < 2 ? (
-                    <button className="button button-danger button-sm" disabled={loading} onClick={() => void runAction('/breaks/cancel')} title="Escape">
+                    <button className="button button-danger button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/cancel')} title="Escape">
                       Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
                     </button>
                   ) : null}
