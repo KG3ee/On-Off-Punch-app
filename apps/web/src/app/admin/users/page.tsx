@@ -189,7 +189,7 @@ export default function AdminUsersPage() {
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }
+  }, []);
 
   function flash(msg: string) {
     setMessage(msg);
