@@ -66,10 +66,12 @@ export function AppShell({
         <div className="shell-header-top">
           <div className="shell-brand">
             <img src="/icon.png" className="shell-brand-logo" alt="Punch" />
-            <span className="shell-brand-name">Punch</span>
-            <div className="shell-brand-divider" />
-            <div className="shell-title-group">
-              <span className="shell-page-title">{title}</span>
+            <div className="shell-brand-text">
+              <div className="shell-title-group">
+                <span className="shell-brand-name">Punch</span>
+                <div className="shell-brand-divider" />
+                <span className="shell-page-title">{title}</span>
+              </div>
               {subtitle ? (
                 <span className="shell-subtitle">{subtitle}</span>
               ) : null}
