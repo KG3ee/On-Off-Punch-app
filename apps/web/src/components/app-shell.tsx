@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { clearAuth } from '@/lib/auth';
 import { MobileBlockedNotice, useIsMobileClient } from '@/components/mobile-block';
 import { UserRole } from '@/types/auth';
+import { AdminPunchBanner } from '@/components/admin-punch-banner';
 
 type NavItem = {
   href: string;
@@ -17,7 +18,6 @@ const adminNav: NavItem[] = [
   { href: '/admin/history', label: 'History' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/requests', label: 'Requests' },
-  { href: '/admin/punch', label: 'My Punch' },
   { href: '/admin/password', label: 'Password' }
 ];
 
@@ -145,6 +145,7 @@ export function AppShell({
       </header>
 
       <div className="shell">
+        {admin ? <AdminPunchBanner /> : null}
         {children}
       </div>
     </main>
