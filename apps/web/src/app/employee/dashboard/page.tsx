@@ -709,7 +709,7 @@ export default function EmployeeDashboardPage() {
             </div>
           </article>
 
-          {/* Breaks */}
+          {me?.role !== 'LEADER' ? (
           <article className="card">
             <h3>Breaks</h3>
             {activeBreak ? (
@@ -747,6 +747,7 @@ export default function EmployeeDashboardPage() {
               </>
             )}
           </article>
+          ) : null}
         </div>
 
         {/* Right column — Current Session */}
@@ -783,6 +784,7 @@ export default function EmployeeDashboardPage() {
             </div>
           </article>
 
+          {me?.role !== 'LEADER' ? (
           <article className="card">
             <h3>Session Breaks</h3>
             <div className="table-wrap">
@@ -823,6 +825,7 @@ export default function EmployeeDashboardPage() {
               </table>
             </div>
           </article>
+          ) : null}
         </div>
       </section>
     </AppShell>
