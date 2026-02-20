@@ -26,6 +26,7 @@ const REQUEST_PUBLIC_INCLUDE = {
       lastName: true,
       // phoneLast4 removed
       defaultTeamId: true,
+      defaultRole: true,
       defaultTeam: {
         select: {
           id: true,
@@ -196,7 +197,7 @@ export class RegistrationsService {
           firstName: request.firstName,
           lastName: request.lastName,
           displayName: request.displayName,
-          role: Role.MEMBER,
+          role: request.rosterEntry?.defaultRole || Role.MEMBER,
           isActive: true,
           teamId
         },
@@ -295,6 +296,7 @@ export class RegistrationsService {
         displayName: dto.displayName.trim(),
         // phoneLast4 removed
         defaultTeamId: dto.defaultTeamId || null,
+        defaultRole: dto.defaultRole || 'MEMBER',
         isActive: dto.isActive ?? true
       },
       create: {
@@ -304,6 +306,7 @@ export class RegistrationsService {
         displayName: dto.displayName.trim(),
         // phoneLast4 removed
         defaultTeamId: dto.defaultTeamId || null,
+        defaultRole: dto.defaultRole || 'MEMBER',
         isActive: dto.isActive ?? true
       },
       include: {

@@ -1,4 +1,5 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Role } from '@prisma/client';
 
 export class CreateRosterEntryDto {
   @IsString()
@@ -17,11 +18,13 @@ export class CreateRosterEntryDto {
   @IsNotEmpty()
   displayName!: string;
 
-
-
   @IsOptional()
   @IsString()
   defaultTeamId?: string;
+
+  @IsOptional()
+  @IsEnum(Role)
+  defaultRole?: Role;
 
   @IsOptional()
   @IsBoolean()

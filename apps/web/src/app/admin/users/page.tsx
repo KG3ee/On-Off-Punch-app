@@ -81,6 +81,7 @@ type RegistrationRosterRow = {
 
   defaultTeamId?: string | null;
   defaultTeam?: { id: string; name: string } | null;
+  defaultRole: 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF';
   isActive: boolean;
 };
 
@@ -153,6 +154,7 @@ export default function AdminUsersPage() {
   const [rosterDisplayName, setRosterDisplayName] = useState('');
 
   const [rosterTeamId, setRosterTeamId] = useState('');
+  const [rosterRole, setRosterRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF'>('MEMBER');
 
   const load = useCallback(async (silent = false): Promise<void> => {
     try {
@@ -467,7 +469,8 @@ export default function AdminUsersPage() {
           lastName: rosterLastName || undefined,
           displayName: rosterDisplayName,
 
-          defaultTeamId: rosterTeamId || undefined
+          defaultTeamId: rosterTeamId || undefined,
+          defaultRole: rosterRole
         })
       });
 
@@ -477,6 +480,7 @@ export default function AdminUsersPage() {
       setRosterDisplayName('');
 
       setRosterTeamId('');
+      setRosterRole('MEMBER');
       flash('Roster entry saved');
       await load();
     } catch (err) {
@@ -652,6 +656,14 @@ export default function AdminUsersPage() {
             required
           />
 
+          <select className="select" style={{ width: '130px' }} value={rosterRole} onChange={(e) => setRosterRole(e.target.value as any)}>
+            <option value="MEMBER">MEMBER</option>
+            <option value="LEADER">LEADER</option>
+            <option value="DRIVER">DRIVER</option>
+            <option value="MAID">MAID</option>
+            <option value="CHEF">CHEF</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
           <select className="select" style={{ width: '170px' }} value={rosterTeamId} onChange={(e) => setRosterTeamId(e.target.value)}>
             <option value="">Default team (none)</option>
             {teams.map((team) => (
@@ -668,7 +680,8 @@ export default function AdminUsersPage() {
                 <th>Staff Code</th>
                 <th>Name</th>
 
-                <th>Default Team</th>
+                <th>Default Group</th>
+                <th>Default Role</th>
                 <th style={{ width: '90px' }}>Action</th>
               </tr>
             </thead>
@@ -678,7 +691,10 @@ export default function AdminUsersPage() {
                   <td className="mono">{entry.staffCode}</td>
                   <td>{entry.displayName}</td>
 
-                  <td>{entry.defaultTeam?.name || '—'}</td>
+                  <td>{entry.defaultTeam ? <span className="tag brand">{entry.defaultTeam.name}</span> : <span className="tag">Service</span>}</td>
+                  <td>
+                    <span className={`tag role-${entry.defaultRole.toLowerCase()}`}>{entry.defaultRole}</span>
+                  </td>
                   <td>
                     <button type="button" className="button button-danger button-sm" onClick={() => void deleteRosterEntry(entry.id)}>
                       Delete

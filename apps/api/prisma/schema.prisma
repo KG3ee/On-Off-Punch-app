@@ -134,6 +134,7 @@ model EmployeeRoster {
   displayName   String
 
   defaultTeamId String?
+  defaultRole   Role     @default(MEMBER)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
