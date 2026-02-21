@@ -45,6 +45,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 a {
@@ -265,6 +266,8 @@ p {
   border-radius: var(--radius-lg);
   padding: 0.75rem;
   transition: border-color var(--transition);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .card:hover {
@@ -358,6 +361,8 @@ p {
 /* ── Tables ── */
 .table-wrap {
   overflow-x: auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 table {
@@ -399,6 +404,14 @@ tbody tr:hover {
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
+  gap: 0.625rem;
+  overflow: hidden;
+}
+
+/* Leader punch + session side-by-side on desktop, stacked on mobile */
+.leader-punch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.625rem;
 }
 
@@ -573,7 +586,7 @@ tbody tr:hover {
 /* ── KPI Stats Row ── */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(110px, 100%), 1fr));
   gap: 0.5rem;
 }
 
@@ -582,6 +595,8 @@ tbody tr:hover {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 0.625rem 0.75rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .kpi-value {
@@ -1080,6 +1095,10 @@ main > .shell {
 /* Tablet */
 @media (max-width: 900px) {
   .split {
+    grid-template-columns: 1fr;
+  }
+
+  .leader-punch-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -855,7 +855,7 @@ export default function EmployeeDashboardPage() {
             ) : null}
           </section>
 
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.625rem' }}>
+          <div className="leader-punch-grid">
             <article className="card">
               <h3>Duty</h3>
               <div className="action-row">

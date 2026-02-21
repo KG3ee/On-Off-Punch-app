@@ -462,7 +462,7 @@ export function LeaderTeamSections() {
         {drivers.length === 0 ? (
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>No drivers found.</p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '0.5rem' }}>
             {drivers.map((d) => {
               const status = d.driverStatus || 'OFFLINE';
               const cfg = DRIVER_STATUS_CONFIG[status] || DRIVER_STATUS_CONFIG.OFFLINE;
