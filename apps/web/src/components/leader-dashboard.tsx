@@ -223,6 +223,7 @@ export function LeaderDashboard({
 
   /* ── Derived data ── */
   const pendingReqs = useMemo(() => requests.filter(r => r.status === 'PENDING'), [requests]);
+  const resolvedReqs = useMemo(() => requests.filter(r => r.status !== 'PENDING'), [requests]);
 
   /* ── Helpers ── */
   function fmtTime(iso: string) {
@@ -307,13 +308,13 @@ export function LeaderDashboard({
         </article>
       </section>
 
-      {/* ═══ 3. PENDING REQUESTS ═══ */}
-      {pendingReqs.length > 0 ? (
-        <section className="dash-section">
-          <h2 className="dash-section-title">
-            📋 Pending Requests
-            <span className="dash-badge">{pendingReqs.length}</span>
-          </h2>
+      {/* ═══ 3. MEMBER REQUESTS ═══ */}
+      <section className="dash-section">
+        <h2 className="dash-section-title">
+          📋 Shift Requests
+          {pendingReqs.length > 0 ? <span className="dash-badge">{pendingReqs.length}</span> : null}
+        </h2>
+        {pendingReqs.length > 0 ? (
           <div className="dash-cards">
             {pendingReqs.map((req) => (
               <article key={req.id} className="card">
@@ -339,8 +340,32 @@ export function LeaderDashboard({
               </article>
             ))}
           </div>
-        </section>
-      ) : null}
+        ) : null}
+        {resolvedReqs.length > 0 ? (
+          <article className="card">
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Status</th></tr></thead>
+                <tbody>
+                  {resolvedReqs.map((req) => (
+                    <tr key={req.id}>
+                      <td>{req.user.displayName}</td>
+                      <td className="mono">{req.requestedDate}</td>
+                      <td>{REQUEST_TYPE_LABEL[req.requestType] || req.requestType}</td>
+                      <td>
+                        <span className={`tag ${req.status === 'APPROVED' ? 'ok' : req.status === 'REJECTED' ? 'danger' : ''}`}>{req.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        ) : null}
+        {pendingReqs.length === 0 && resolvedReqs.length === 0 ? (
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>No shift requests</p>
+        ) : null}
+      </section>
 
       {/* ═══ 4. ACTIVE SESSIONS ═══ */}
       <section className="dash-section">
@@ -371,55 +396,7 @@ export function LeaderDashboard({
         </article>
       </section>
 
-      {/* ═══ 5. DRIVERS + BREAKS (side-by-side) ═══ */}
-      <div className="dash-two-col">
-        <section className="dash-section">
-          <h2 className="dash-section-title">🚗 Drivers</h2>
-          <article className="card">
-            {drivers.length === 0
-              ? <p style={{ color: 'var(--muted)', fontSize: '0.8rem', textAlign: 'center', padding: '0.5rem 0' }}>No drivers</p>
-              : <div style={{ display: 'grid', gap: '0.375rem' }}>
-                  {drivers.map((d) => {
-                    const st = d.driverStatus || 'OFFLINE';
-                    const cfg = DRIVER_STATUS[st] || DRIVER_STATUS.OFFLINE;
-                    return (
-                      <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                        <span style={{ fontSize: '0.8rem', flexShrink: 0 }}>{cfg.emoji}</span>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.displayName}</span>
-                        <span className={`tag ${cfg.cls}`} style={{ fontSize: '0.6rem' }}>{cfg.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-            }
-          </article>
-        </section>
-
-        <section className="dash-section">
-          <h2 className="dash-section-title">☕ Today Breaks</h2>
-          <article className="card">
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Name</th><th>Code</th><th>Start</th><th>Min</th><th>Status</th></tr></thead>
-                <tbody>
-                  {breakHistory.map((b) => (
-                    <tr key={b.id}>
-                      <td>{b.user.displayName}</td>
-                      <td><span className="tag">{b.breakPolicy.code.toUpperCase()}</span></td>
-                      <td className="mono">{fmtTime(b.startedAt)}</td>
-                      <td>{breakMin(b)}</td>
-                      <td><span className={`tag ${b.status === 'ACTIVE' ? 'ok' : b.status === 'CANCELLED' ? 'danger' : ''}`}>{b.status}</span></td>
-                    </tr>
-                  ))}
-                  {breakHistory.length === 0 ? <tr><td colSpan={5} className="table-empty">No breaks today</td></tr> : null}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        </section>
-      </div>
-
-      {/* ═══ 6. COLLAPSIBLE: TEAM MEMBERS ═══ */}
+      {/* ═══ 5. TEAM MEMBERS (collapsible, right under Who's On Duty) ═══ */}
       <section className="dash-section">
         <div className="dash-collapse-header" onClick={() => setShowTeam(v => !v)}>
           <h2 className="dash-section-title" style={{ marginBottom: 0 }}>👥 Team Members ({members.length})</h2>
@@ -446,7 +423,7 @@ export function LeaderDashboard({
         ) : null}
       </section>
 
-      {/* ═══ 7. COLLAPSIBLE: ATTENDANCE HISTORY ═══ */}
+      {/* ═══ 6. ATTENDANCE HISTORY (collapsible) ═══ */}
       <section className="dash-section">
         <div className="dash-collapse-header" onClick={() => setShowHistory(v => !v)}>
           <h2 className="dash-section-title" style={{ marginBottom: 0 }}>📊 Attendance History</h2>
@@ -486,6 +463,53 @@ export function LeaderDashboard({
             </article>
           </>
         ) : null}
+      </section>
+
+      {/* ═══ 7. TODAY BREAKS ═══ */}
+      <section className="dash-section">
+        <h2 className="dash-section-title">☕ Today Breaks</h2>
+        <article className="card">
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Code</th><th>Start</th><th>Min</th><th>Status</th></tr></thead>
+              <tbody>
+                {breakHistory.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.user.displayName}</td>
+                    <td><span className="tag">{b.breakPolicy.code.toUpperCase()}</span></td>
+                    <td className="mono">{fmtTime(b.startedAt)}</td>
+                    <td>{breakMin(b)}</td>
+                    <td><span className={`tag ${b.status === 'ACTIVE' ? 'ok' : b.status === 'CANCELLED' ? 'danger' : ''}`}>{b.status}</span></td>
+                  </tr>
+                ))}
+                {breakHistory.length === 0 ? <tr><td colSpan={5} className="table-empty">No breaks today</td></tr> : null}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      {/* ═══ 8. DRIVERS ═══ */}
+      <section className="dash-section">
+        <h2 className="dash-section-title">🚗 Drivers</h2>
+        <article className="card">
+          {drivers.length === 0
+            ? <p style={{ color: 'var(--muted)', fontSize: '0.8rem', textAlign: 'center', padding: '0.5rem 0' }}>No drivers</p>
+            : <div style={{ display: 'grid', gap: '0.375rem' }}>
+                {drivers.map((d) => {
+                  const st = d.driverStatus || 'OFFLINE';
+                  const cfg = DRIVER_STATUS[st] || DRIVER_STATUS.OFFLINE;
+                  return (
+                    <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                      <span style={{ fontSize: '0.8rem', flexShrink: 0 }}>{cfg.emoji}</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.displayName}</span>
+                      <span className={`tag ${cfg.cls}`} style={{ fontSize: '0.6rem' }}>{cfg.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+          }
+        </article>
       </section>
 
       {/* ═══ 8. PERSONAL MONTHLY STATS ═══ */}

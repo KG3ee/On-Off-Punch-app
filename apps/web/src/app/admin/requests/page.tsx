@@ -72,6 +72,15 @@ export default function AdminRequestsPage() {
   return <Suspense><AdminRequestsContent /></Suspense>;
 }
 
+function getMonthRange(year: number, month: number): [string, string] {
+  const from = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const last = new Date(year, month + 1, 0).getDate();
+  const to = `${year}-${String(month + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+  return [from, to];
+}
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function AdminRequestsContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'driver' ? 'driver' : 'shift';
@@ -84,6 +93,13 @@ function AdminRequestsContent() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  const now = new Date();
+  const [filterMode, setFilterMode] = useState<'month' | 'all' | 'custom'>('month');
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
+  const [filterMonth, setFilterMonth] = useState(now.getMonth());
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
 
   const [approveTarget, setApproveTarget] = useState<ShiftChangeRequest | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState('');
@@ -199,16 +215,88 @@ function AdminRequestsContent() {
     finally { setDriverActionId(null); }
   }
 
-  const pendingShifts = useMemo(() => requests.filter(r => r.status === 'PENDING'), [requests]);
-  const resolvedShifts = useMemo(() => requests.filter(r => r.status !== 'PENDING'), [requests]);
-  const pendingDriverReqs = useMemo(() => driverRequests.filter(r => r.status === 'PENDING'), [driverRequests]);
-  const resolvedDriverReqs = useMemo(() => driverRequests.filter(r => r.status !== 'PENDING'), [driverRequests]);
+  function inRange(dateStr: string): boolean {
+    if (filterMode === 'all') return true;
+    const d = dateStr.slice(0, 10);
+    if (filterMode === 'month') {
+      const [from, to] = getMonthRange(filterYear, filterMonth);
+      return d >= from && d <= to;
+    }
+    if (customFrom && d < customFrom) return false;
+    if (customTo && d > customTo) return false;
+    return true;
+  }
+
+  const filteredShifts = useMemo(() => requests.filter(r => inRange(r.requestedDate)), [requests, filterMode, filterYear, filterMonth, customFrom, customTo]);
+  const filteredDriverReqs = useMemo(() => driverRequests.filter(r => inRange(r.requestedDate)), [driverRequests, filterMode, filterYear, filterMonth, customFrom, customTo]);
+
+  const pendingShifts = useMemo(() => filteredShifts.filter(r => r.status === 'PENDING'), [filteredShifts]);
+  const resolvedShifts = useMemo(() => filteredShifts.filter(r => r.status !== 'PENDING'), [filteredShifts]);
+  const pendingDriverReqs = useMemo(() => filteredDriverReqs.filter(r => r.status === 'PENDING'), [filteredDriverReqs]);
+  const resolvedDriverReqs = useMemo(() => filteredDriverReqs.filter(r => r.status !== 'PENDING'), [filteredDriverReqs]);
+  const approvedShifts = useMemo(() => filteredShifts.filter(r => r.status === 'APPROVED').length, [filteredShifts]);
+  const rejectedShifts = useMemo(() => filteredShifts.filter(r => r.status === 'REJECTED').length, [filteredShifts]);
+  const approvedDrivers = useMemo(() => filteredDriverReqs.filter(r => r.status === 'APPROVED' || r.status === 'IN_PROGRESS' || r.status === 'COMPLETED').length, [filteredDriverReqs]);
+  const rejectedDrivers = useMemo(() => filteredDriverReqs.filter(r => r.status === 'REJECTED').length, [filteredDriverReqs]);
+
+  function prevMonth() { if (filterMonth === 0) { setFilterMonth(11); setFilterYear(y => y - 1); } else setFilterMonth(m => m - 1); }
+  function nextMonth() { if (filterMonth === 11) { setFilterMonth(0); setFilterYear(y => y + 1); } else setFilterMonth(m => m + 1); }
+  function goThisMonth() { setFilterMode('month'); setFilterYear(now.getFullYear()); setFilterMonth(now.getMonth()); }
 
   return (
     <AppShell title="Requests" subtitle="Approve or reject shift and driver requests" admin userRole="ADMIN">
       <div className="dash-layout">
         {message ? <div className="alert alert-success">{message}</div> : null}
         {error ? <div className="alert alert-error">{error}</div> : null}
+
+        {/* ═══ Date Filter Bar ═══ */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <button type="button" className="button button-ghost button-sm" onClick={prevMonth} style={{ padding: '0.2rem 0.5rem' }}>&lt;</button>
+            <button
+              type="button"
+              className={`button button-sm ${filterMode === 'month' ? 'button-primary' : 'button-ghost'}`}
+              onClick={() => { setFilterMode('month'); }}
+              style={{ minWidth: '7rem', fontWeight: 600 }}
+            >
+              {MONTH_NAMES[filterMonth]} {filterYear}
+            </button>
+            <button type="button" className="button button-ghost button-sm" onClick={nextMonth} style={{ padding: '0.2rem 0.5rem' }}>&gt;</button>
+          </div>
+
+          <div style={{ width: '1px', height: '1.2rem', background: 'var(--line)' }} />
+
+          <button type="button" className={`button button-sm ${filterMode === 'month' && filterYear === now.getFullYear() && filterMonth === now.getMonth() ? 'button-primary' : 'button-ghost'}`} onClick={goThisMonth}>
+            This Month
+          </button>
+          <button type="button" className={`button button-sm ${filterMode === 'all' ? 'button-primary' : 'button-ghost'}`} onClick={() => setFilterMode('all')}>
+            All Time
+          </button>
+
+          <div style={{ width: '1px', height: '1.2rem', background: 'var(--line)' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem' }}>
+            <input
+              type="date"
+              className="input"
+              style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem', width: '8.5rem' }}
+              value={customFrom}
+              onChange={(e) => { setCustomFrom(e.target.value); setFilterMode('custom'); }}
+            />
+            <span style={{ color: 'var(--muted)' }}>to</span>
+            <input
+              type="date"
+              className="input"
+              style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem', width: '8.5rem' }}
+              value={customTo}
+              onChange={(e) => { setCustomTo(e.target.value); setFilterMode('custom'); }}
+            />
+          </div>
+
+          <span style={{ fontSize: '0.75rem', color: 'var(--muted)', marginLeft: 'auto' }}>
+            {filterMode === 'all' ? 'Showing all time' : filterMode === 'custom' ? 'Custom range' : `${MONTH_NAMES[filterMonth]} ${filterYear}`}
+          </span>
+        </div>
 
         {/* ═══ Summary KPIs ═══ */}
         <section className="kpi-grid">
@@ -220,13 +308,21 @@ function AdminRequestsContent() {
             <p className="kpi-label">Driver Pending</p>
             <p className="kpi-value" style={{ color: pendingDriverReqs.length > 0 ? 'var(--danger)' : undefined }}>{pendingDriverReqs.length}</p>
           </article>
-          <article className="kpi">
-            <p className="kpi-label">Total Shift</p>
-            <p className="kpi-value">{requests.length}</p>
+          <article className="kpi" onClick={() => setTab('shift')} style={{ cursor: 'pointer' }}>
+            <p className="kpi-label">Shift Approved</p>
+            <p className="kpi-value" style={{ color: approvedShifts > 0 ? 'var(--ok)' : undefined }}>{approvedShifts}</p>
           </article>
-          <article className="kpi">
-            <p className="kpi-label">Total Driver</p>
-            <p className="kpi-value">{driverRequests.length}</p>
+          <article className="kpi" onClick={() => setTab('driver')} style={{ cursor: 'pointer' }}>
+            <p className="kpi-label">Driver Approved</p>
+            <p className="kpi-value" style={{ color: approvedDrivers > 0 ? 'var(--ok)' : undefined }}>{approvedDrivers}</p>
+          </article>
+          <article className="kpi" onClick={() => setTab('shift')} style={{ cursor: 'pointer' }}>
+            <p className="kpi-label">Shift Rejected</p>
+            <p className="kpi-value" style={{ color: rejectedShifts > 0 ? 'var(--danger)' : undefined }}>{rejectedShifts}</p>
+          </article>
+          <article className="kpi" onClick={() => setTab('driver')} style={{ cursor: 'pointer' }}>
+            <p className="kpi-label">Driver Rejected</p>
+            <p className="kpi-value" style={{ color: rejectedDrivers > 0 ? 'var(--danger)' : undefined }}>{rejectedDrivers}</p>
           </article>
         </section>
 
