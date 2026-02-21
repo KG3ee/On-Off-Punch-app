@@ -277,33 +277,62 @@ function AdminRequestsContent() {
           )}
         </div>
 
-        {/* ═══ Summary KPIs ═══ */}
-        <section className="kpi-grid">
-          <article className="kpi" style={{ cursor: 'pointer', outline: tab === 'shift' ? '2px solid var(--brand)' : undefined, borderRadius: 'var(--radius-lg)' }} onClick={() => setTab('shift')}>
-            <p className="kpi-label">Shift Pending</p>
-            <p className="kpi-value" style={{ color: pendingShifts.length > 0 ? 'var(--danger)' : undefined }}>{pendingShifts.length}</p>
-          </article>
-          <article className="kpi" style={{ cursor: 'pointer', outline: tab === 'driver' ? '2px solid var(--brand)' : undefined, borderRadius: 'var(--radius-lg)' }} onClick={() => setTab('driver')}>
-            <p className="kpi-label">Driver Pending</p>
-            <p className="kpi-value" style={{ color: pendingDriverReqs.length > 0 ? 'var(--danger)' : undefined }}>{pendingDriverReqs.length}</p>
-          </article>
-          <article className="kpi" onClick={() => setTab('shift')} style={{ cursor: 'pointer' }}>
-            <p className="kpi-label">Shift Approved</p>
-            <p className="kpi-value" style={{ color: approvedShifts > 0 ? 'var(--ok)' : undefined }}>{approvedShifts}</p>
-          </article>
-          <article className="kpi" onClick={() => setTab('driver')} style={{ cursor: 'pointer' }}>
-            <p className="kpi-label">Driver Approved</p>
-            <p className="kpi-value" style={{ color: approvedDrivers > 0 ? 'var(--ok)' : undefined }}>{approvedDrivers}</p>
-          </article>
-          <article className="kpi" onClick={() => setTab('shift')} style={{ cursor: 'pointer' }}>
-            <p className="kpi-label">Shift Rejected</p>
-            <p className="kpi-value" style={{ color: rejectedShifts > 0 ? 'var(--danger)' : undefined }}>{rejectedShifts}</p>
-          </article>
-          <article className="kpi" onClick={() => setTab('driver')} style={{ cursor: 'pointer' }}>
-            <p className="kpi-label">Driver Rejected</p>
-            <p className="kpi-value" style={{ color: rejectedDrivers > 0 ? 'var(--danger)' : undefined }}>{rejectedDrivers}</p>
-          </article>
-        </section>
+        {/* ═══ Tab Selectors ═══ */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setTab('shift')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-lg)',
+              background: tab === 'shift' ? 'var(--brand)' : 'var(--card)',
+              border: tab === 'shift' ? '1px solid var(--brand)' : '1px solid var(--line)',
+              color: tab === 'shift' ? '#fff' : 'var(--ink)',
+              cursor: 'pointer', transition: 'all 0.15s ease',
+            }}
+          >
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', opacity: 0.8 }}>Shift Requests</div>
+              <div style={{ fontSize: '0.75rem', marginTop: '0.15rem', opacity: 0.7 }}>
+                {approvedShifts} approved · {rejectedShifts} rejected
+              </div>
+            </div>
+            {pendingShifts.length > 0 ? (
+              <span style={{ background: tab === 'shift' ? 'rgba(255,255,255,0.25)' : 'var(--danger)', color: '#fff', fontSize: '0.75rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', minWidth: '1.5rem', textAlign: 'center' }}>
+                {pendingShifts.length}
+              </span>
+            ) : (
+              <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>0 pending</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTab('driver')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-lg)',
+              background: tab === 'driver' ? 'var(--brand)' : 'var(--card)',
+              border: tab === 'driver' ? '1px solid var(--brand)' : '1px solid var(--line)',
+              color: tab === 'driver' ? '#fff' : 'var(--ink)',
+              cursor: 'pointer', transition: 'all 0.15s ease',
+            }}
+          >
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', opacity: 0.8 }}>Driver Requests</div>
+              <div style={{ fontSize: '0.75rem', marginTop: '0.15rem', opacity: 0.7 }}>
+                {approvedDrivers} approved · {rejectedDrivers} rejected
+              </div>
+            </div>
+            {pendingDriverReqs.length > 0 ? (
+              <span style={{ background: tab === 'driver' ? 'rgba(255,255,255,0.25)' : 'var(--danger)', color: '#fff', fontSize: '0.75rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', minWidth: '1.5rem', textAlign: 'center' }}>
+                {pendingDriverReqs.length}
+              </span>
+            ) : (
+              <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>0 pending</span>
+            )}
+          </button>
+        </div>
 
         {/* ═══ SHIFT TAB ═══ */}
         {tab === 'shift' ? (
