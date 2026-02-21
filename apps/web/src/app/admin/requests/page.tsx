@@ -249,53 +249,32 @@ function AdminRequestsContent() {
         {message ? <div className="alert alert-success">{message}</div> : null}
         {error ? <div className="alert alert-error">{error}</div> : null}
 
-        {/* ═══ Date Filter Bar ═══ */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <button type="button" className="button button-ghost button-sm" onClick={prevMonth} style={{ padding: '0.2rem 0.5rem' }}>&lt;</button>
-            <button
-              type="button"
-              className={`button button-sm ${filterMode === 'month' ? 'button-primary' : 'button-ghost'}`}
-              onClick={() => { setFilterMode('month'); }}
-              style={{ minWidth: '7rem', fontWeight: 600 }}
+        {/* ═══ Date Filter ═══ */}
+        <div className="toolbar" style={{ marginBottom: 0 }}>
+          <nav className="nav">
+            <a style={{ cursor: 'pointer', userSelect: 'none', padding: '0.25rem 0.4rem', fontSize: '0.8rem' }} onClick={prevMonth}>‹</a>
+            <a
+              className={filterMode === 'month' ? 'active' : ''}
+              style={{ cursor: 'pointer', fontWeight: 600, minWidth: '5.5rem', textAlign: 'center' }}
+              onClick={() => setFilterMode('month')}
             >
               {MONTH_NAMES[filterMonth]} {filterYear}
-            </button>
-            <button type="button" className="button button-ghost button-sm" onClick={nextMonth} style={{ padding: '0.2rem 0.5rem' }}>&gt;</button>
-          </div>
-
-          <div style={{ width: '1px', height: '1.2rem', background: 'var(--line)' }} />
-
-          <button type="button" className={`button button-sm ${filterMode === 'month' && filterYear === now.getFullYear() && filterMonth === now.getMonth() ? 'button-primary' : 'button-ghost'}`} onClick={goThisMonth}>
-            This Month
-          </button>
-          <button type="button" className={`button button-sm ${filterMode === 'all' ? 'button-primary' : 'button-ghost'}`} onClick={() => setFilterMode('all')}>
-            All Time
-          </button>
-
-          <div style={{ width: '1px', height: '1.2rem', background: 'var(--line)' }} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem' }}>
-            <input
-              type="date"
-              className="input"
-              style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem', width: '8.5rem' }}
-              value={customFrom}
-              onChange={(e) => { setCustomFrom(e.target.value); setFilterMode('custom'); }}
-            />
-            <span style={{ color: 'var(--muted)' }}>to</span>
-            <input
-              type="date"
-              className="input"
-              style={{ padding: '0.2rem 0.4rem', fontSize: '0.78rem', width: '8.5rem' }}
-              value={customTo}
-              onChange={(e) => { setCustomTo(e.target.value); setFilterMode('custom'); }}
-            />
-          </div>
-
-          <span style={{ fontSize: '0.75rem', color: 'var(--muted)', marginLeft: 'auto' }}>
-            {filterMode === 'all' ? 'Showing all time' : filterMode === 'custom' ? 'Custom range' : `${MONTH_NAMES[filterMonth]} ${filterYear}`}
-          </span>
+            </a>
+            <a style={{ cursor: 'pointer', userSelect: 'none', padding: '0.25rem 0.4rem', fontSize: '0.8rem' }} onClick={nextMonth}>›</a>
+            <a className={filterMode === 'all' ? 'active' : ''} style={{ cursor: 'pointer' }} onClick={() => setFilterMode('all')}>All</a>
+            <a className={filterMode === 'custom' ? 'active' : ''} style={{ cursor: 'pointer' }} onClick={() => setFilterMode('custom')}>Range</a>
+          </nav>
+          {filterMode === 'custom' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: 'auto' }}>
+              <input type="date" className="input" style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem' }} value={customFrom} onChange={(e) => { setCustomFrom(e.target.value); setFilterMode('custom'); }} />
+              <span style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>–</span>
+              <input type="date" className="input" style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem' }} value={customTo} onChange={(e) => { setCustomTo(e.target.value); setFilterMode('custom'); }} />
+            </div>
+          ) : (
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--muted)' }}>
+              {filterMode === 'all' ? 'All time' : filterMode === 'month' && filterYear === now.getFullYear() && filterMonth === now.getMonth() ? 'This month' : `${MONTH_NAMES[filterMonth]} ${filterYear}`}
+            </span>
+          )}
         </div>
 
         {/* ═══ Summary KPIs ═══ */}
