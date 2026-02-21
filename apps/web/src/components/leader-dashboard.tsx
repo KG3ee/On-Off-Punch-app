@@ -239,12 +239,12 @@ export function LeaderDashboard({
   }
 
   return (
-    <div className="leader-layout">
+    <div className="dash-layout">
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
 
       {/* ═══ 1. PUNCH STRIP ═══ */}
-      <div className="leader-punch-strip">
+      <div className="dash-punch-strip">
         <button
           type="button"
           className="punch-btn punch-on"
@@ -256,7 +256,7 @@ export function LeaderDashboard({
           <span className="punch-label" style={{ fontSize: '0.7rem' }}>ON</span>
         </button>
 
-        <div className="leader-punch-status">
+        <div className="dash-punch-status">
           {activeSession ? (
             <>
               <span className="status-dot active" />
@@ -309,12 +309,12 @@ export function LeaderDashboard({
 
       {/* ═══ 3. PENDING REQUESTS ═══ */}
       {pendingReqs.length > 0 ? (
-        <section className="leader-section">
-          <h2 className="leader-section-title">
+        <section className="dash-section">
+          <h2 className="dash-section-title">
             📋 Pending Requests
-            <span className="leader-badge">{pendingReqs.length}</span>
+            <span className="dash-badge">{pendingReqs.length}</span>
           </h2>
-          <div className="leader-cards">
+          <div className="dash-cards">
             {pendingReqs.map((req) => (
               <article key={req.id} className="card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -343,8 +343,8 @@ export function LeaderDashboard({
       ) : null}
 
       {/* ═══ 4. ACTIVE SESSIONS ═══ */}
-      <section className="leader-section">
-        <h2 className="leader-section-title">📡 Who&apos;s On Duty</h2>
+      <section className="dash-section">
+        <h2 className="dash-section-title">📡 Who&apos;s On Duty</h2>
         <article className="card">
           <div className="table-wrap">
             <table>
@@ -372,9 +372,9 @@ export function LeaderDashboard({
       </section>
 
       {/* ═══ 5. DRIVERS + BREAKS (side-by-side) ═══ */}
-      <div className="leader-two-col">
-        <section className="leader-section">
-          <h2 className="leader-section-title">🚗 Drivers</h2>
+      <div className="dash-two-col">
+        <section className="dash-section">
+          <h2 className="dash-section-title">🚗 Drivers</h2>
           <article className="card">
             {drivers.length === 0
               ? <p style={{ color: 'var(--muted)', fontSize: '0.8rem', textAlign: 'center', padding: '0.5rem 0' }}>No drivers</p>
@@ -395,8 +395,8 @@ export function LeaderDashboard({
           </article>
         </section>
 
-        <section className="leader-section">
-          <h2 className="leader-section-title">☕ Today Breaks</h2>
+        <section className="dash-section">
+          <h2 className="dash-section-title">☕ Today Breaks</h2>
           <article className="card">
             <div className="table-wrap">
               <table>
@@ -420,9 +420,9 @@ export function LeaderDashboard({
       </div>
 
       {/* ═══ 6. COLLAPSIBLE: TEAM MEMBERS ═══ */}
-      <section className="leader-section">
-        <div className="leader-collapse-header" onClick={() => setShowTeam(v => !v)}>
-          <h2 className="leader-section-title" style={{ marginBottom: 0 }}>👥 Team Members ({members.length})</h2>
+      <section className="dash-section">
+        <div className="dash-collapse-header" onClick={() => setShowTeam(v => !v)}>
+          <h2 className="dash-section-title" style={{ marginBottom: 0 }}>👥 Team Members ({members.length})</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{showTeam ? '▲ Hide' : '▼ Show'}</span>
         </div>
         {showTeam ? (
@@ -447,9 +447,9 @@ export function LeaderDashboard({
       </section>
 
       {/* ═══ 7. COLLAPSIBLE: ATTENDANCE HISTORY ═══ */}
-      <section className="leader-section">
-        <div className="leader-collapse-header" onClick={() => setShowHistory(v => !v)}>
-          <h2 className="leader-section-title" style={{ marginBottom: 0 }}>📊 Attendance History</h2>
+      <section className="dash-section">
+        <div className="dash-collapse-header" onClick={() => setShowHistory(v => !v)}>
+          <h2 className="dash-section-title" style={{ marginBottom: 0 }}>📊 Attendance History</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{showHistory ? '▲ Hide' : '▼ Show'}</span>
         </div>
         {showHistory ? (

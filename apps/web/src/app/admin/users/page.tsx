@@ -496,193 +496,191 @@ function AdminUsersContent() {
 
   return (
     <AppShell title="Users & Teams" subtitle="Manage employees, roles, and teams" admin userRole="ADMIN">
-      {message ? <div className="alert alert-success">{message}</div> : null}
-      {error ? <div className="alert alert-error">⚠ {error}</div> : null}
+      <div className="dash-layout">
+        {message ? <div className="alert alert-success">{message}</div> : null}
+        {error ? <div className="alert alert-error">{error}</div> : null}
 
-      {/* ── Toolbar ── */}
-      <div className="toolbar">
-        <div className="input-search">
-          <input
-            className="input"
-            placeholder="Search name, username, or team…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        {/* ═══ Summary KPIs ═══ */}
+        <section className="kpi-grid">
+          <article className="kpi">
+            <p className="kpi-label">Total Users</p>
+            <p className="kpi-value">{users.length}</p>
+          </article>
+          <article className="kpi">
+            <p className="kpi-label">Teams</p>
+            <p className="kpi-value">{teams.length}</p>
+          </article>
+          <article className="kpi">
+            <p className="kpi-label">Active</p>
+            <p className="kpi-value" style={{ color: 'var(--ok)' }}>{users.filter(u => u.isActive).length}</p>
+          </article>
+          <article className="kpi">
+            <p className="kpi-label">Pending Signups</p>
+            <p className="kpi-value" style={{ color: pendingRegistrationRequests.length > 0 ? 'var(--danger)' : undefined }}>
+              {pendingRegistrationRequests.length}
+            </p>
+          </article>
+        </section>
+
+        {/* ═══ Toolbar ═══ */}
+        <div className="toolbar">
+          <div className="input-search">
+            <input
+              className="input"
+              placeholder="Search name, username, or team…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="toolbar-spacer" />
+          <button type="button" className="button button-ghost" onClick={() => setShowCreateTeam(true)}>
+            + Team
+          </button>
+          <button type="button" className="button button-primary" onClick={() => setShowCreateUser(true)}>
+            + New User
+          </button>
         </div>
-        <div className="toolbar-spacer" />
-        <button type="button" className="button button-ghost" onClick={() => setShowCreateTeam(true)}>
-          + Team
-        </button>
-        <button type="button" className="button button-primary" onClick={() => setShowCreateUser(true)}>
-          + New User
-        </button>
-      </div>
 
-      <article className="card" ref={registrationRef}>
-        <h3>Registration Approval Queue</h3>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Submitted</th>
-                <th>Staff Code</th>
-                <th>Name</th>
-                <th>Username</th>
-                <th style={{ width: '160px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        {/* ═══ Registration Queue ═══ */}
+        {pendingRegistrationRequests.length > 0 ? (
+          <section className="dash-section" ref={registrationRef}>
+            <h2 className="dash-section-title">
+              Registration Queue <span className="dash-badge">{pendingRegistrationRequests.length}</span>
+            </h2>
+            <div className="dash-cards">
               {pendingRegistrationRequests.map((request) => (
-                <tr key={request.id}>
-                  <td className="mono">{formatDateTime(request.submittedAt)}</td>
-                  <td className="mono">{request.staffCode}</td>
-                  <td>
-                    <div>{request.displayName}</div>
-                  </td>
-                  <td className="mono">{request.desiredUsername}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.3rem' }}>
-                      <button type="button" className="button button-ok button-sm" onClick={() => openApproveModal(request)}>
-                        Approve
-                      </button>
-                      <button type="button" className="button button-danger button-sm" onClick={() => void rejectRequest(request.id)}>
-                        Reject
-                      </button>
+                <article key={request.id} className="card" style={{ padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{request.displayName}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>@{request.desiredUsername} · {request.staffCode}</div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-              {pendingRegistrationRequests.length === 0 ? (
-                <tr><td colSpan={5} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No pending registration requests</td></tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-
-      {/* ── Teams Table ── */}
-      <article className="card">
-        <h3>Teams</h3>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Shifts</th>
-                <th>Members</th>
-                <th style={{ width: '100px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teams.map(team => {
-                const memberCount = users.filter(u => u.team?.id === team.id).length;
-                return (
-                  <tr key={team.id}>
-                    <td style={{ fontWeight: 500 }}>{team.name}</td>
-                    <td className="mono">{getTeamShiftText(team)}</td>
-                    <td>{memberCount}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.3rem' }}>
-                        <button
-                          type="button"
-                          className="button button-ghost button-sm"
-                          onClick={() => openEditTeam(team)}
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="button button-danger button-sm"
-                          onClick={() => void deleteTeam(team.id)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {teams.length === 0 ? (
-                <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No teams yet &mdash; click &ldquo;+ Team&rdquo; to create one</td></tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </article>
-      {/* ── Users Table ── */}
-      <article className="card table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Username</th>
-              <th>Group</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>PW Change</th>
-              <th style={{ width: '40px' }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user, index) => (
-              <tr key={user.id}>
-                <td style={{ fontWeight: 500 }}>{user.displayName}</td>
-                <td className="mono">{user.username}</td>
-                <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span className="tag">Service</span>}</td>
-                <td>
-                  <span className={`tag role-${user.role.toLowerCase()}`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td>
-                  <span className={`tag ${user.isActive ? 'ok' : 'danger'}`}>
-                    {user.isActive ? 'ACTIVE' : 'INACTIVE'}
-                  </span>
-                </td>
-                <td>{user.mustChangePassword ? <span className="tag warning">Required</span> : '—'}</td>
-                <td>
-                  <div className="action-menu-wrap" ref={openMenuId === user.id ? menuRef : undefined}>
-                    <button
-                      className="action-menu-btn"
-                      onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
-                      title="Actions"
-                    >
-                      ⋮
-                    </button>
-                    {openMenuId === user.id ? (
-                      <div
-                        className="action-menu"
-                        style={index >= filteredUsers.length - 2 ? { top: 'auto', bottom: '100%', marginBottom: '4px' } : undefined}
-                      >
-                        <button onClick={() => openEditUser(user)}>✏️ Edit Role &amp; Team</button>
-                        <button onClick={() => openResetPassword(user)}>🔑 Reset Password</button>
-                        <button
-                          onClick={() => void updateUserField(user.id, { isActive: !user.isActive })}
-                        >
-                          {user.isActive ? '🚫 Deactivate' : '✅ Reactivate'}
-                        </button>
-                        <hr style={{ margin: '0.2rem 0', border: 0, borderTop: '1px solid var(--border)' }} />
-                        <button
-                          onClick={() => void deleteUser(user.id, user.displayName)}
-                          style={{ color: 'var(--danger)' }}
-                        >
-                          🗑 Delete Permanently
-                        </button>
-                      </div>
-                    ) : null}
+                    <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                      <button type="button" className="button button-ok button-sm" onClick={() => openApproveModal(request)}>Approve</button>
+                      <button type="button" className="button button-danger button-sm" onClick={() => void rejectRequest(request.id)}>Reject</button>
+                    </div>
                   </div>
-                </td>
-              </tr>
-            ))}
-            {filteredUsers.length === 0 ? (
-              <tr><td colSpan={7} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>
-                {search ? 'No users matching search' : 'No users found'}
-              </td></tr>
-            ) : null}
-          </tbody>
-        </table>
-      </article>
+                  <div style={{ marginTop: '0.35rem', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                    Submitted {formatDateTime(request.submittedAt)}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="dash-section" ref={registrationRef}>
+            <h2 className="dash-section-title">Registration Queue</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>No pending registration requests</p>
+          </section>
+        )}
+
+        {/* ═══ Teams ═══ */}
+        <section className="dash-section">
+          <h2 className="dash-section-title">Teams</h2>
+          <article className="card">
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Shifts</th>
+                    <th>Members</th>
+                    <th style={{ width: '100px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teams.map(team => {
+                    const memberCount = users.filter(u => u.team?.id === team.id).length;
+                    return (
+                      <tr key={team.id}>
+                        <td style={{ fontWeight: 500 }}>{team.name}</td>
+                        <td className="mono">{getTeamShiftText(team)}</td>
+                        <td>{memberCount}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.3rem' }}>
+                            <button type="button" className="button button-ghost button-sm" onClick={() => openEditTeam(team)}>Edit</button>
+                            <button type="button" className="button button-danger button-sm" onClick={() => void deleteTeam(team.id)}>✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {teams.length === 0 ? (
+                    <tr><td colSpan={4} className="table-empty">No teams yet</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        {/* ═══ Users ═══ */}
+        <section className="dash-section">
+          <h2 className="dash-section-title">All Users</h2>
+          <article className="card">
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Group</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>PW</th>
+                    <th style={{ width: '40px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user, index) => (
+                    <tr key={user.id}>
+                      <td style={{ fontWeight: 500 }}>{user.displayName}</td>
+                      <td className="mono">{user.username}</td>
+                      <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span className="tag">Service</span>}</td>
+                      <td>
+                        <span className={`tag role-${user.role.toLowerCase()}`}>{user.role}</span>
+                      </td>
+                      <td>
+                        <span className={`tag ${user.isActive ? 'ok' : 'danger'}`}>{user.isActive ? 'ACTIVE' : 'INACTIVE'}</span>
+                      </td>
+                      <td>{user.mustChangePassword ? <span className="tag warning">Required</span> : '—'}</td>
+                      <td>
+                        <div className="action-menu-wrap" ref={openMenuId === user.id ? menuRef : undefined}>
+                          <button
+                            className="action-menu-btn"
+                            onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                            title="Actions"
+                          >
+                            ⋮
+                          </button>
+                          {openMenuId === user.id ? (
+                            <div
+                              className="action-menu"
+                              style={index >= filteredUsers.length - 2 ? { top: 'auto', bottom: '100%', marginBottom: '4px' } : undefined}
+                            >
+                              <button onClick={() => openEditUser(user)}>Edit Role &amp; Team</button>
+                              <button onClick={() => openResetPassword(user)}>Reset Password</button>
+                              <button onClick={() => void updateUserField(user.id, { isActive: !user.isActive })}>
+                                {user.isActive ? 'Deactivate' : 'Reactivate'}
+                              </button>
+                              <hr style={{ margin: '0.2rem 0', border: 0, borderTop: '1px solid var(--border)' }} />
+                              <button onClick={() => void deleteUser(user.id, user.displayName)} style={{ color: 'var(--danger)' }}>
+                                Delete Permanently
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredUsers.length === 0 ? (
+                    <tr><td colSpan={7} className="table-empty">{search ? 'No users matching search' : 'No users found'}</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
 
       {/* ══════════════════════════════════════ */}
       {/* ── MODALS ── */}
@@ -909,6 +907,7 @@ function AdminUsersContent() {
           </div>
         </div>
       ) : null}
+      </div>
     </AppShell>
   );
 }
