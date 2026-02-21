@@ -1383,6 +1383,10 @@ main > .shell {
   to   { opacity: 1; transform: scale(1); }
 }
 
+.notif-row:hover {
+  background: var(--surface-alt, rgba(255,255,255,0.04));
+}
+
 .noti-badge {
   position: absolute;
   top: -4px;
