@@ -340,7 +340,7 @@ export function AppShell({
     );
   }
 
-  if (isEmployeeView && isMobile && userRole !== 'DRIVER' && userRole !== 'LEADER' && userRole !== 'MAID' && userRole !== 'CHEF') {
+  if (isEmployeeView && isMobile && userRole === 'MEMBER') {
     return <MobileBlockedNotice title="Office desktop required" />;
   }
 
