@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 
@@ -102,6 +103,8 @@ function inferCrossesMidnight(startTime: string, endTime: string): boolean {
 }
 
 export default function AdminUsersPage() {
+  const searchParams = useSearchParams();
+  const registrationRef = useRef<HTMLElement>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [shiftAssignments, setShiftAssignments] = useState<ShiftAssignment[]>([]);
@@ -177,10 +180,14 @@ export default function AdminUsersPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    void load().then(() => {
+      if (searchParams.get('section') === 'registrations') {
+        setTimeout(() => registrationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      }
+    });
     const timer = window.setInterval(() => void load(true), 30_000);
     return () => clearInterval(timer);
-  }, [load]);
+  }, [load, searchParams]);
 
   // Close action menu on outside click
   useEffect(() => {
@@ -561,7 +568,7 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
-      <article className="card">
+      <article className="card" ref={registrationRef}>
         <h3>Registration Approval Queue</h3>
         <div className="table-wrap">
           <table>

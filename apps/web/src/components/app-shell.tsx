@@ -106,7 +106,7 @@ function AdminNotificationBell() {
               {counts.registrations > 0 && (
                 <button
                   type="button"
-                  onClick={() => { setOpen(false); router.push('/admin/users'); }}
+                  onClick={() => { setOpen(false); router.push('/admin/users?section=registrations'); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
                     padding: '0.625rem 0.75rem', background: 'none', border: 'none',
@@ -122,7 +122,7 @@ function AdminNotificationBell() {
               {counts.driverRequests > 0 && (
                 <button
                   type="button"
-                  onClick={() => { setOpen(false); router.push('/admin/requests'); }}
+                  onClick={() => { setOpen(false); router.push('/admin/requests?tab=driver'); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
                     padding: '0.625rem 0.75rem', background: 'none', border: 'none',
