@@ -372,67 +372,54 @@ export function LeaderTeamSections() {
             </span>
           ) : null}
         </h2>
-        <article className="card">
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Type</th>
-                  <th>Date</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((req) => (
-                  <tr key={req.id}>
-                    <td>{req.user.displayName}</td>
-                    <td>{REQUEST_TYPE_LABEL[req.requestType] || req.requestType}</td>
-                    <td className="mono">{req.requestedDate}</td>
-                    <td>{req.reason || '—'}</td>
-                    <td>
-                      <span className={`tag ${req.status === 'APPROVED' ? 'ok' : req.status === 'REJECTED' ? 'danger' : 'warning'}`}>
-                        {req.status}
-                      </span>
-                    </td>
-                    <td>
-                      {req.status === 'PENDING' ? (
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            className="button button-sm button-ok"
-                            disabled={!!actionId}
-                            onClick={() => {
-                              setApproveTarget(req);
-                              setSelectedPresetId(req.shiftPreset?.id || (presets[0]?.id ?? ''));
-                            }}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className="button button-sm button-danger"
-                            disabled={!!actionId}
-                            onClick={() => void rejectRequest(req.id)}
-                          >
-                            {actionId === req.id ? '…' : 'Reject'}
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>
-                          {req.reviewedBy?.displayName || '—'}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {requests.length === 0 ? (
-                  <tr><td colSpan={6} style={{ color: 'var(--muted)' }}>No requests</td></tr>
+        {requests.length === 0 ? (
+          <article className="card">
+            <p style={{ color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem 0' }}>No requests</p>
+          </article>
+        ) : (
+          <div style={{ display: 'grid', gap: '0.5rem' }}>
+            {requests.map((req) => (
+              <article key={req.id} className="card" style={{ padding: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{req.user.displayName}</span>
+                  <span className={`tag ${req.status === 'APPROVED' ? 'ok' : req.status === 'REJECTED' ? 'danger' : 'warning'}`}>
+                    {req.status}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem 1rem', fontSize: '0.8rem', color: 'var(--ink-2)', marginBottom: '0.375rem' }}>
+                  <span>{REQUEST_TYPE_LABEL[req.requestType] || req.requestType}</span>
+                  <span className="mono">{req.requestedDate}</span>
+                </div>
+                {req.reason ? (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '0.375rem' }}>{req.reason}</p>
                 ) : null}
-              </tbody>
-            </table>
+                {req.status === 'PENDING' ? (
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <button
+                      className="button button-sm button-ok"
+                      disabled={!!actionId}
+                      onClick={() => {
+                        setApproveTarget(req);
+                        setSelectedPresetId(req.shiftPreset?.id || (presets[0]?.id ?? ''));
+                      }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="button button-sm button-danger"
+                      disabled={!!actionId}
+                      onClick={() => void rejectRequest(req.id)}
+                    >
+                      {actionId === req.id ? '…' : 'Reject'}
+                    </button>
+                  </div>
+                ) : req.reviewedBy ? (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Reviewed by {req.reviewedBy.displayName}</p>
+                ) : null}
+              </article>
+            ))}
           </div>
-        </article>
+        )}
 
         {approveTarget ? (
           <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setApproveTarget(null); }}>

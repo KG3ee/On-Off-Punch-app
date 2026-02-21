@@ -818,7 +818,102 @@ export default function EmployeeDashboardPage() {
       headerAction={headerAction}
     >
 
-      {/* ── Monthly KPI Row ── */}
+      {/* ── Leader: consolidated KPI row + single-column layout ── */}
+      {me?.role === 'LEADER' ? (
+        <>
+          <section className="kpi-grid">
+            <article className="kpi">
+              <p className="kpi-label">Duty</p>
+              <p className="kpi-value" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <span className={`status-dot ${activeSession ? 'active' : 'inactive'}`} />
+                {activeSession ? fmtDuration(activeDutyMinutes) : 'Off'}
+              </p>
+            </article>
+            <article className="kpi">
+              <p className="kpi-label">Sessions</p>
+              <p className="kpi-value">{sessions.length}</p>
+            </article>
+            {monthlySummary ? (
+              <>
+                <article className="kpi">
+                  <p className="kpi-label">Month Hours</p>
+                  <p className="kpi-value">{fmtDuration(monthlySummary.totalWorkedMinutes)}</p>
+                </article>
+                <article className="kpi">
+                  <p className="kpi-label">Month Late</p>
+                  <p className="kpi-value" style={{ color: monthlySummary.totalLateMinutes > 0 ? 'var(--danger)' : undefined }}>
+                    {monthlySummary.totalLateMinutes}m
+                  </p>
+                </article>
+                <article className="kpi">
+                  <p className="kpi-label">Overtime</p>
+                  <p className="kpi-value" style={{ color: monthlySummary.totalOvertimeMinutes > 0 ? 'var(--ok)' : undefined }}>
+                    {monthlySummary.totalOvertimeMinutes}m
+                  </p>
+                </article>
+              </>
+            ) : null}
+          </section>
+
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.625rem' }}>
+            <article className="card">
+              <h3>Duty</h3>
+              <div className="action-row">
+                <button
+                  type="button"
+                  className="punch-btn punch-on"
+                  disabled={(loading && !isOffline) || !!activeSession}
+                  onClick={() => void runAction('/attendance/on')}
+                >
+                  <span className="punch-icon">⏻</span>
+                  <span className="punch-label">Punch ON</span>
+                </button>
+                <button
+                  type="button"
+                  className="punch-btn punch-off"
+                  disabled={(loading && !isOffline) || !activeSession}
+                  onClick={() => void runAction('/attendance/off')}
+                >
+                  <span className="punch-icon">⏼</span>
+                  <span className="punch-label">Punch OFF</span>
+                </button>
+              </div>
+            </article>
+
+            <article className="card">
+              <h3>Current Session</h3>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>On</th>
+                      <th>Off</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeSession ? (
+                      <tr>
+                        <td className="mono">{activeSession.shiftDate}</td>
+                        <td className="mono">{fmtTime(activeSession.punchedOnAt)}</td>
+                        <td className="mono">{activeSession.punchedOffAt ? fmtTime(activeSession.punchedOffAt) : '—'}</td>
+                        <td>
+                          <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr><td colSpan={4} className="table-empty">Not on duty</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </>
+      ) : (
+      <>
+      {/* ── Monthly KPI Row (non-Leader) ── */}
       {monthlySummary && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
         <section className="kpi-grid">
           <article className="kpi">
@@ -840,7 +935,7 @@ export default function EmployeeDashboardPage() {
         </section>
       ) : null}
 
-      {/* ── Today KPI Row ── */}
+      {/* ── Today KPI Row (non-Leader) ── */}
       <section className="kpi-grid">
         <article className="kpi">
           <p className="kpi-label">Sessions</p>
@@ -853,7 +948,7 @@ export default function EmployeeDashboardPage() {
             {activeSession ? fmtDuration(activeDutyMinutes) : 'Off'}
           </p>
         </article>
-        {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+        {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="kpi">
             <p className="kpi-label">Break</p>
             <p className="kpi-value">
@@ -863,7 +958,7 @@ export default function EmployeeDashboardPage() {
             </p>
           </article>
         ) : null}
-        {activeSession?.isLate && me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+        {activeSession?.isLate && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="kpi">
             <p className="kpi-label">Late</p>
             <p className="kpi-value" style={{ color: 'var(--danger)' }}>{activeSession.lateMinutes}m</p>
@@ -871,7 +966,7 @@ export default function EmployeeDashboardPage() {
         ) : null}
       </section>
 
-      {/* ── Main Layout ── */}
+      {/* ── Main Layout (non-Leader) ── */}
       <section className="split">
         {/* Left column — Actions */}
         <div className="grid">
@@ -988,7 +1083,7 @@ export default function EmployeeDashboardPage() {
             </article>
           ) : null}
 
-          {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+          {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="card">
             <h3>Breaks</h3>
             {activeBreak ? (
@@ -1041,7 +1136,7 @@ export default function EmployeeDashboardPage() {
                     <th>On</th>
                     <th>Off</th>
                     <th>Status</th>
-                    {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? <th>Late</th> : null}
+                    {me?.role !== 'MAID' && me?.role !== 'CHEF' ? <th>Late</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -1053,19 +1148,19 @@ export default function EmployeeDashboardPage() {
                       <td>
                         <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
                       </td>
-                      {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+                      {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
                         <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
                       ) : null}
                     </tr>
                   ) : (
-                    <tr><td colSpan={me?.role === 'LEADER' || me?.role === 'MAID' || me?.role === 'CHEF' ? 4 : 5} className="table-empty">Not on duty</td></tr>
+                    <tr><td colSpan={me?.role === 'MAID' || me?.role === 'CHEF' ? 4 : 5} className="table-empty">Not on duty</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </article>
 
-          {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+          {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="card">
             <h3>Session Breaks</h3>
             <div className="table-wrap">
@@ -1109,6 +1204,8 @@ export default function EmployeeDashboardPage() {
           ) : null}
         </div>
       </section>
+      </>
+      )}
 
       {me?.role === 'LEADER' ? <LeaderTeamSections /> : null}
     </AppShell>
