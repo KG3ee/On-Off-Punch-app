@@ -72,6 +72,10 @@ export class DriverRequestsService {
         requestedTime: dto.requestedTime,
         destination: dto.destination,
         purpose: dto.purpose ?? null,
+        isRoundTrip: dto.isRoundTrip ?? false,
+        returnTime: dto.returnTime ?? null,
+        returnLocation: dto.returnLocation ?? null,
+        contactNumber: dto.contactNumber ?? null,
         status: DriverRequestStatus.PENDING
       },
       include: this.getInclude()

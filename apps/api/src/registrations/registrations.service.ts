@@ -212,6 +212,8 @@ export class RegistrationsService {
         }
       });
 
+      const rosterEntryId = request.rosterEntryId;
+
       const updatedRequest = await tx.registrationRequest.update({
         where: { id: request.id },
         data: {
@@ -219,10 +221,23 @@ export class RegistrationsService {
           reviewedById: reviewerUserId,
           reviewedAt: new Date(),
           reviewNote: dto.reviewNote || null,
-          approvedUserId: createdUser.id
+          approvedUserId: createdUser.id,
+          rosterEntryId: null
         },
         include: REQUEST_PUBLIC_INCLUDE
       });
+
+      if (rosterEntryId) {
+        const otherPending = await tx.registrationRequest.count({
+          where: {
+            rosterEntryId,
+            status: { in: [RegistrationRequestStatus.PENDING, RegistrationRequestStatus.READY_REVIEW] }
+          }
+        });
+        if (otherPending === 0) {
+          await tx.employeeRoster.delete({ where: { id: rosterEntryId } }).catch(() => {});
+        }
+      }
 
       return {
         request: this.toPublicRequest(updatedRequest),

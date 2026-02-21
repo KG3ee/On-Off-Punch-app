@@ -28,6 +28,10 @@ type DriverRequest = {
   requestedTime: string;
   destination: string;
   purpose: string | null;
+  isRoundTrip: boolean;
+  returnTime: string | null;
+  returnLocation: string | null;
+  contactNumber: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED';
   driver: { id: string; displayName: string; username: string } | null;
   user: { id: string; displayName: string; username: string };
@@ -78,6 +82,9 @@ export default function EmployeeRequestsPage() {
   const [destination, setDestination] = useState('');
   const [purpose, setPurpose] = useState('');
   const [roundTrip, setRoundTrip] = useState(false);
+  const [returnTime, setReturnTime] = useState('');
+  const [returnLocation, setReturnLocation] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
 
   useEffect(() => {
     void apiFetch<MeUser>('/me').then((data) => {
@@ -166,17 +173,17 @@ export default function EmployeeRequestsPage() {
     setSuccess('');
 
     try {
-      const purposeText = purpose.trim()
-        ? (roundTrip ? `Round trip. ${purpose.trim()}` : purpose.trim())
-        : (roundTrip ? 'Round trip' : undefined);
-
       await apiFetch('/driver-requests', {
         method: 'POST',
         body: JSON.stringify({
           requestedDate: driverRequestedDate,
           requestedTime: driverRequestedTime,
           destination: destination.trim(),
-          purpose: purposeText ?? undefined
+          purpose: purpose.trim() || undefined,
+          isRoundTrip: roundTrip,
+          returnTime: roundTrip && returnTime ? returnTime : undefined,
+          returnLocation: roundTrip && returnLocation.trim() ? returnLocation.trim() : undefined,
+          contactNumber: contactNumber.trim() || undefined,
         })
       });
 
@@ -186,6 +193,9 @@ export default function EmployeeRequestsPage() {
       setDestination('');
       setPurpose('');
       setRoundTrip(false);
+      setReturnTime('');
+      setReturnLocation('');
+      setContactNumber('');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit driver request');
@@ -377,6 +387,15 @@ export default function EmployeeRequestsPage() {
                   onChange={(e) => setPurpose(e.target.value)}
                 />
               </div>
+              <div>
+                <label>Contact Number (Optional)</label>
+                <input
+                  className="input"
+                  placeholder="e.g. 050-123-4567"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                />
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <input
                   type="checkbox"
@@ -385,8 +404,30 @@ export default function EmployeeRequestsPage() {
                   onChange={(e) => setRoundTrip(e.target.checked)}
                   style={{ width: 'auto', margin: 0 }}
                 />
-                <label htmlFor="roundTrip" style={{ marginBottom: 0 }}>Round trip</label>
+                <label htmlFor="roundTrip" style={{ marginBottom: 0 }}>Round trip (need return pickup)</label>
               </div>
+              {roundTrip ? (
+                <>
+                  <div>
+                    <label>Return Pickup Time</label>
+                    <input
+                      type="time"
+                      className="input"
+                      value={returnTime}
+                      onChange={(e) => setReturnTime(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label>Return Pickup Location</label>
+                    <input
+                      className="input"
+                      placeholder="e.g. Hospital main entrance"
+                      value={returnLocation}
+                      onChange={(e) => setReturnLocation(e.target.value)}
+                    />
+                  </div>
+                </>
+              ) : null}
               <button type="submit" className="button button-primary" disabled={submitting || loading}>
                 {submitting ? 'Submitting...' : 'Submit Driver Request'}
               </button>
@@ -402,7 +443,7 @@ export default function EmployeeRequestsPage() {
                     <th>Date</th>
                     <th>Time</th>
                     <th>Destination</th>
-                    <th>Purpose</th>
+                    <th>Info</th>
                     <th>Status</th>
                     <th>Driver</th>
                   </tr>
@@ -413,7 +454,18 @@ export default function EmployeeRequestsPage() {
                       <td>{new Date(req.requestedDate).toLocaleDateString()}</td>
                       <td className="mono">{req.requestedTime}</td>
                       <td>{req.destination}</td>
-                      <td style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>{req.purpose || '-'}</td>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
+                        {req.isRoundTrip ? (
+                          <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.15rem' }}>
+                            <span className="tag brand" style={{ fontSize: '0.7rem' }}>Round trip</span>
+                            {req.returnTime ? <span>Return: {req.returnTime}</span> : null}
+                            {req.returnLocation ? <span>{req.returnLocation}</span> : null}
+                          </span>
+                        ) : null}
+                        {req.contactNumber ? <span style={{ display: 'block' }}>Tel: {req.contactNumber}</span> : null}
+                        {req.purpose ? <span style={{ display: 'block' }}>{req.purpose}</span> : null}
+                        {!req.isRoundTrip && !req.contactNumber && !req.purpose ? '-' : null}
+                      </td>
                       <td>
                         <span
                           className={`tag ${

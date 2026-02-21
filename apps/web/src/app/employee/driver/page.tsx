@@ -12,6 +12,10 @@ type DriverRequest = {
   requestedTime: string;
   destination: string;
   purpose: string | null;
+  isRoundTrip: boolean;
+  returnTime: string | null;
+  returnLocation: string | null;
+  contactNumber: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED';
   user: { id: string; displayName: string; username: string };
   driver: { id: string; displayName: string; username: string } | null;
@@ -385,10 +389,22 @@ export default function DriverDashboardPage() {
                   <div style={{ fontSize: '1.0625rem', color: 'var(--ink-2)', marginBottom: '0.375rem', fontWeight: 500 }}>
                     {req.user.displayName}
                   </div>
-                  <div style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1.125rem', fontWeight: 400 }}>
+                  <div style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.5rem', fontWeight: 400 }}>
                     {new Date(req.requestedDate).toLocaleDateString()}
                     {req.purpose ? <span> &middot; {req.purpose}</span> : null}
                   </div>
+                  {req.contactNumber ? (
+                    <div style={{ fontSize: '1rem', color: 'var(--ink-2)', marginBottom: '0.5rem', fontWeight: 500 }}>
+                      Tel: <a href={`tel:${req.contactNumber}`} style={{ color: 'var(--brand)' }}>{req.contactNumber}</a>
+                    </div>
+                  ) : null}
+                  {req.isRoundTrip ? (
+                    <div style={{ padding: '0.5rem 0.75rem', marginBottom: '1.125rem', background: 'rgba(99,102,241,0.08)', borderRadius: 'var(--radius)', fontSize: '0.9375rem' }}>
+                      <strong style={{ color: 'var(--brand)' }}>Round Trip</strong>
+                      {req.returnTime ? <span> &middot; Return: {req.returnTime}</span> : null}
+                      {req.returnLocation ? <span> &middot; {req.returnLocation}</span> : null}
+                    </div>
+                  ) : <div style={{ marginBottom: '0.625rem' }} />}
 
                   {confirmAcceptId === req.id ? (
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -444,10 +460,22 @@ export default function DriverDashboardPage() {
                 <div style={{ fontSize: '1.0625rem', color: 'var(--ink-2)', marginBottom: '0.375rem', fontWeight: 500 }}>
                   {req.user.displayName}
                 </div>
-                <div style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '1.125rem', fontWeight: 400 }}>
+                <div style={{ fontSize: '1rem', color: 'var(--muted)', marginBottom: '0.5rem', fontWeight: 400 }}>
                   {new Date(req.requestedDate).toLocaleDateString()}
                   {req.purpose ? <span> &middot; {req.purpose}</span> : null}
                 </div>
+                {req.contactNumber ? (
+                  <div style={{ fontSize: '1rem', color: 'var(--ink-2)', marginBottom: '0.5rem', fontWeight: 500 }}>
+                    Tel: <a href={`tel:${req.contactNumber}`} style={{ color: 'var(--brand)' }}>{req.contactNumber}</a>
+                  </div>
+                ) : null}
+                {req.isRoundTrip ? (
+                  <div style={{ padding: '0.5rem 0.75rem', marginBottom: '1.125rem', background: 'rgba(99,102,241,0.08)', borderRadius: 'var(--radius)', fontSize: '0.9375rem' }}>
+                    <strong style={{ color: 'var(--brand)' }}>Round Trip</strong>
+                    {req.returnTime ? <span> &middot; Return: {req.returnTime}</span> : null}
+                    {req.returnLocation ? <span> &middot; {req.returnLocation}</span> : null}
+                  </div>
+                ) : <div style={{ marginBottom: '0.625rem' }} />}
                 <button
                   className="button button-primary"
                   style={{ width: '100%', padding: '1rem', fontSize: '1.125rem', height: 'auto', fontWeight: 700, letterSpacing: '-0.01em' }}

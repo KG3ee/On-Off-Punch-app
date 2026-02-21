@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsOptional, IsString } from 'class-validator';
 
 export class CreateDriverRequestDto {
   @IsDateString()
@@ -13,4 +13,20 @@ export class CreateDriverRequestDto {
   @IsOptional()
   @IsString()
   purpose?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isRoundTrip?: boolean;
+
+  @IsOptional()
+  @IsString()
+  returnTime?: string;
+
+  @IsOptional()
+  @IsString()
+  returnLocation?: string;
+
+  @IsOptional()
+  @IsString()
+  contactNumber?: string;
 }

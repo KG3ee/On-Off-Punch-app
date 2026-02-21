@@ -30,6 +30,10 @@ type DriverRequest = {
   requestedTime: string;
   destination: string;
   purpose: string | null;
+  isRoundTrip: boolean;
+  returnTime: string | null;
+  returnLocation: string | null;
+  contactNumber: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED';
 };
 
@@ -415,7 +419,7 @@ function AdminRequestsContent() {
                 <th>Date</th>
                 <th>Time</th>
                 <th>Destination</th>
-                <th>Purpose</th>
+                <th>Info</th>
                 <th>Status</th>
                 <th>Driver</th>
                 <th>Actions</th>
@@ -431,7 +435,18 @@ function AdminRequestsContent() {
                   <td>{new Date(req.requestedDate).toLocaleDateString()}</td>
                   <td className="mono">{req.requestedTime}</td>
                   <td>{req.destination}</td>
-                  <td style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>{req.purpose || '-'}</td>
+                  <td style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
+                    {req.isRoundTrip ? (
+                      <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <span className="tag brand" style={{ fontSize: '0.7rem' }}>Round trip</span>
+                        {req.returnTime ? <span>Return: {req.returnTime}</span> : null}
+                        {req.returnLocation ? <span>{req.returnLocation}</span> : null}
+                      </span>
+                    ) : null}
+                    {req.contactNumber ? <span style={{ display: 'block' }}>Tel: {req.contactNumber}</span> : null}
+                    {req.purpose ? <span style={{ display: 'block' }}>{req.purpose}</span> : null}
+                    {!req.isRoundTrip && !req.contactNumber && !req.purpose ? '-' : null}
+                  </td>
                   <td>
                     <span
                       className={`tag ${
@@ -493,7 +508,15 @@ function AdminRequestsContent() {
                 <strong>{new Date(driverApproveTarget.requestedDate).toLocaleDateString()}</strong> at{' '}
                 <strong>{driverApproveTarget.requestedTime}</strong>.
                 {driverApproveTarget.purpose ? <span> Reason: {driverApproveTarget.purpose}</span> : null}
+                {driverApproveTarget.contactNumber ? <span> | Tel: {driverApproveTarget.contactNumber}</span> : null}
               </p>
+              {driverApproveTarget.isRoundTrip ? (
+                <div style={{ marginBottom: '0.65rem', padding: '0.5rem 0.75rem', background: 'rgba(99,102,241,0.08)', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}>
+                  <strong style={{ color: 'var(--brand)' }}>Round Trip</strong>
+                  {driverApproveTarget.returnTime ? <span> | Return: {driverApproveTarget.returnTime}</span> : null}
+                  {driverApproveTarget.returnLocation ? <span> | Pickup: {driverApproveTarget.returnLocation}</span> : null}
+                </div>
+              ) : null}
               <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem', display: 'block' }}>Assign to Driver</label>
               <select
                 className="select"
