@@ -76,10 +76,6 @@ type RegistrationRequestRow = {
 type RegistrationRosterRow = {
   id: string;
   staffCode: string;
-  firstName: string;
-  lastName?: string | null;
-  displayName: string;
-
   defaultTeamId?: string | null;
   defaultTeam?: { id: string; name: string } | null;
   defaultRole: 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF';
@@ -156,10 +152,6 @@ function AdminUsersContent() {
 
   // Registration roster form
   const [rosterStaffCode, setRosterStaffCode] = useState('');
-  const [rosterFirstName, setRosterFirstName] = useState('');
-  const [rosterLastName, setRosterLastName] = useState('');
-  const [rosterDisplayName, setRosterDisplayName] = useState('');
-
   const [rosterTeamId, setRosterTeamId] = useState('');
   const [rosterRole, setRosterRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF'>('MEMBER');
 
@@ -476,20 +468,12 @@ function AdminUsersContent() {
         method: 'POST',
         body: JSON.stringify({
           staffCode: rosterStaffCode,
-          firstName: rosterFirstName,
-          lastName: rosterLastName || undefined,
-          displayName: rosterDisplayName,
-
           defaultTeamId: rosterTeamId || undefined,
           defaultRole: rosterRole
         })
       });
 
       setRosterStaffCode('');
-      setRosterFirstName('');
-      setRosterLastName('');
-      setRosterDisplayName('');
-
       setRosterTeamId('');
       setRosterRole('MEMBER');
       flash('Roster entry saved');
@@ -637,36 +621,12 @@ function AdminUsersContent() {
         <form className="toolbar" onSubmit={(e) => void createRosterEntry(e)}>
           <input
             className="input"
-            style={{ width: '120px' }}
+            style={{ width: '140px' }}
             value={rosterStaffCode}
             onChange={(e) => setRosterStaffCode(e.target.value.toUpperCase())}
             placeholder="Staff code"
             required
           />
-          <input
-            className="input"
-            style={{ width: '140px' }}
-            value={rosterFirstName}
-            onChange={(e) => setRosterFirstName(e.target.value)}
-            placeholder="First name"
-            required
-          />
-          <input
-            className="input"
-            style={{ width: '140px' }}
-            value={rosterLastName}
-            onChange={(e) => setRosterLastName(e.target.value)}
-            placeholder="Last name"
-          />
-          <input
-            className="input"
-            style={{ width: '180px' }}
-            value={rosterDisplayName}
-            onChange={(e) => setRosterDisplayName(e.target.value)}
-            placeholder="Display name"
-            required
-          />
-
           <select className="select" style={{ width: '170px' }} value={rosterTeamId} onChange={(e) => setRosterTeamId(e.target.value)}>
             <option value="">Service (no team)</option>
             {teams.map((team) => (
@@ -689,8 +649,6 @@ function AdminUsersContent() {
             <thead>
               <tr>
                 <th>Staff Code</th>
-                <th>Name</th>
-
                 <th>Default Group</th>
                 <th>Default Role</th>
                 <th style={{ width: '90px' }}>Action</th>
@@ -700,8 +658,6 @@ function AdminUsersContent() {
               {registrationRoster.map((entry) => (
                 <tr key={entry.id}>
                   <td className="mono">{entry.staffCode}</td>
-                  <td>{entry.displayName}</td>
-
                   <td>{entry.defaultTeam ? <span className="tag brand">{entry.defaultTeam.name}</span> : <span className="tag">Service</span>}</td>
                   <td>
                     <span className={`tag role-${entry.defaultRole.toLowerCase()}`}>{entry.defaultRole}</span>
@@ -714,7 +670,7 @@ function AdminUsersContent() {
                 </tr>
               ))}
               {registrationRoster.length === 0 ? (
-                <tr><td colSpan={5} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No roster entries yet</td></tr>
+                <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No roster entries yet</td></tr>
               ) : null}
             </tbody>
           </table>

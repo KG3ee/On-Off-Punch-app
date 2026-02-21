@@ -21,10 +21,6 @@ const REQUEST_PUBLIC_INCLUDE = {
     select: {
       id: true,
       staffCode: true,
-      displayName: true,
-      firstName: true,
-      lastName: true,
-      // phoneLast4 removed
       defaultTeamId: true,
       defaultRole: true,
       defaultTeam: {
@@ -280,31 +276,22 @@ export class RegistrationsService {
           }
         }
       },
-      orderBy: [{ displayName: 'asc' }, { staffCode: 'asc' }]
+      orderBy: { staffCode: 'asc' }
     });
   }
 
   async upsertRoster(dto: CreateRosterEntryDto) {
     const staffCode = dto.staffCode.trim().toUpperCase();
-    // phoneLast4 logic removed
 
     return this.prisma.employeeRoster.upsert({
       where: { staffCode },
       update: {
-        firstName: dto.firstName.trim(),
-        lastName: dto.lastName?.trim() || null,
-        displayName: dto.displayName.trim(),
-        // phoneLast4 removed
         defaultTeamId: dto.defaultTeamId || null,
         defaultRole: dto.defaultRole || 'MEMBER',
         isActive: dto.isActive ?? true
       },
       create: {
         staffCode,
-        firstName: dto.firstName.trim(),
-        lastName: dto.lastName?.trim() || null,
-        displayName: dto.displayName.trim(),
-        // phoneLast4 removed
         defaultTeamId: dto.defaultTeamId || null,
         defaultRole: dto.defaultRole || 'MEMBER',
         isActive: dto.isActive ?? true

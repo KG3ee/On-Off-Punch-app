@@ -129,9 +129,6 @@ model User {
 model EmployeeRoster {
   id            String   @id @default(cuid())
   staffCode     String   @unique
-  firstName     String
-  lastName      String?
-  displayName   String
 
   defaultTeamId String?
   defaultRole   Role     @default(MEMBER)
