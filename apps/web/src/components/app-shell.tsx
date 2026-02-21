@@ -164,7 +164,7 @@ function ProfileAvatar({ me, admin }: { me: MeUser | null; admin: boolean }) {
   }
 
   const initial = me?.displayName?.[0]?.toUpperCase() || '?';
-  const profileHref = admin ? '/admin/password' : '/employee/profile';
+  const profileHref = '/employee/profile';
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
