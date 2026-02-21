@@ -15,6 +15,7 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { ChangePasswordDto, UpdateProfileDto, UpdateProfilePhotoDto } from "./dto/update-profile.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UsersService } from "./users.service";
 
@@ -26,6 +27,25 @@ export class UsersController {
   @Get("me")
   async getMe(@CurrentUser() user: AuthUser) {
     return this.usersService.getPublicOrThrow(user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch("me/profile")
+  async updateProfile(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(user.sub, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("me/profile-photo")
+  async updateProfilePhoto(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfilePhotoDto) {
+    return this.usersService.updateProfilePhoto(user.sub, dto.photoUrl ?? null);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("me/change-password")
+  async changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
+    await this.usersService.changePassword(user.sub, dto.currentPassword, dto.newPassword);
+    return { success: true };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

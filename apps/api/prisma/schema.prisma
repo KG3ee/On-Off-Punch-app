@@ -94,13 +94,16 @@ model User {
   mustChangePassword Boolean @default(true)
   firstName  String
   lastName   String?
-  displayName String
-  role       Role     @default(MEMBER)
-  isActive   Boolean  @default(true)
-  teamId     String?
-  driverStatus DriverStatus @default(OFFLINE)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  displayName     String
+  contactNumber   String?
+  profilePhotoUrl String?
+  role            Role     @default(MEMBER)
+  isActive        Boolean  @default(true)
+  teamId          String?
+  driverStatus    DriverStatus @default(OFFLINE)
+  vehicleInfo     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   team Team? @relation(fields: [teamId], references: [id])
 

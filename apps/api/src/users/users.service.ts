@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Prisma, Role, User } from "@prisma/client";
-import { hash } from "bcryptjs";
+import { compare, hash } from "bcryptjs";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -15,11 +15,14 @@ const PUBLIC_USER_WITH_TEAM_SELECT = {
   firstName: true,
   lastName: true,
   displayName: true,
+  contactNumber: true,
+  profilePhotoUrl: true,
   role: true,
   driverStatus: true,
   isActive: true,
   mustChangePassword: true,
   teamId: true,
+  vehicleInfo: true,
   createdAt: true,
   updatedAt: true,
   team: {
@@ -232,6 +235,77 @@ export class UsersService {
       await tx.user.delete({
         where: { id },
       });
+    });
+  }
+
+  async updateProfile(
+    id: string,
+    data: {
+      displayName?: string;
+      firstName?: string;
+      lastName?: string | null;
+      username?: string;
+      contactNumber?: string | null;
+      vehicleInfo?: string | null;
+    },
+  ): Promise<PublicUserWithTeam> {
+    await this.ensureUser(id);
+
+    const update: Prisma.UserUncheckedUpdateInput = {};
+
+    if (data.displayName !== undefined) update.displayName = data.displayName.trim();
+    if (data.firstName !== undefined) update.firstName = data.firstName.trim();
+    if (data.lastName !== undefined) update.lastName = data.lastName?.trim() || null;
+    if (data.contactNumber !== undefined) update.contactNumber = data.contactNumber?.trim() || null;
+    if (data.vehicleInfo !== undefined) update.vehicleInfo = data.vehicleInfo?.trim() || null;
+
+    if (data.username !== undefined) {
+      const normalized = this.normalizeUsername(data.username);
+      const existing = await this.prisma.user.findFirst({
+        where: { username: normalized, NOT: { id } },
+        select: { id: true },
+      });
+      if (existing) {
+        throw new BadRequestException("Username is already taken");
+      }
+      update.username = normalized;
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: update,
+      select: PUBLIC_USER_WITH_TEAM_SELECT,
+    });
+  }
+
+  async updateProfilePhoto(id: string, photoUrl: string | null): Promise<PublicUserWithTeam> {
+    await this.ensureUser(id);
+    return this.prisma.user.update({
+      where: { id },
+      data: { profilePhotoUrl: photoUrl },
+      select: PUBLIC_USER_WITH_TEAM_SELECT,
+    });
+  }
+
+  async changePassword(
+    id: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.getOrThrow(id);
+    const isValid = await compare(currentPassword, user.passwordHash);
+    if (!isValid) {
+      throw new BadRequestException("Current password is incorrect");
+    }
+    if (newPassword.length < 6) {
+      throw new BadRequestException("New password must be at least 6 characters");
+    }
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash: await this.hashPassword(newPassword),
+        mustChangePassword: false,
+      },
     });
   }
 
