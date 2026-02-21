@@ -8,15 +8,9 @@ import { MeUser } from '@/types/auth';
 
 type ShiftRequestType = 'HALF_DAY_MORNING' | 'HALF_DAY_EVENING' | 'FULL_DAY_OFF' | 'CUSTOM';
 
-type ShiftPreset = {
-  id: string;
-  name: string;
-};
-
 type ShiftChangeRequest = {
   id: string;
   requestType: ShiftRequestType;
-  shiftPreset: { id: string; name: string } | null;
   requestedDate: string;
   reason: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -42,7 +36,6 @@ const REQUEST_TYPE_OPTIONS: Array<{ value: ShiftRequestType; label: string }> = 
   { value: 'HALF_DAY_MORNING', label: 'Half Day - Morning Off' },
   { value: 'HALF_DAY_EVENING', label: 'Half Day - Afternoon Off' },
   { value: 'FULL_DAY_OFF', label: 'Full Day Off' },
-  { value: 'CUSTOM', label: 'Custom (Select Shift Optional)' }
 ];
 
 const REQUEST_TYPE_LABEL: Record<ShiftRequestType, string> = {
@@ -65,7 +58,6 @@ export default function EmployeeRequestsPage() {
   const [me, setMe] = useState<MeUser | null>(null);
   const [tab, setTab] = useState<'shift' | 'driver'>('shift');
 
-  const [presets, setPresets] = useState<ShiftPreset[]>([]);
   const [requests, setRequests] = useState<ShiftChangeRequest[]>([]);
   const [driverRequests, setDriverRequests] = useState<DriverRequest[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,7 +66,6 @@ export default function EmployeeRequestsPage() {
   const [success, setSuccess] = useState('');
 
   const [requestType, setRequestType] = useState<ShiftRequestType>('HALF_DAY_MORNING');
-  const [presetId, setPresetId] = useState('');
   const [requestedDate, setRequestedDate] = useState('');
   const [reason, setReason] = useState('');
 
@@ -106,12 +97,10 @@ export default function EmployeeRequestsPage() {
     setLoading(true);
     setError('');
     try {
-      const [presetsData, requestsData, driverRequestsData] = await Promise.all([
-        apiFetch<ShiftPreset[]>('/shifts/presets'),
+      const [requestsData, driverRequestsData] = await Promise.all([
         apiFetch<ShiftChangeRequest[]>('/shifts/requests/me'),
-        apiFetch<DriverRequest[]>('/driver-requests/me')
+        apiFetch<DriverRequest[]>('/driver-requests/me'),
       ]);
-      setPresets(presetsData);
       setRequests(requestsData);
       setDriverRequests(driverRequestsData);
     } catch {
@@ -144,18 +133,13 @@ export default function EmployeeRequestsPage() {
         payload.reason = reason.trim();
       }
 
-      if (requestType === 'CUSTOM' && presetId) {
-        payload.shiftPresetId = presetId;
-      }
-
       await apiFetch('/shifts/requests', {
         method: 'POST',
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
-      setSuccess('Shift request submitted successfully');
+      setSuccess('Day off request submitted successfully');
       setRequestType('HALF_DAY_MORNING');
-      setPresetId('');
       setRequestedDate('');
       setReason('');
       await load();
@@ -211,7 +195,7 @@ export default function EmployeeRequestsPage() {
   return (
     <AppShell
       title="Schedule Requests"
-      subtitle="Request shift changes, time off, or driver service"
+      subtitle="Request day off or driver service"
       userRole={me?.role}
     >
       {error ? <div className="alert alert-error">{error}</div> : null}
@@ -224,7 +208,7 @@ export default function EmployeeRequestsPage() {
             onClick={() => setTab('shift')}
             style={{ cursor: 'pointer' }}
           >
-            Shift Requests
+            Day Off Requests
           </a>
           <a
             className={tab === 'driver' ? 'active' : ''}
@@ -239,7 +223,7 @@ export default function EmployeeRequestsPage() {
       {tab === 'shift' ? (
         <section className="split">
           <article className="card">
-            <h3>New Shift Request</h3>
+            <h3>New Day Off Request</h3>
             <form className="form-grid" onSubmit={(e) => void handleShiftSubmit(e)}>
               <div>
                 <label>Date</label>
@@ -258,13 +242,7 @@ export default function EmployeeRequestsPage() {
                   className="select"
                   required
                   value={requestType}
-                  onChange={(e) => {
-                    const value = e.target.value as ShiftRequestType;
-                    setRequestType(value);
-                    if (value !== 'CUSTOM') {
-                      setPresetId('');
-                    }
-                  }}
+                  onChange={(e) => setRequestType(e.target.value as ShiftRequestType)}
                 >
                   {REQUEST_TYPE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -273,24 +251,6 @@ export default function EmployeeRequestsPage() {
                   ))}
                 </select>
               </div>
-
-              {requestType === 'CUSTOM' ? (
-                <div>
-                  <label>Shift Preset (Optional)</label>
-                  <select
-                    className="select"
-                    value={presetId}
-                    onChange={(e) => setPresetId(e.target.value)}
-                  >
-                    <option value="">Let admin choose on approval</option>
-                    {presets.map((preset) => (
-                      <option key={preset.id} value={preset.id}>
-                        {preset.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
 
               <div>
                 <label>Reason (Optional)</label>
@@ -309,14 +269,13 @@ export default function EmployeeRequestsPage() {
           </article>
 
           <article className="card">
-            <h3>My Shift Requests</h3>
+            <h3>My Day Off Requests</h3>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th>Date</th>
                     <th>Type</th>
-                    <th>Selected Shift</th>
                     <th>Status</th>
                     <th>Reason</th>
                   </tr>
@@ -326,7 +285,6 @@ export default function EmployeeRequestsPage() {
                     <tr key={req.id}>
                       <td>{new Date(req.requestedDate).toLocaleDateString()}</td>
                       <td>{REQUEST_TYPE_LABEL[req.requestType]}</td>
-                      <td>{req.shiftPreset?.name || 'Admin will choose'}</td>
                       <td>
                         <span className={`tag ${req.status === 'APPROVED' ? 'ok' : req.status === 'REJECTED' ? 'danger' : ''}`}>
                           {req.status}
@@ -337,8 +295,8 @@ export default function EmployeeRequestsPage() {
                   ))}
                   {requests.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)' }}>
-                        No shift requests found
+                      <td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)' }}>
+                        No day off requests found
                       </td>
                     </tr>
                   ) : null}

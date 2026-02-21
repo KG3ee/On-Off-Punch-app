@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   Param,
@@ -46,10 +45,9 @@ export class LeaderController {
   async approveRequest(
     @CurrentUser() authUser: AuthUser,
     @Param('id') id: string,
-    @Body() body: { targetPresetId?: string }
   ) {
     const teamId = await this.leaderService.resolveTeamId(authUser.sub);
-    return this.leaderService.approveRequest(id, authUser.sub, teamId, body.targetPresetId);
+    return this.leaderService.approveRequest(id, authUser.sub, teamId);
   }
 
   @Post('requests/:id/reject')

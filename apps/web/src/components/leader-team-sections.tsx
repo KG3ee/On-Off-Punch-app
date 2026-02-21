@@ -25,13 +25,11 @@ type ShiftChangeRequest = {
   id: string;
   user: { displayName: string; username: string };
   requestType: ShiftRequestType;
-  shiftPreset: { id: string; name: string } | null;
   requestedDate: string;
   reason: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   reviewedBy?: { displayName: string } | null;
 };
-type ShiftPreset = { id: string; name: string };
 
 type BreakHistoryItem = {
   id: string;
@@ -94,13 +92,10 @@ export function LeaderTeamSections() {
   const [liveData, setLiveData] = useState<LiveBoard | null>(null);
   const [breakHistory, setBreakHistory] = useState<BreakHistoryItem[]>([]);
   const [requests, setRequests] = useState<ShiftChangeRequest[]>([]);
-  const [presets, setPresets] = useState<ShiftPreset[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [drivers, setDrivers] = useState<DriverInfo[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
 
-  const [approveTarget, setApproveTarget] = useState<ShiftChangeRequest | null>(null);
-  const [selectedPresetId, setSelectedPresetId] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
 
   const [historyFrom, setHistoryFrom] = useState(() => {
@@ -113,18 +108,16 @@ export function LeaderTeamSections() {
 
   const load = useCallback(async () => {
     try {
-      const [liveRes, breakRes, reqRes, presetRes, membersRes, driversRes] = await Promise.all([
+      const [liveRes, breakRes, reqRes, membersRes, driversRes] = await Promise.all([
         apiFetch<LiveBoard>('/leader/live'),
         apiFetch<BreakHistoryItem[]>('/leader/breaks?limit=250'),
         apiFetch<ShiftChangeRequest[]>('/leader/requests'),
-        apiFetch<ShiftPreset[]>('/leader/shift-presets'),
         apiFetch<TeamMember[]>('/leader/team'),
         apiFetch<DriverInfo[]>('/leader/drivers'),
       ]);
       setLiveData(liveRes);
       setBreakHistory(breakRes);
       setRequests(reqRes);
-      setPresets(presetRes);
       setMembers(membersRes);
       setDrivers(driversRes);
     } catch {
@@ -159,17 +152,15 @@ export function LeaderTeamSections() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showHistory, historyFrom, historyTo]);
 
-  async function approveRequest() {
-    if (!approveTarget) return;
-    setActionId(approveTarget.id);
+  async function approveRequest(id: string) {
+    setActionId(id);
     setError('');
     try {
-      await apiFetch(`/leader/requests/${approveTarget.id}/approve`, {
+      await apiFetch(`/leader/requests/${id}/approve`, {
         method: 'POST',
-        body: JSON.stringify({ targetPresetId: selectedPresetId || undefined }),
+        body: JSON.stringify({}),
       });
       setMessage('Request approved');
-      setApproveTarget(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve');
@@ -362,7 +353,7 @@ export function LeaderTeamSections() {
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1.5rem 0' }} />
       <section>
         <h2 style={sectionHeadingStyle}>
-          📋 Pending Requests
+          📋 Day Off Requests
           {pendingRequests.length > 0 ? (
             <span style={{
               background: 'var(--danger)', color: '#fff', fontSize: '0.7rem', fontWeight: 700,
@@ -398,12 +389,9 @@ export function LeaderTeamSections() {
                     <button
                       className="button button-sm button-ok"
                       disabled={!!actionId}
-                      onClick={() => {
-                        setApproveTarget(req);
-                        setSelectedPresetId(req.shiftPreset?.id || (presets[0]?.id ?? ''));
-                      }}
+                      onClick={() => void approveRequest(req.id)}
                     >
-                      Approve
+                      {actionId === req.id ? '…' : 'Approve'}
                     </button>
                     <button
                       className="button button-sm button-danger"
@@ -421,38 +409,6 @@ export function LeaderTeamSections() {
           </div>
         )}
 
-        {approveTarget ? (
-          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setApproveTarget(null); }}>
-            <div className="modal">
-              <h3>Approve Shift Request</h3>
-              <p style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
-                <strong>{approveTarget.user.displayName}</strong> requested{' '}
-                <strong>{REQUEST_TYPE_LABEL[approveTarget.requestType]}</strong> on{' '}
-                <strong>{approveTarget.requestedDate}</strong>.
-              </p>
-              <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem', display: 'block' }}>Target Shift Preset</label>
-              <select
-                className="select"
-                value={selectedPresetId}
-                onChange={(e) => setSelectedPresetId(e.target.value)}
-              >
-                {presets.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <div className="modal-footer">
-                <button className="button button-ghost" onClick={() => setApproveTarget(null)}>Cancel</button>
-                <button
-                  className="button button-primary"
-                  disabled={!!actionId}
-                  onClick={() => void approveRequest()}
-                >
-                  {actionId ? 'Approving…' : 'Approve'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
       </section>
 
       {/* ── DRIVER AVAILABILITY ── */}

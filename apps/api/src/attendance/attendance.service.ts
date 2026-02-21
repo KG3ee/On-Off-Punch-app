@@ -54,16 +54,39 @@ export class AttendanceService {
     let isLate = false;
     let lateMinutes = 0;
 
-    if (resolvedShift) {
+    // Check for approved day-off request that adjusts the expected start time
+    const dayOffRequest = await this.prisma.shiftChangeRequest.findFirst({
+      where: {
+        userId: user.id,
+        status: "APPROVED",
+        requestedDate: new Date(localDate + "T00:00:00Z"),
+        requestType: { in: ["HALF_DAY_MORNING", "HALF_DAY_EVENING", "FULL_DAY_OFF"] },
+      },
+    });
+
+    if (dayOffRequest?.requestType === "FULL_DAY_OFF") {
+      // Full day off — no late calculation needed
+      isLate = false;
+      lateMinutes = 0;
+    } else if (resolvedShift) {
       shiftDate = resolvedShift.segment.shiftDate;
       shiftPresetId = resolvedShift.preset.id;
       shiftPresetSegmentId = resolvedShift.segment.segmentId;
       scheduledStartLocal = resolvedShift.segment.scheduleStartLocal;
       scheduledEndLocal = resolvedShift.segment.scheduleEndLocal;
 
+      let effectiveStartStamp = this.localMinuteStamp(scheduledStartLocal);
+
+      if (dayOffRequest?.requestType === "HALF_DAY_MORNING" && scheduledEndLocal) {
+        // Morning off: expected start = midpoint of the shift
+        const endStamp = this.localMinuteStamp(scheduledEndLocal);
+        let duration = endStamp - effectiveStartStamp;
+        if (duration <= 0) duration += 24 * 60; // handle cross-midnight
+        effectiveStartStamp = effectiveStartStamp + Math.floor(duration / 2);
+      }
+
       const nowStamp = this.localMinuteStampFromDate(now, timezone);
-      const scheduleStartStamp = this.localMinuteStamp(scheduledStartLocal);
-      const rawLate = nowStamp - scheduleStartStamp - resolvedShift.segment.lateGraceMinutes;
+      const rawLate = nowStamp - effectiveStartStamp - resolvedShift.segment.lateGraceMinutes;
       lateMinutes = Math.min(this.maxLateMinutes(), Math.max(0, rawLate));
       isLate = lateMinutes > 0;
     } else if (user.teamId) {
@@ -72,7 +95,15 @@ export class AttendanceService {
       });
 
       if (team?.shiftStartTime) {
-        const shiftStartMin = parseTimeToMinutes(team.shiftStartTime);
+        let shiftStartMin = parseTimeToMinutes(team.shiftStartTime);
+
+        if (dayOffRequest?.requestType === "HALF_DAY_MORNING" && team.shiftEndTime) {
+          const shiftEndMin = parseTimeToMinutes(team.shiftEndTime);
+          let duration = shiftEndMin - shiftStartMin;
+          if (duration <= 0) duration += 24 * 60;
+          shiftStartMin = shiftStartMin + Math.floor(duration / 2);
+        }
+
         const punchMinutes = minutesNowInZone(now, timezone);
 
         if (punchMinutes > shiftStartMin) {

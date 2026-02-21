@@ -99,58 +99,32 @@ export class LeaderService {
       where: { user: { teamId } },
       include: {
         user: { select: { id: true, displayName: true, username: true } },
-        shiftPreset: { select: { id: true, name: true } },
-        reviewedBy: { select: { id: true, displayName: true, username: true } }
+        reviewedBy: { select: { id: true, displayName: true, username: true } },
       },
       orderBy: { createdAt: 'desc' }
     });
   }
 
-  async approveRequest(requestId: string, reviewerId: string, teamId: string, targetPresetId?: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const req = await tx.shiftChangeRequest.findUnique({
-        where: { id: requestId },
-        include: { user: { select: { teamId: true } } }
-      });
-      if (!req) throw new NotFoundException('Request not found');
-      if (req.user.teamId !== teamId) {
-        throw new ForbiddenException('This request belongs to a different team');
-      }
-      if (req.status !== ShiftChangeRequestStatus.PENDING) {
-        throw new BadRequestException('Only pending requests can be approved');
-      }
+  async approveRequest(requestId: string, reviewerId: string, teamId: string) {
+    const req = await this.prisma.shiftChangeRequest.findUnique({
+      where: { id: requestId },
+      include: { user: { select: { teamId: true } } },
+    });
+    if (!req) throw new NotFoundException('Request not found');
+    if (req.user.teamId !== teamId) {
+      throw new ForbiddenException('This request belongs to a different team');
+    }
+    if (req.status !== ShiftChangeRequestStatus.PENDING) {
+      throw new BadRequestException('Only pending requests can be approved');
+    }
 
-      const selectedPresetId = targetPresetId || req.shiftPresetId;
-      if (!selectedPresetId) {
-        throw new BadRequestException('This request requires selecting a target shift preset');
-      }
-
-      const targetPreset = await tx.shiftPreset.findFirst({
-        where: { id: selectedPresetId, isActive: true },
-        include: { segments: { orderBy: { segmentNo: 'asc' } } }
-      });
-      if (!targetPreset) throw new BadRequestException('Target shift preset not found or inactive');
-      if (targetPreset.segments.length === 0) throw new BadRequestException('Target preset has no segments');
-
-      const updated = await tx.shiftChangeRequest.update({
-        where: { id: requestId },
-        data: {
-          status: ShiftChangeRequestStatus.APPROVED,
-          reviewedById: reviewerId,
-          reviewedAt: new Date()
-        }
-      });
-
-      await tx.shiftAssignment.create({
-        data: {
-          targetType: 'USER',
-          targetId: req.userId,
-          shiftPresetId: selectedPresetId,
-          effectiveFrom: req.requestedDate || new Date().toISOString().slice(0, 10)
-        }
-      });
-
-      return updated;
+    return this.prisma.shiftChangeRequest.update({
+      where: { id: requestId },
+      data: {
+        status: ShiftChangeRequestStatus.APPROVED,
+        reviewedById: reviewerId,
+        reviewedAt: new Date(),
+      },
     });
   }
 

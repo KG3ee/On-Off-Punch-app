@@ -7,16 +7,10 @@ import { apiFetch } from '@/lib/api';
 
 type ShiftRequestType = 'HALF_DAY_MORNING' | 'HALF_DAY_EVENING' | 'FULL_DAY_OFF' | 'CUSTOM';
 
-type ShiftPreset = {
-  id: string;
-  name: string;
-};
-
 type ShiftChangeRequest = {
   id: string;
   user: { displayName: string; username: string };
   requestType: ShiftRequestType;
-  shiftPreset: { id: string; name: string } | null;
   requestedDate: string;
   reason: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -89,7 +83,6 @@ function AdminRequestsContent() {
   const [requests, setRequests] = useState<ShiftChangeRequest[]>([]);
   const [driverRequests, setDriverRequests] = useState<DriverRequest[]>([]);
   const [drivers, setDrivers] = useState<DriverUser[]>([]);
-  const [presets, setPresets] = useState<ShiftPreset[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -101,10 +94,6 @@ function AdminRequestsContent() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
-  const [approveTarget, setApproveTarget] = useState<ShiftChangeRequest | null>(null);
-  const [selectedPresetId, setSelectedPresetId] = useState('');
-  const [approvingWithPreset, setApprovingWithPreset] = useState(false);
-
   const [driverActionId, setDriverActionId] = useState<string | null>(null);
   const [driverApproveTarget, setDriverApproveTarget] = useState<DriverRequest | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState('');
@@ -112,14 +101,12 @@ function AdminRequestsContent() {
   const load = useCallback(async (silent = false) => {
     if (!silent) { setLoading(true); setError(''); }
     try {
-      const [requestsData, presetsData, driverRequestsData, usersData] = await Promise.all([
+      const [requestsData, driverRequestsData, usersData] = await Promise.all([
         apiFetch<ShiftChangeRequest[]>('/admin/requests'),
-        apiFetch<ShiftPreset[]>('/admin/shift-presets'),
         apiFetch<DriverRequest[]>('/admin/driver-requests'),
         apiFetch<DriverUser[]>('/admin/users')
       ]);
       setRequests(requestsData);
-      setPresets(presetsData);
       setDriverRequests(driverRequestsData);
       setDrivers(usersData.filter((u) => u.role === 'DRIVER'));
     } catch {
@@ -144,43 +131,13 @@ function AdminRequestsContent() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to reject'); }
   }
 
-  async function approveRequestDirect(id: string) {
+  async function approveRequest(id: string) {
     setError(''); setMessage('');
     try {
       await apiFetch(`/admin/requests/${id}/approve`, { method: 'POST', body: JSON.stringify({}) });
-      setMessage('Request approved successfully');
+      setMessage('Request approved');
       await load();
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to approve'); }
-  }
-
-  function openApproveModal(request: ShiftChangeRequest) {
-    setApproveTarget(request);
-    setSelectedPresetId(presets[0]?.id || '');
-    setError(''); setMessage('');
-  }
-
-  function closeApproveModal() {
-    setApproveTarget(null);
-    setSelectedPresetId('');
-    setApprovingWithPreset(false);
-  }
-
-  async function approveWithSelectedPreset() {
-    if (!approveTarget) return;
-    if (!selectedPresetId) { setError('Please select a shift preset'); return; }
-    setApprovingWithPreset(true); setError(''); setMessage('');
-    try {
-      await apiFetch(`/admin/requests/${approveTarget.id}/approve`, {
-        method: 'POST',
-        body: JSON.stringify({ targetPresetId: selectedPresetId })
-      });
-      setMessage('Request approved successfully');
-      closeApproveModal();
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to approve');
-      setApprovingWithPreset(false);
-    }
   }
 
   function openDriverApproveModal(req: DriverRequest) {
@@ -244,7 +201,7 @@ function AdminRequestsContent() {
   function goThisMonth() { setFilterMode('month'); setFilterYear(now.getFullYear()); setFilterMonth(now.getMonth()); }
 
   return (
-    <AppShell title="Requests" subtitle="Approve or reject shift and driver requests" admin userRole="ADMIN">
+    <AppShell title="Requests" subtitle="Approve or reject day off and driver requests" admin userRole="ADMIN">
       <div className="dash-layout">
         {message ? <div className="alert alert-success">{message}</div> : null}
         {error ? <div className="alert alert-error">{error}</div> : null}
@@ -292,7 +249,7 @@ function AdminRequestsContent() {
             }}
           >
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', opacity: 0.8 }}>Shift Requests</div>
+              <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', opacity: 0.8 }}>Day Off Requests</div>
               <div style={{ fontSize: '0.75rem', marginTop: '0.15rem', opacity: 0.7 }}>
                 {approvedShifts} approved · {rejectedShifts} rejected
               </div>
@@ -341,7 +298,7 @@ function AdminRequestsContent() {
             {pendingShifts.length > 0 ? (
               <section className="dash-section">
                 <h2 className="dash-section-title">
-                  Pending Shift Requests <span className="dash-badge">{pendingShifts.length}</span>
+                  Pending Day Off Requests <span className="dash-badge">{pendingShifts.length}</span>
                 </h2>
                 <div className="dash-cards">
                   {pendingShifts.map(req => (
@@ -355,7 +312,7 @@ function AdminRequestsContent() {
                           <button
                             className="button button-sm button-ok"
                             disabled={loading}
-                            onClick={() => req.shiftPreset ? void approveRequestDirect(req.id) : openApproveModal(req)}
+                            onClick={() => void approveRequest(req.id)}
                           >
                             Approve
                           </button>
@@ -367,7 +324,6 @@ function AdminRequestsContent() {
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.8rem' }}>
                         <span className="tag">{REQUEST_TYPE_LABEL[req.requestType]}</span>
                         <span className="mono">{new Date(req.requestedDate).toLocaleDateString()}</span>
-                        {req.shiftPreset ? <span className="tag brand">{req.shiftPreset.name}</span> : <span style={{ color: 'var(--warning)', fontWeight: 600 }}>Admin must choose</span>}
                       </div>
                       {req.reason ? <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)' }}>{req.reason}</div> : null}
                     </article>
@@ -378,7 +334,7 @@ function AdminRequestsContent() {
 
             {/* Resolved shift history */}
             <section className="dash-section">
-              <h2 className="dash-section-title">Shift Request History</h2>
+              <h2 className="dash-section-title">Day Off Request History</h2>
               <article className="card">
                 <div className="table-wrap">
                   <table>
@@ -387,7 +343,6 @@ function AdminRequestsContent() {
                         <th>Employee</th>
                         <th>Date</th>
                         <th>Type</th>
-                        <th>Shift</th>
                         <th>Reason</th>
                         <th>Status</th>
                       </tr>
@@ -401,7 +356,6 @@ function AdminRequestsContent() {
                           </td>
                           <td>{new Date(req.requestedDate).toLocaleDateString()}</td>
                           <td>{REQUEST_TYPE_LABEL[req.requestType]}</td>
-                          <td>{req.shiftPreset?.name || '—'}</td>
                           <td>{req.reason || '-'}</td>
                           <td>
                             <span className={`tag ${req.status === 'APPROVED' ? 'ok' : req.status === 'REJECTED' ? 'danger' : ''}`}>
@@ -411,7 +365,7 @@ function AdminRequestsContent() {
                         </tr>
                       ))}
                       {resolvedShifts.length === 0 ? (
-                        <tr><td colSpan={6} className="table-empty">No resolved requests yet</td></tr>
+                        <tr><td colSpan={5} className="table-empty">No resolved requests yet</td></tr>
                       ) : null}
                     </tbody>
                   </table>
@@ -419,29 +373,6 @@ function AdminRequestsContent() {
               </article>
             </section>
 
-            {/* Approve modal */}
-            {approveTarget ? (
-              <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeApproveModal(); }}>
-                <div className="modal">
-                  <h3>Approve Request</h3>
-                  <p style={{ marginBottom: '0.65rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
-                    {approveTarget.user.displayName} requested <strong>{REQUEST_TYPE_LABEL[approveTarget.requestType]}</strong> on{' '}
-                    <strong>{new Date(approveTarget.requestedDate).toLocaleDateString()}</strong>. Select the concrete shift preset to apply.
-                  </p>
-                  <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem', display: 'block' }}>Target Shift Preset</label>
-                  <select className="select" value={selectedPresetId} onChange={(e) => setSelectedPresetId(e.target.value)}>
-                    <option value="">Select preset...</option>
-                    {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                  <div className="modal-footer">
-                    <button type="button" className="button button-ghost" onClick={closeApproveModal}>Cancel</button>
-                    <button type="button" className="button button-primary" disabled={approvingWithPreset} onClick={() => void approveWithSelectedPreset()}>
-                      {approvingWithPreset ? 'Approving...' : 'Confirm Approve'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </>
         ) : (
           <>

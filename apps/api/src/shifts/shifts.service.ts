@@ -480,117 +480,35 @@ export class ShiftsService {
     return this.prisma.shiftChangeRequest.findMany({
       where: isAdmin ? {} : { userId },
       include: {
-        user: {
-          select: {
-            id: true,
-            displayName: true,
-            username: true
-          }
-        },
-        shiftPreset: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        reviewedBy: {
-          select: {
-            id: true,
-            displayName: true,
-            username: true
-          }
-        }
+        user: { select: { id: true, displayName: true, username: true } },
+        reviewedBy: { select: { id: true, displayName: true, username: true } },
       },
       orderBy: { createdAt: 'desc' }
     });
   }
 
-  async approveRequest(requestId: string, reviewerId: string, targetPresetId?: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const req = await tx.shiftChangeRequest.findUnique({
-        where: { id: requestId }
-      });
-      if (!req) {
-        throw new NotFoundException('Request not found');
-      }
-      if (req.status !== ShiftChangeRequestStatus.PENDING) {
-        throw new BadRequestException('Only pending requests can be approved');
-      }
+  async approveRequest(requestId: string, reviewerId: string) {
+    const req = await this.prisma.shiftChangeRequest.findUnique({
+      where: { id: requestId },
+    });
+    if (!req) {
+      throw new NotFoundException('Request not found');
+    }
+    if (req.status !== ShiftChangeRequestStatus.PENDING) {
+      throw new BadRequestException('Only pending requests can be approved');
+    }
 
-      const selectedPresetId = targetPresetId || req.shiftPresetId;
-      if (!selectedPresetId) {
-        throw new BadRequestException(
-          'This request requires selecting a target shift preset before approval'
-        );
-      }
-
-      const targetPreset = await tx.shiftPreset.findFirst({
-        where: {
-          id: selectedPresetId,
-          isActive: true
-        },
-        select: { id: true, name: true }
-      });
-      if (!targetPreset) {
-        throw new BadRequestException('Selected shift preset is not active');
-      }
-
-      const reviewedAt = new Date();
-
-      const approvedRequest = await tx.shiftChangeRequest.update({
-        where: { id: requestId },
-        data: {
-          status: ShiftChangeRequestStatus.APPROVED,
-          reviewedById: reviewerId,
-          reviewedAt,
-          shiftPresetId: targetPreset.id
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              displayName: true,
-              username: true
-            }
-          },
-          shiftPreset: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          reviewedBy: {
-            select: {
-              id: true,
-              displayName: true,
-              username: true
-            }
-          }
-        }
-      });
-
-      await tx.shiftOverride.upsert({
-        where: {
-          targetType_targetId_overrideDate: {
-            targetType: AssignmentTargetType.USER,
-            targetId: req.userId,
-            overrideDate: req.requestedDate
-          }
-        },
-        create: {
-          targetType: 'USER',
-          targetId: req.userId,
-          shiftPresetId: targetPreset.id,
-          overrideDate: req.requestedDate,
-          reason: `Approved request (${req.requestType}): ${req.reason || 'No reason'}`
-        },
-        update: {
-          shiftPresetId: targetPreset.id,
-          reason: `Approved request (${req.requestType}): ${req.reason || 'No reason'}`
-        }
-      });
-
-      return approvedRequest;
+    return this.prisma.shiftChangeRequest.update({
+      where: { id: requestId },
+      data: {
+        status: ShiftChangeRequestStatus.APPROVED,
+        reviewedById: reviewerId,
+        reviewedAt: new Date(),
+      },
+      include: {
+        user: { select: { id: true, displayName: true, username: true } },
+        reviewedBy: { select: { id: true, displayName: true, username: true } },
+      },
     });
   }
 

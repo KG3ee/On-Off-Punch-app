@@ -698,7 +698,7 @@ export default function EmployeeDashboardPage() {
         const updates: RequestUpdate[] = [];
         for (const r of shiftReqs) {
           if ((r.status === 'APPROVED' || r.status === 'REJECTED') && r.updatedAt > stored) {
-            updates.push({ id: `shift-${r.id}`, type: 'shift', status: r.status, updatedAt: r.updatedAt, label: `Shift request ${r.status.toLowerCase()}` });
+            updates.push({ id: `shift-${r.id}`, type: 'shift', status: r.status, updatedAt: r.updatedAt, label: `Day off request ${r.status.toLowerCase()}` });
           }
         }
         for (const r of driverReqs) {
