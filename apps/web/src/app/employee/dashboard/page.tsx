@@ -16,6 +16,7 @@ import {
   QueuedAction
 } from '@/lib/action-queue';
 import { MeUser } from '@/types/auth';
+import { LeaderTeamSections } from '@/components/leader-team-sections';
 
 
 type DutySession = {
@@ -852,7 +853,7 @@ export default function EmployeeDashboardPage() {
             {activeSession ? fmtDuration(activeDutyMinutes) : 'Off'}
           </p>
         </article>
-        {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+        {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="kpi">
             <p className="kpi-label">Break</p>
             <p className="kpi-value">
@@ -862,7 +863,7 @@ export default function EmployeeDashboardPage() {
             </p>
           </article>
         ) : null}
-        {activeSession?.isLate && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+        {activeSession?.isLate && me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
           <article className="kpi">
             <p className="kpi-label">Late</p>
             <p className="kpi-value" style={{ color: 'var(--danger)' }}>{activeSession.lateMinutes}m</p>
@@ -1040,7 +1041,7 @@ export default function EmployeeDashboardPage() {
                     <th>On</th>
                     <th>Off</th>
                     <th>Status</th>
-                    {me?.role !== 'MAID' && me?.role !== 'CHEF' ? <th>Late</th> : null}
+                    {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? <th>Late</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -1052,12 +1053,12 @@ export default function EmployeeDashboardPage() {
                       <td>
                         <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
                       </td>
-                      {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+                      {me?.role !== 'LEADER' && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
                         <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
                       ) : null}
                     </tr>
                   ) : (
-                    <tr><td colSpan={me?.role === 'MAID' || me?.role === 'CHEF' ? 4 : 5} className="table-empty">Not on duty</td></tr>
+                    <tr><td colSpan={me?.role === 'LEADER' || me?.role === 'MAID' || me?.role === 'CHEF' ? 4 : 5} className="table-empty">Not on duty</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1108,6 +1109,8 @@ export default function EmployeeDashboardPage() {
           ) : null}
         </div>
       </section>
+
+      {me?.role === 'LEADER' ? <LeaderTeamSections /> : null}
     </AppShell>
   );
 }

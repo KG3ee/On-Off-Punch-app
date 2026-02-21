@@ -384,9 +384,6 @@ export function AppShell({
                   <Link href="/employee/dashboard" className={pathname === '/employee/dashboard' ? 'active' : ''}>
                     Dashboard
                   </Link>
-                  <Link href="/employee/team" className={pathname?.startsWith('/employee/team') ? 'active' : ''}>
-                    Team
-                  </Link>
                   <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
                     Requests
                   </Link>
