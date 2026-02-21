@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
@@ -64,6 +64,10 @@ const DRIVER_AVAIL_CONFIG: Record<string, { emoji: string; label: string; color:
 };
 
 export default function AdminRequestsPage() {
+  return <Suspense><AdminRequestsContent /></Suspense>;
+}
+
+function AdminRequestsContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'driver' ? 'driver' : 'shift';
   const [tab, setTab] = useState<'shift' | 'driver'>(initialTab);

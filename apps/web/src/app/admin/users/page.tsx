@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
@@ -103,6 +103,10 @@ function inferCrossesMidnight(startTime: string, endTime: string): boolean {
 }
 
 export default function AdminUsersPage() {
+  return <Suspense><AdminUsersContent /></Suspense>;
+}
+
+function AdminUsersContent() {
   const searchParams = useSearchParams();
   const registrationRef = useRef<HTMLElement>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
