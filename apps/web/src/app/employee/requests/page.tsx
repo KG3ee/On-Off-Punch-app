@@ -29,6 +29,7 @@ type DriverRequest = {
   destination: string;
   purpose: string | null;
   isRoundTrip: boolean;
+  returnDate: string | null;
   returnTime: string | null;
   returnLocation: string | null;
   contactNumber: string | null;
@@ -82,6 +83,7 @@ export default function EmployeeRequestsPage() {
   const [destination, setDestination] = useState('');
   const [purpose, setPurpose] = useState('');
   const [roundTrip, setRoundTrip] = useState(false);
+  const [returnDate, setReturnDate] = useState('');
   const [returnTime, setReturnTime] = useState('');
   const [returnLocation, setReturnLocation] = useState('');
   const [contactNumber, setContactNumber] = useState('');
@@ -181,6 +183,7 @@ export default function EmployeeRequestsPage() {
           destination: destination.trim(),
           purpose: purpose.trim() || undefined,
           isRoundTrip: roundTrip,
+          returnDate: roundTrip && returnDate ? returnDate : undefined,
           returnTime: roundTrip && returnTime ? returnTime : undefined,
           returnLocation: roundTrip && returnLocation.trim() ? returnLocation.trim() : undefined,
           contactNumber: contactNumber.trim() || undefined,
@@ -193,6 +196,7 @@ export default function EmployeeRequestsPage() {
       setDestination('');
       setPurpose('');
       setRoundTrip(false);
+      setReturnDate('');
       setReturnTime('');
       setReturnLocation('');
       setContactNumber('');
@@ -409,6 +413,15 @@ export default function EmployeeRequestsPage() {
               {roundTrip ? (
                 <>
                   <div>
+                    <label>Return Pickup Date</label>
+                    <input
+                      type="date"
+                      className="input"
+                      value={returnDate}
+                      onChange={(e) => setReturnDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
                     <label>Return Pickup Time</label>
                     <input
                       type="time"
@@ -458,7 +471,9 @@ export default function EmployeeRequestsPage() {
                         {req.isRoundTrip ? (
                           <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.15rem' }}>
                             <span className="tag brand" style={{ fontSize: '0.7rem' }}>Round trip</span>
-                            {req.returnTime ? <span>Return: {req.returnTime}</span> : null}
+                            {req.returnDate || req.returnTime ? (
+                              <span>Return: {req.returnDate ? new Date(req.returnDate).toLocaleDateString() : ''} {req.returnTime || ''}</span>
+                            ) : null}
                             {req.returnLocation ? <span>{req.returnLocation}</span> : null}
                           </span>
                         ) : null}

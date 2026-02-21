@@ -73,6 +73,7 @@ export class DriverRequestsService {
         destination: dto.destination,
         purpose: dto.purpose ?? null,
         isRoundTrip: dto.isRoundTrip ?? false,
+        returnDate: dto.returnDate ? new Date(dto.returnDate) : null,
         returnTime: dto.returnTime ?? null,
         returnLocation: dto.returnLocation ?? null,
         contactNumber: dto.contactNumber ?? null,

@@ -13,6 +13,7 @@ type DriverRequest = {
   destination: string;
   purpose: string | null;
   isRoundTrip: boolean;
+  returnDate: string | null;
   returnTime: string | null;
   returnLocation: string | null;
   contactNumber: string | null;
@@ -401,7 +402,8 @@ export default function DriverDashboardPage() {
                   {req.isRoundTrip ? (
                     <div style={{ padding: '0.5rem 0.75rem', marginBottom: '1.125rem', background: 'rgba(99,102,241,0.08)', borderRadius: 'var(--radius)', fontSize: '0.9375rem' }}>
                       <strong style={{ color: 'var(--brand)' }}>Round Trip</strong>
-                      {req.returnTime ? <span> &middot; Return: {req.returnTime}</span> : null}
+                      {req.returnDate ? <span> &middot; {new Date(req.returnDate).toLocaleDateString()}</span> : null}
+                      {req.returnTime ? <span> &middot; {req.returnTime}</span> : null}
                       {req.returnLocation ? <span> &middot; {req.returnLocation}</span> : null}
                     </div>
                   ) : <div style={{ marginBottom: '0.625rem' }} />}
@@ -472,7 +474,8 @@ export default function DriverDashboardPage() {
                 {req.isRoundTrip ? (
                   <div style={{ padding: '0.5rem 0.75rem', marginBottom: '1.125rem', background: 'rgba(99,102,241,0.08)', borderRadius: 'var(--radius)', fontSize: '0.9375rem' }}>
                     <strong style={{ color: 'var(--brand)' }}>Round Trip</strong>
-                    {req.returnTime ? <span> &middot; Return: {req.returnTime}</span> : null}
+                    {req.returnDate ? <span> &middot; {new Date(req.returnDate).toLocaleDateString()}</span> : null}
+                    {req.returnTime ? <span> &middot; {req.returnTime}</span> : null}
                     {req.returnLocation ? <span> &middot; {req.returnLocation}</span> : null}
                   </div>
                 ) : <div style={{ marginBottom: '0.625rem' }} />}

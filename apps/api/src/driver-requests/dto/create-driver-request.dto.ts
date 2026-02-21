@@ -19,6 +19,10 @@ export class CreateDriverRequestDto {
   isRoundTrip?: boolean;
 
   @IsOptional()
+  @IsDateString()
+  returnDate?: string;
+
+  @IsOptional()
   @IsString()
   returnTime?: string;
 

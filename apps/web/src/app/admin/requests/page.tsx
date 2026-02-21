@@ -31,6 +31,7 @@ type DriverRequest = {
   destination: string;
   purpose: string | null;
   isRoundTrip: boolean;
+  returnDate: string | null;
   returnTime: string | null;
   returnLocation: string | null;
   contactNumber: string | null;
@@ -439,7 +440,9 @@ function AdminRequestsContent() {
                     {req.isRoundTrip ? (
                       <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.15rem' }}>
                         <span className="tag brand" style={{ fontSize: '0.7rem' }}>Round trip</span>
-                        {req.returnTime ? <span>Return: {req.returnTime}</span> : null}
+                        {req.returnDate || req.returnTime ? (
+                          <span>Return: {req.returnDate ? new Date(req.returnDate).toLocaleDateString() : ''} {req.returnTime || ''}</span>
+                        ) : null}
                         {req.returnLocation ? <span>{req.returnLocation}</span> : null}
                       </span>
                     ) : null}
@@ -513,7 +516,8 @@ function AdminRequestsContent() {
               {driverApproveTarget.isRoundTrip ? (
                 <div style={{ marginBottom: '0.65rem', padding: '0.5rem 0.75rem', background: 'rgba(99,102,241,0.08)', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}>
                   <strong style={{ color: 'var(--brand)' }}>Round Trip</strong>
-                  {driverApproveTarget.returnTime ? <span> | Return: {driverApproveTarget.returnTime}</span> : null}
+                  {driverApproveTarget.returnDate ? <span> | Date: {new Date(driverApproveTarget.returnDate).toLocaleDateString()}</span> : null}
+                  {driverApproveTarget.returnTime ? <span> | Time: {driverApproveTarget.returnTime}</span> : null}
                   {driverApproveTarget.returnLocation ? <span> | Pickup: {driverApproveTarget.returnLocation}</span> : null}
                 </div>
               ) : null}

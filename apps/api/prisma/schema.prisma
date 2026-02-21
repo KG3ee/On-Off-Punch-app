@@ -314,8 +314,9 @@ model DriverRequest {
   requestedTime String
   destination   String
   purpose       String?
-  isRoundTrip   Boolean            @default(false)
-  returnTime    String?
+  isRoundTrip    Boolean            @default(false)
+  returnDate     DateTime?
+  returnTime     String?
   returnLocation String?
   contactNumber String?
   status        DriverRequestStatus @default(PENDING)
