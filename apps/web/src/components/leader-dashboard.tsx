@@ -1,0 +1,538 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api';
+
+/* ── Types shared with the parent dashboard ── */
+type DutySession = {
+  id: string;
+  shiftDate: string;
+  localDate: string;
+  punchedOnAt: string;
+  punchedOffAt?: string | null;
+  status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
+  isLate: boolean;
+  lateMinutes: number;
+  overtimeMinutes: number;
+};
+
+type MonthlySummary = {
+  month: string;
+  totalWorkedMinutes: number;
+  totalLateMinutes: number;
+  totalOvertimeMinutes: number;
+  sessionCount: number;
+};
+
+/* ── Team-specific types ── */
+type LiveBreak = { id: string; breakPolicy: { code: string }; startedAt: string };
+type LiveDuty = {
+  id: string;
+  punchedOnAt: string;
+  isLate: boolean;
+  lateMinutes: number;
+  user: { displayName: string };
+  breakSessions: LiveBreak[];
+};
+type LiveBoard = {
+  localDate: string;
+  activeDutySessions: LiveDuty[];
+  summary: { totalSessionsToday: number; totalLateMinutesToday: number };
+};
+
+type ShiftRequestType = 'HALF_DAY_MORNING' | 'HALF_DAY_EVENING' | 'FULL_DAY_OFF' | 'CUSTOM';
+type ShiftChangeRequest = {
+  id: string;
+  user: { displayName: string; username: string };
+  requestType: ShiftRequestType;
+  shiftPreset: { id: string; name: string } | null;
+  requestedDate: string;
+  reason: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewedBy?: { displayName: string } | null;
+};
+type ShiftPreset = { id: string; name: string };
+
+type BreakHistoryItem = {
+  id: string;
+  startedAt: string;
+  endedAt?: string | null;
+  expectedDurationMinutes: number;
+  actualMinutes?: number | null;
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CLOSED';
+  isOvertime: boolean;
+  breakPolicy: { code: string; name: string };
+  user: { displayName: string };
+};
+
+type AttendanceRecord = {
+  id: string;
+  localDate: string;
+  punchedOnAt: string;
+  punchedOffAt?: string | null;
+  status: string;
+  isLate: boolean;
+  lateMinutes: number;
+  user: { displayName: string };
+};
+
+type TeamMember = {
+  id: string;
+  displayName: string;
+  username: string;
+  role: string;
+  isActive: boolean;
+};
+
+type DriverInfo = {
+  id: string;
+  displayName: string;
+  driverStatus: string | null;
+};
+
+/* ── Props from parent dashboard ── */
+export type LeaderDashboardProps = {
+  activeSession: DutySession | null;
+  activeDutyMinutes: number;
+  monthlySummary: MonthlySummary | null;
+  loading: boolean;
+  isOffline: boolean;
+  runAction: (path: string) => Promise<void>;
+};
+
+/* ── Constants ── */
+const REQUEST_TYPE_LABEL: Record<ShiftRequestType, string> = {
+  HALF_DAY_MORNING: 'Half Day - Morning',
+  HALF_DAY_EVENING: 'Half Day - Afternoon',
+  FULL_DAY_OFF: 'Full Day Off',
+  CUSTOM: 'Custom',
+};
+
+const DRIVER_STATUS: Record<string, { emoji: string; label: string; cls: string }> = {
+  AVAILABLE: { emoji: '🟢', label: 'Available', cls: 'ok' },
+  BUSY:      { emoji: '🟡', label: 'Driving',   cls: 'warning' },
+  ON_BREAK:  { emoji: '🟠', label: 'On Break',  cls: 'warning' },
+  OFFLINE:   { emoji: '⚫', label: 'Off Duty',  cls: '' },
+};
+
+export function LeaderDashboard({
+  activeSession,
+  activeDutyMinutes,
+  monthlySummary,
+  loading,
+  isOffline,
+  runAction,
+}: LeaderDashboardProps) {
+  const [nowTick, setNowTick] = useState(0);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  /* ── Team state ── */
+  const [liveData, setLiveData] = useState<LiveBoard | null>(null);
+  const [breakHistory, setBreakHistory] = useState<BreakHistoryItem[]>([]);
+  const [requests, setRequests] = useState<ShiftChangeRequest[]>([]);
+  const [presets, setPresets] = useState<ShiftPreset[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [drivers, setDrivers] = useState<DriverInfo[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+
+  const [approveTarget, setApproveTarget] = useState<ShiftChangeRequest | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState('');
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const [showTeam, setShowTeam] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyFrom, setHistoryFrom] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7);
+    return d.toISOString().slice(0, 10);
+  });
+  const [historyTo, setHistoryTo] = useState(() => new Date().toISOString().slice(0, 10));
+
+  /* ── Data loading ── */
+  const loadTeam = useCallback(async () => {
+    try {
+      const [live, breaks, reqs, pres, mems, drvs] = await Promise.all([
+        apiFetch<LiveBoard>('/leader/live'),
+        apiFetch<BreakHistoryItem[]>('/leader/breaks?limit=250'),
+        apiFetch<ShiftChangeRequest[]>('/leader/requests'),
+        apiFetch<ShiftPreset[]>('/leader/shift-presets'),
+        apiFetch<TeamMember[]>('/leader/team'),
+        apiFetch<DriverInfo[]>('/leader/drivers'),
+      ]);
+      setLiveData(live);
+      setBreakHistory(breaks);
+      setRequests(reqs);
+      setPresets(pres);
+      setMembers(mems);
+      setDrivers(drvs);
+    } catch { /* retry on next interval */ }
+  }, []);
+
+  useEffect(() => {
+    void loadTeam();
+    setNowTick(Date.now());
+    const refresh = setInterval(() => void loadTeam(), 15_000);
+    const tick = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => { clearInterval(refresh); clearInterval(tick); };
+  }, [loadTeam]);
+
+  useEffect(() => {
+    if (showHistory) void loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHistory, historyFrom, historyTo]);
+
+  async function loadHistory() {
+    try {
+      setAttendance(await apiFetch<AttendanceRecord[]>(
+        `/leader/attendance?from=${historyFrom}&to=${historyTo}&limit=200`
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Load failed');
+    }
+  }
+
+  /* ── Request actions ── */
+  async function approveRequest() {
+    if (!approveTarget) return;
+    setActionId(approveTarget.id);
+    setError('');
+    try {
+      await apiFetch(`/leader/requests/${approveTarget.id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ targetPresetId: selectedPresetId || undefined }),
+      });
+      setMessage('Request approved');
+      setApproveTarget(null);
+      await loadTeam();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally { setActionId(null); }
+  }
+
+  async function rejectRequest(id: string) {
+    setActionId(id);
+    setError('');
+    try {
+      await apiFetch(`/leader/requests/${id}/reject`, { method: 'POST' });
+      setMessage('Request rejected');
+      await loadTeam();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally { setActionId(null); }
+  }
+
+  /* ── Derived data ── */
+  const pendingReqs = useMemo(() => requests.filter(r => r.status === 'PENDING'), [requests]);
+
+  /* ── Helpers ── */
+  function fmtTime(iso: string) {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  function fmtDur(m: number) {
+    const h = Math.floor(m / 60); const r = m % 60;
+    return h > 0 ? `${h}h ${r}m` : `${m}m`;
+  }
+  function breakMin(item: BreakHistoryItem) {
+    if (item.actualMinutes != null) return `${item.actualMinutes}m`;
+    if (item.status === 'ACTIVE') return `${Math.max(0, Math.round((nowTick - new Date(item.startedAt).getTime()) / 60000))}m`;
+    return '-';
+  }
+
+  return (
+    <div className="leader-layout">
+      {error ? <div className="alert alert-error">{error}</div> : null}
+      {message ? <div className="alert alert-success">{message}</div> : null}
+
+      {/* ═══ 1. PUNCH STRIP ═══ */}
+      <div className="leader-punch-strip">
+        <button
+          type="button"
+          className="punch-btn punch-on"
+          disabled={(loading && !isOffline) || !!activeSession}
+          onClick={() => void runAction('/attendance/on')}
+          style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
+        >
+          <span className="punch-icon" style={{ fontSize: '1.1rem' }}>⏻</span>
+          <span className="punch-label" style={{ fontSize: '0.7rem' }}>ON</span>
+        </button>
+
+        <div className="leader-punch-status">
+          {activeSession ? (
+            <>
+              <span className="status-dot active" />
+              <span style={{ fontWeight: 700, color: 'var(--ok)', fontSize: '1rem' }}>{fmtDur(activeDutyMinutes)}</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>on duty</span>
+            </>
+          ) : (
+            <span style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>Off Duty</span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="punch-btn punch-off"
+          disabled={(loading && !isOffline) || !activeSession}
+          onClick={() => void runAction('/attendance/off')}
+          style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
+        >
+          <span className="punch-icon" style={{ fontSize: '1.1rem' }}>⏼</span>
+          <span className="punch-label" style={{ fontSize: '0.7rem' }}>OFF</span>
+        </button>
+      </div>
+
+      {/* ═══ 2. TEAM KPIs ═══ */}
+      <section className="kpi-grid">
+        <article className="kpi">
+          <p className="kpi-label">Active</p>
+          <p className="kpi-value" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            {(liveData?.activeDutySessions.length || 0) > 0 && <span className="status-dot active" />}
+            {liveData?.activeDutySessions.length || 0}
+          </p>
+        </article>
+        <article className="kpi">
+          <p className="kpi-label">Total</p>
+          <p className="kpi-value">{liveData?.summary.totalSessionsToday || 0}</p>
+        </article>
+        <article className="kpi">
+          <p className="kpi-label">Late</p>
+          <p className="kpi-value" style={{ color: (liveData?.summary.totalLateMinutesToday || 0) > 0 ? 'var(--danger)' : undefined }}>
+            {liveData?.summary.totalLateMinutesToday || 0}m
+          </p>
+        </article>
+        <article className="kpi">
+          <p className="kpi-label">Requests</p>
+          <p className="kpi-value" style={{ color: pendingReqs.length > 0 ? 'var(--danger)' : undefined }}>
+            {pendingReqs.length}
+          </p>
+        </article>
+      </section>
+
+      {/* ═══ 3. PENDING REQUESTS ═══ */}
+      {pendingReqs.length > 0 ? (
+        <section className="leader-section">
+          <h2 className="leader-section-title">
+            📋 Pending Requests
+            <span className="leader-badge">{pendingReqs.length}</span>
+          </h2>
+          <div className="leader-cards">
+            {pendingReqs.map((req) => (
+              <article key={req.id} className="card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{req.user.displayName}</span>
+                  <span className="tag warning">PENDING</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', fontSize: '0.8rem', color: 'var(--ink-2)', marginBottom: '0.5rem' }}>
+                  <span>{REQUEST_TYPE_LABEL[req.requestType] || req.requestType}</span>
+                  <span className="mono">{req.requestedDate}</span>
+                </div>
+                {req.reason ? <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.5rem' }}>{req.reason}</p> : null}
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="button button-sm button-ok" disabled={!!actionId}
+                    onClick={() => { setApproveTarget(req); setSelectedPresetId(req.shiftPreset?.id || (presets[0]?.id ?? '')); }}>
+                    Approve
+                  </button>
+                  <button className="button button-sm button-danger" disabled={!!actionId}
+                    onClick={() => void rejectRequest(req.id)}>
+                    {actionId === req.id ? '…' : 'Reject'}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* ═══ 4. ACTIVE SESSIONS ═══ */}
+      <section className="leader-section">
+        <h2 className="leader-section-title">📡 Who&apos;s On Duty</h2>
+        <article className="card">
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Employee</th><th>Punched On</th><th>Late</th><th>Break</th></tr>
+              </thead>
+              <tbody>
+                {liveData?.activeDutySessions.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.user.displayName}</td>
+                    <td className="mono">{fmtTime(s.punchedOnAt)}</td>
+                    <td>{s.lateMinutes > 0 ? <span className="tag danger">{s.lateMinutes}m</span> : <span className="tag ok">OK</span>}</td>
+                    <td>{s.breakSessions.length > 0
+                      ? <span className="tag warning">{s.breakSessions[0].breakPolicy.code.toUpperCase()}</span>
+                      : '—'}</td>
+                  </tr>
+                ))}
+                {!liveData?.activeDutySessions.length
+                  ? <tr><td colSpan={4} className="table-empty">No active sessions</td></tr>
+                  : null}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      {/* ═══ 5. DRIVERS + BREAKS (side-by-side) ═══ */}
+      <div className="leader-two-col">
+        <section className="leader-section">
+          <h2 className="leader-section-title">🚗 Drivers</h2>
+          <article className="card">
+            {drivers.length === 0
+              ? <p style={{ color: 'var(--muted)', fontSize: '0.8rem', textAlign: 'center', padding: '0.5rem 0' }}>No drivers</p>
+              : <div style={{ display: 'grid', gap: '0.375rem' }}>
+                  {drivers.map((d) => {
+                    const st = d.driverStatus || 'OFFLINE';
+                    const cfg = DRIVER_STATUS[st] || DRIVER_STATUS.OFFLINE;
+                    return (
+                      <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                        <span style={{ fontSize: '0.8rem', flexShrink: 0 }}>{cfg.emoji}</span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.displayName}</span>
+                        <span className={`tag ${cfg.cls}`} style={{ fontSize: '0.6rem' }}>{cfg.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+            }
+          </article>
+        </section>
+
+        <section className="leader-section">
+          <h2 className="leader-section-title">☕ Today Breaks</h2>
+          <article className="card">
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Code</th><th>Start</th><th>Min</th><th>Status</th></tr></thead>
+                <tbody>
+                  {breakHistory.map((b) => (
+                    <tr key={b.id}>
+                      <td>{b.user.displayName}</td>
+                      <td><span className="tag">{b.breakPolicy.code.toUpperCase()}</span></td>
+                      <td className="mono">{fmtTime(b.startedAt)}</td>
+                      <td>{breakMin(b)}</td>
+                      <td><span className={`tag ${b.status === 'ACTIVE' ? 'ok' : b.status === 'CANCELLED' ? 'danger' : ''}`}>{b.status}</span></td>
+                    </tr>
+                  ))}
+                  {breakHistory.length === 0 ? <tr><td colSpan={5} className="table-empty">No breaks today</td></tr> : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </div>
+
+      {/* ═══ 6. COLLAPSIBLE: TEAM MEMBERS ═══ */}
+      <section className="leader-section">
+        <div className="leader-collapse-header" onClick={() => setShowTeam(v => !v)}>
+          <h2 className="leader-section-title" style={{ marginBottom: 0 }}>👥 Team Members ({members.length})</h2>
+          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{showTeam ? '▲ Hide' : '▼ Show'}</span>
+        </div>
+        {showTeam ? (
+          <article className="card">
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Active</th></tr></thead>
+                <tbody>
+                  {members.map((m) => (
+                    <tr key={m.id}>
+                      <td>{m.displayName}</td>
+                      <td className="mono">{m.username}</td>
+                      <td><span className={`tag ${m.role === 'LEADER' ? 'brand' : ''}`}>{m.role}</span></td>
+                      <td>{m.isActive ? <span className="tag ok">Yes</span> : <span className="tag danger">No</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        ) : null}
+      </section>
+
+      {/* ═══ 7. COLLAPSIBLE: ATTENDANCE HISTORY ═══ */}
+      <section className="leader-section">
+        <div className="leader-collapse-header" onClick={() => setShowHistory(v => !v)}>
+          <h2 className="leader-section-title" style={{ marginBottom: 0 }}>📊 Attendance History</h2>
+          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{showHistory ? '▲ Hide' : '▼ Show'}</span>
+        </div>
+        {showHistory ? (
+          <>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', display: 'block', marginBottom: '0.15rem', color: 'var(--muted)' }}>From</label>
+                <input type="date" className="input" value={historyFrom} onChange={(e) => setHistoryFrom(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', display: 'block', marginBottom: '0.15rem', color: 'var(--muted)' }}>To</label>
+                <input type="date" className="input" value={historyTo} onChange={(e) => setHistoryTo(e.target.value)} />
+              </div>
+            </div>
+            <article className="card">
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Employee</th><th>Date</th><th>On</th><th>Off</th><th>Status</th><th>Late</th></tr></thead>
+                  <tbody>
+                    {attendance.map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.user.displayName}</td>
+                        <td className="mono">{r.localDate}</td>
+                        <td className="mono">{fmtTime(r.punchedOnAt)}</td>
+                        <td className="mono">{r.punchedOffAt ? fmtTime(r.punchedOffAt) : '—'}</td>
+                        <td><span className={`tag ${r.status === 'ACTIVE' ? 'ok' : r.status === 'COMPLETED' ? '' : 'danger'}`}>{r.status}</span></td>
+                        <td>{r.lateMinutes > 0 ? <span className="tag danger">{r.lateMinutes}m</span> : <span className="tag ok">OK</span>}</td>
+                      </tr>
+                    ))}
+                    {attendance.length === 0 ? <tr><td colSpan={6} className="table-empty">No records</td></tr> : null}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </>
+        ) : null}
+      </section>
+
+      {/* ═══ 8. PERSONAL MONTHLY STATS ═══ */}
+      {monthlySummary ? (
+        <section className="kpi-grid" style={{ opacity: 0.8 }}>
+          <article className="kpi">
+            <p className="kpi-label">Month Hours</p>
+            <p className="kpi-value" style={{ fontSize: '1rem' }}>{fmtDur(monthlySummary.totalWorkedMinutes)}</p>
+          </article>
+          <article className="kpi">
+            <p className="kpi-label">Month Late</p>
+            <p className="kpi-value" style={{ fontSize: '1rem', color: monthlySummary.totalLateMinutes > 0 ? 'var(--danger)' : undefined }}>
+              {monthlySummary.totalLateMinutes}m
+            </p>
+          </article>
+          <article className="kpi">
+            <p className="kpi-label">Overtime</p>
+            <p className="kpi-value" style={{ fontSize: '1rem', color: monthlySummary.totalOvertimeMinutes > 0 ? 'var(--ok)' : undefined }}>
+              {monthlySummary.totalOvertimeMinutes}m
+            </p>
+          </article>
+        </section>
+      ) : null}
+
+      {/* ═══ Approve Modal ═══ */}
+      {approveTarget ? (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setApproveTarget(null); }}>
+          <div className="modal">
+            <h3>Approve Shift Request</h3>
+            <p style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
+              <strong>{approveTarget.user.displayName}</strong> requested{' '}
+              <strong>{REQUEST_TYPE_LABEL[approveTarget.requestType]}</strong> on{' '}
+              <strong>{approveTarget.requestedDate}</strong>.
+            </p>
+            <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem', display: 'block' }}>Target Shift Preset</label>
+            <select className="select" value={selectedPresetId} onChange={(e) => setSelectedPresetId(e.target.value)}>
+              {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <div className="modal-footer">
+              <button className="button button-ghost" onClick={() => setApproveTarget(null)}>Cancel</button>
+              <button className="button button-primary" disabled={!!actionId} onClick={() => void approveRequest()}>
+                {actionId ? 'Approving…' : 'Approve'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

@@ -16,7 +16,7 @@ import {
   QueuedAction
 } from '@/lib/action-queue';
 import { MeUser } from '@/types/auth';
-import { LeaderTeamSections } from '@/components/leader-team-sections';
+import { LeaderDashboard } from '@/components/leader-dashboard';
 
 
 type DutySession = {
@@ -818,99 +818,16 @@ export default function EmployeeDashboardPage() {
       headerAction={headerAction}
     >
 
-      {/* ── Leader: consolidated KPI row + single-column layout ── */}
+      {/* ── Leader gets a dedicated dashboard ── */}
       {me?.role === 'LEADER' ? (
-        <>
-          <section className="kpi-grid">
-            <article className="kpi">
-              <p className="kpi-label">Duty</p>
-              <p className="kpi-value" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <span className={`status-dot ${activeSession ? 'active' : 'inactive'}`} />
-                {activeSession ? fmtDuration(activeDutyMinutes) : 'Off'}
-              </p>
-            </article>
-            <article className="kpi">
-              <p className="kpi-label">Sessions</p>
-              <p className="kpi-value">{sessions.length}</p>
-            </article>
-            {monthlySummary ? (
-              <>
-                <article className="kpi">
-                  <p className="kpi-label">Month Hours</p>
-                  <p className="kpi-value">{fmtDuration(monthlySummary.totalWorkedMinutes)}</p>
-                </article>
-                <article className="kpi">
-                  <p className="kpi-label">Month Late</p>
-                  <p className="kpi-value" style={{ color: monthlySummary.totalLateMinutes > 0 ? 'var(--danger)' : undefined }}>
-                    {monthlySummary.totalLateMinutes}m
-                  </p>
-                </article>
-                <article className="kpi">
-                  <p className="kpi-label">Overtime</p>
-                  <p className="kpi-value" style={{ color: monthlySummary.totalOvertimeMinutes > 0 ? 'var(--ok)' : undefined }}>
-                    {monthlySummary.totalOvertimeMinutes}m
-                  </p>
-                </article>
-              </>
-            ) : null}
-          </section>
-
-          <div className="leader-punch-grid">
-            <article className="card">
-              <h3>Duty</h3>
-              <div className="action-row">
-                <button
-                  type="button"
-                  className="punch-btn punch-on"
-                  disabled={(loading && !isOffline) || !!activeSession}
-                  onClick={() => void runAction('/attendance/on')}
-                >
-                  <span className="punch-icon">⏻</span>
-                  <span className="punch-label">Punch ON</span>
-                </button>
-                <button
-                  type="button"
-                  className="punch-btn punch-off"
-                  disabled={(loading && !isOffline) || !activeSession}
-                  onClick={() => void runAction('/attendance/off')}
-                >
-                  <span className="punch-icon">⏼</span>
-                  <span className="punch-label">Punch OFF</span>
-                </button>
-              </div>
-            </article>
-
-            <article className="card">
-              <h3>Current Session</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>On</th>
-                      <th>Off</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeSession ? (
-                      <tr>
-                        <td className="mono">{activeSession.shiftDate}</td>
-                        <td className="mono">{fmtTime(activeSession.punchedOnAt)}</td>
-                        <td className="mono">{activeSession.punchedOffAt ? fmtTime(activeSession.punchedOffAt) : '—'}</td>
-                        <td>
-                          <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr><td colSpan={4} className="table-empty">Not on duty</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          </div>
-        </>
+        <LeaderDashboard
+          activeSession={activeSession}
+          activeDutyMinutes={activeDutyMinutes}
+          monthlySummary={monthlySummary}
+          loading={loading}
+          isOffline={isOffline}
+          runAction={runAction}
+        />
       ) : (
       <>
       {/* ── Monthly KPI Row (non-Leader) ── */}
@@ -1207,7 +1124,6 @@ export default function EmployeeDashboardPage() {
       </>
       )}
 
-      {me?.role === 'LEADER' ? <LeaderTeamSections /> : null}
     </AppShell>
   );
 }
