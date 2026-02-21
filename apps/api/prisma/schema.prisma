@@ -41,6 +41,7 @@ enum RegistrationRequestStatus {
   REJECTED
 }
 
+
 enum ShiftChangeRequestStatus {
   PENDING
   APPROVED
@@ -83,7 +84,6 @@ model Team {
   shiftPresets  ShiftPreset[]
   dutySessions  DutySession[]
   monthlyReports MonthlyReport[]
-  registrationRosters EmployeeRoster[]
   registrationRequests RegistrationRequest[]
 }
 
@@ -126,23 +126,6 @@ model User {
   @@index([role])
 }
 
-model EmployeeRoster {
-  id            String   @id @default(cuid())
-  staffCode     String   @unique
-
-  defaultTeamId String?
-  defaultRole   Role     @default(MEMBER)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  defaultTeam Team? @relation(fields: [defaultTeamId], references: [id])
-  registrationRequests RegistrationRequest[]
-
-  @@index([defaultTeamId])
-  @@index([isActive])
-}
-
 model RegistrationRequest {
   id              String                    @id @default(cuid())
   staffCode       String
@@ -153,9 +136,6 @@ model RegistrationRequest {
   desiredUsername String
   passwordHash    String
   status          RegistrationRequestStatus @default(PENDING)
-  verificationScore Int                     @default(0)
-  verificationNotes String?
-  rosterEntryId   String?
   requestedTeamId String?
   reviewNote      String?
   reviewedAt      DateTime?
@@ -165,7 +145,6 @@ model RegistrationRequest {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  rosterEntry EmployeeRoster? @relation(fields: [rosterEntryId], references: [id])
   requestedTeam Team? @relation(fields: [requestedTeamId], references: [id])
   reviewedBy User? @relation("ReviewedRegistrationRequests", fields: [reviewedById], references: [id])
   approvedUser User? @relation("ApprovedRegistrationRequests", fields: [approvedUserId], references: [id])

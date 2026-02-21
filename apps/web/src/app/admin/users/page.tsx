@@ -58,28 +58,15 @@ type RegistrationRequestStatus = 'PENDING' | 'READY_REVIEW' | 'APPROVED' | 'REJE
 type RegistrationRequestRow = {
   id: string;
   staffCode: string;
-
   firstName: string;
   lastName?: string | null;
   displayName: string;
   desiredUsername: string;
   status: RegistrationRequestStatus;
-  verificationScore: number;
-  verificationNotes?: string | null;
   submittedAt: string;
   requestedTeam?: { id: string; name: string } | null;
-  rosterEntry?: { id: string; staffCode: string; displayName: string; defaultTeam?: { id: string; name: string } | null } | null;
   reviewedBy?: { id: string; displayName: string; username: string } | null;
   reviewNote?: string | null;
-};
-
-type RegistrationRosterRow = {
-  id: string;
-  staffCode: string;
-  defaultTeamId?: string | null;
-  defaultTeam?: { id: string; name: string } | null;
-  defaultRole: 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF';
-  isActive: boolean;
 };
 
 function createRowId(): string {
@@ -109,7 +96,6 @@ function AdminUsersContent() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [shiftAssignments, setShiftAssignments] = useState<ShiftAssignment[]>([]);
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequestRow[]>([]);
-  const [registrationRoster, setRegistrationRoster] = useState<RegistrationRosterRow[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -150,25 +136,23 @@ function AdminUsersContent() {
   const [editRole, setEditRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF'>('MEMBER');
   const [editTeamId, setEditTeamId] = useState('');
 
-  // Registration roster form
-  const [rosterStaffCode, setRosterStaffCode] = useState('');
-  const [rosterTeamId, setRosterTeamId] = useState('');
-  const [rosterRole, setRosterRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF'>('MEMBER');
+  // Approve registration modal
+  const [approveTarget, setApproveTarget] = useState<RegistrationRequestRow | null>(null);
+  const [approveTeamId, setApproveTeamId] = useState('');
+  const [approveRole, setApproveRole] = useState<'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF'>('MEMBER');
 
   const load = useCallback(async (silent = false): Promise<void> => {
     try {
-      const [userData, teamData, assignmentData, requestData, rosterData] = await Promise.all([
+      const [userData, teamData, assignmentData, requestData] = await Promise.all([
         apiFetch<UserRow[]>('/admin/users'),
         apiFetch<Team[]>('/teams'),
         apiFetch<ShiftAssignment[]>('/admin/shift-assignments'),
-        apiFetch<RegistrationRequestRow[]>('/admin/registration-requests'),
-        apiFetch<RegistrationRosterRow[]>('/admin/registration-roster')
+        apiFetch<RegistrationRequestRow[]>('/admin/registration-requests')
       ]);
       setUsers(userData);
       setTeams(teamData);
       setShiftAssignments(assignmentData);
       setRegistrationRequests(requestData);
-      setRegistrationRoster(rosterData);
       setError('');
     } catch (err) {
       if (!silent) setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -461,46 +445,24 @@ function AdminUsersContent() {
     return new Date(value).toLocaleString();
   }
 
-  async function createRosterEntry(e: FormEvent<HTMLFormElement>): Promise<void> {
-    e.preventDefault();
+  function openApproveModal(request: RegistrationRequestRow) {
+    setApproveTarget(request);
+    setApproveTeamId(request.requestedTeam?.id || '');
+    setApproveRole('MEMBER');
+  }
+
+  async function confirmApproveRequest(): Promise<void> {
+    if (!approveTarget) return;
     try {
-      await apiFetch('/admin/registration-roster', {
+      await apiFetch(`/admin/registration-requests/${approveTarget.id}/approve`, {
         method: 'POST',
         body: JSON.stringify({
-          staffCode: rosterStaffCode,
-          defaultTeamId: rosterTeamId || undefined,
-          defaultRole: rosterRole
+          teamId: approveTeamId || undefined,
+          role: approveRole,
         })
       });
-
-      setRosterStaffCode('');
-      setRosterTeamId('');
-      setRosterRole('MEMBER');
-      flash('Roster entry saved');
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save roster entry');
-    }
-  }
-
-  async function deleteRosterEntry(id: string): Promise<void> {
-    if (!confirm('Delete this roster entry?')) return;
-    try {
-      await apiFetch(`/admin/registration-roster/${id}`, { method: 'DELETE' });
-      flash('Roster entry deleted');
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete roster entry');
-    }
-  }
-
-  async function approveRequest(requestId: string): Promise<void> {
-    try {
-      await apiFetch(`/admin/registration-requests/${requestId}/approve`, {
-        method: 'POST',
-        body: JSON.stringify({})
-      });
-      flash('Registration request approved');
+      setApproveTarget(null);
+      flash('Registration approved — user account created');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve request');
@@ -566,9 +528,7 @@ function AdminUsersContent() {
                 <th>Staff Code</th>
                 <th>Name</th>
                 <th>Username</th>
-                <th>Verification</th>
-                <th>Status</th>
-                <th style={{ width: '140px' }}>Actions</th>
+                <th style={{ width: '160px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -578,27 +538,11 @@ function AdminUsersContent() {
                   <td className="mono">{request.staffCode}</td>
                   <td>
                     <div>{request.displayName}</div>
-
                   </td>
                   <td className="mono">{request.desiredUsername}</td>
                   <td>
-                    <span className={`tag ${request.verificationScore >= 90 ? 'ok' : request.verificationScore >= 40 ? 'warning' : 'danger'}`}>
-                      {request.verificationScore}
-                    </span>
-                    {request.verificationNotes ? (
-                      <div style={{ color: 'var(--muted)', fontSize: '0.72rem', marginTop: '0.15rem' }}>
-                        {request.verificationNotes}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td>
-                    <span className={`tag ${request.status === 'READY_REVIEW' ? 'ok' : 'warning'}`}>
-                      {request.status}
-                    </span>
-                  </td>
-                  <td>
                     <div style={{ display: 'flex', gap: '0.3rem' }}>
-                      <button type="button" className="button button-ok button-sm" onClick={() => void approveRequest(request.id)}>
+                      <button type="button" className="button button-ok button-sm" onClick={() => openApproveModal(request)}>
                         Approve
                       </button>
                       <button type="button" className="button button-danger button-sm" onClick={() => void rejectRequest(request.id)}>
@@ -609,68 +553,7 @@ function AdminUsersContent() {
                 </tr>
               ))}
               {pendingRegistrationRequests.length === 0 ? (
-                <tr><td colSpan={7} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No pending registration requests</td></tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-      <article className="card">
-        <h3>Registration Roster</h3>
-        <form className="toolbar" onSubmit={(e) => void createRosterEntry(e)}>
-          <input
-            className="input"
-            style={{ width: '140px' }}
-            value={rosterStaffCode}
-            onChange={(e) => setRosterStaffCode(e.target.value.toUpperCase())}
-            placeholder="Staff code"
-            required
-          />
-          <select className="select" style={{ width: '170px' }} value={rosterTeamId} onChange={(e) => setRosterTeamId(e.target.value)}>
-            <option value="">Service (no team)</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>{team.name}</option>
-            ))}
-          </select>
-          <select className="select" style={{ width: '130px' }} value={rosterRole} onChange={(e) => setRosterRole(e.target.value as any)}>
-            <option value="MEMBER">MEMBER</option>
-            <option value="LEADER">LEADER</option>
-            <option value="DRIVER">DRIVER</option>
-            <option value="MAID">MAID</option>
-            <option value="CHEF">CHEF</option>
-            <option value="ADMIN">ADMIN</option>
-          </select>
-          <button type="submit" className="button button-primary">Save Roster</button>
-        </form>
-
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Staff Code</th>
-                <th>Default Group</th>
-                <th>Default Role</th>
-                <th style={{ width: '90px' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {registrationRoster.map((entry) => (
-                <tr key={entry.id}>
-                  <td className="mono">{entry.staffCode}</td>
-                  <td>{entry.defaultTeam ? <span className="tag brand">{entry.defaultTeam.name}</span> : <span className="tag">Service</span>}</td>
-                  <td>
-                    <span className={`tag role-${entry.defaultRole.toLowerCase()}`}>{entry.defaultRole}</span>
-                  </td>
-                  <td>
-                    <button type="button" className="button button-danger button-sm" onClick={() => void deleteRosterEntry(entry.id)}>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {registrationRoster.length === 0 ? (
-                <tr><td colSpan={4} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No roster entries yet</td></tr>
+                <tr><td colSpan={5} style={{ color: 'var(--muted)', textAlign: 'center', padding: '1.5rem' }}>No pending registration requests</td></tr>
               ) : null}
             </tbody>
           </table>
@@ -920,6 +803,42 @@ function AdminUsersContent() {
                 <button type="submit" className="button button-primary">Save Changes</button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Approve Registration Modal */}
+      {approveTarget ? (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setApproveTarget(null); }}>
+          <div className="modal">
+            <h3>Approve Registration</h3>
+            <p style={{ marginBottom: '0.65rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
+              <strong>{approveTarget.displayName}</strong> ({approveTarget.desiredUsername}) requested an account
+              with staff code <strong>{approveTarget.staffCode}</strong>.
+              Assign a team and role before approving.
+            </p>
+            <div className="form-grid">
+              <label style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Team / Group</label>
+              <select className="select" value={approveTeamId} onChange={(e) => setApproveTeamId(e.target.value)}>
+                <option value="">Service (no team)</option>
+                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <label style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.3rem' }}>Role</label>
+              <select className="select" value={approveRole} onChange={(e) => setApproveRole(e.target.value as any)}>
+                <option value="MEMBER">MEMBER</option>
+                <option value="LEADER">LEADER</option>
+                <option value="DRIVER">DRIVER</option>
+                <option value="MAID">MAID</option>
+                <option value="CHEF">CHEF</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+              <div className="modal-footer">
+                <button type="button" className="button button-ghost" onClick={() => setApproveTarget(null)}>Cancel</button>
+                <button type="button" className="button button-primary" onClick={() => void confirmApproveRequest()}>
+                  Approve &amp; Create Account
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
