@@ -680,8 +680,47 @@ export default function EmployeeDashboardPage() {
     }
   };
 
+  const LAST_SEEN_KEY = 'punch_notif_last_seen';
+  type RequestUpdate = { id: string; type: 'shift' | 'driver'; status: string; updatedAt: string; label: string };
+  const [requestUpdates, setRequestUpdates] = useState<RequestUpdate[]>([]);
+
+  useEffect(() => {
+    if (!me || me.role === 'DRIVER' || me.role === 'ADMIN') return;
+    const lastSeen = localStorage.getItem(LAST_SEEN_KEY) || '1970-01-01T00:00:00Z';
+    const poll = async () => {
+      try {
+        const [shiftReqs, driverReqs] = await Promise.all([
+          apiFetch<{ id: string; status: string; updatedAt: string; requestType: string }[]>('/shifts/requests/me'),
+          apiFetch<{ id: string; status: string; updatedAt: string; destination: string; purpose: string | null }[]>('/driver-requests/me'),
+        ]);
+        const stored = localStorage.getItem(LAST_SEEN_KEY) || lastSeen;
+        const updates: RequestUpdate[] = [];
+        for (const r of shiftReqs) {
+          if ((r.status === 'APPROVED' || r.status === 'REJECTED') && r.updatedAt > stored) {
+            updates.push({ id: `shift-${r.id}`, type: 'shift', status: r.status, updatedAt: r.updatedAt, label: `Shift request ${r.status.toLowerCase()}` });
+          }
+        }
+        for (const r of driverReqs) {
+          if ((r.status === 'APPROVED' || r.status === 'REJECTED' || r.status === 'COMPLETED') && r.updatedAt > stored) {
+            const desc = r.purpose?.includes('Pickup requested') ? 'Meal request' : 'Driver request';
+            updates.push({ id: `driver-${r.id}`, type: 'driver', status: r.status, updatedAt: r.updatedAt, label: `${desc} ${r.status.toLowerCase()}` });
+          }
+        }
+        setRequestUpdates(updates);
+      } catch { /* silent */ }
+    };
+    void poll();
+    const id = setInterval(poll, 20_000);
+    return () => clearInterval(id);
+  }, [me]);
+
+  const markRequestsSeen = () => {
+    localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString());
+    setRequestUpdates([]);
+  };
+
   const notifications = useMemo(() => {
-    const list: { id: string; type: string; text: string; action?: boolean }[] = [];
+    const list: { id: string; type: string; text: string; action?: boolean; link?: string }[] = [];
     if (error) list.push({ id: 'error', type: 'error', text: error });
     if (actionMessage) list.push({ id: 'msg', type: 'success', text: actionMessage });
     if (isOffline) list.push({ id: 'offline', type: 'warning', text: 'You are offline. Actions will queue and sync later.' });
@@ -690,15 +729,19 @@ export default function EmployeeDashboardPage() {
     }
     if (pendingActions > 0) list.push({ id: 'pending', type: 'warning', text: `${pendingActions} action${pendingActions > 1 ? 's' : ''} waiting to sync…` });
     if (failedActions > 0) list.push({ id: 'failed', type: 'error', text: `${failedActions} action${failedActions > 1 ? 's' : ''} need manual retry.`, action: true });
+    for (const u of requestUpdates) {
+      const t = u.status === 'APPROVED' ? 'success' : u.status === 'COMPLETED' ? 'success' : 'error';
+      list.push({ id: u.id, type: t, text: u.label, link: '/employee/requests' });
+    }
     return list;
-  }, [error, actionMessage, isOffline, clockSkewMinutes, serverTimeZone, pendingActions, failedActions]);
+  }, [error, actionMessage, isOffline, clockSkewMinutes, serverTimeZone, pendingActions, failedActions, requestUpdates]);
 
   const headerAction = (
     <div className="action-menu-wrap" ref={notificationsRef}>
       <button 
         type="button" 
         className={`noti-bell${isOffline ? ' noti-bell-offline' : ''}`}
-        onClick={() => setNotificationsOpen(!notificationsOpen)}
+        onClick={() => { const opening = !notificationsOpen; setNotificationsOpen(opening); if (opening && requestUpdates.length > 0) markRequestsSeen(); }}
         title={isOffline ? 'No internet connection' : 'Notifications'}
       >
         {isOffline ? (
@@ -734,10 +777,18 @@ export default function EmployeeDashboardPage() {
           ) : (
             <div className="noti-list">
               {notifications.map(n => (
-                <div key={n.id} className={`noti-item noti-item-${n.type}`}>
+                <div
+                  key={n.id}
+                  className={`noti-item noti-item-${n.type}`}
+                  style={n.link ? { cursor: 'pointer' } : undefined}
+                  onClick={n.link ? () => { setNotificationsOpen(false); router.push(n.link!); } : undefined}
+                >
                   <div className="noti-dot" />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span className="noti-text">{n.text}</span>
+                    {n.link && (
+                      <span style={{ fontSize: '0.65rem', color: 'var(--muted)', marginLeft: '0.25rem' }}>View →</span>
+                    )}
                     {n.action && (
                       <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.375rem' }}>
                         <button type="button" className="button button-ghost button-sm" style={{ fontSize: '0.75rem' }} onClick={retryFailedQueueActions}>

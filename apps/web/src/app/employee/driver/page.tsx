@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
@@ -123,6 +123,51 @@ export default function DriverDashboardPage() {
   const currentStatus = (me?.driverStatus as DriverStatusKey) || 'OFFLINE';
   const cfg = STATUS_CONFIG[currentStatus];
 
+  const prevAvailCountRef = useRef(0);
+  const [notifPulse, setNotifPulse] = useState(false);
+  const availableSectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (available.length > prevAvailCountRef.current && prevAvailCountRef.current >= 0) {
+      setNotifPulse(true);
+      const t = setTimeout(() => setNotifPulse(false), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [available.length]);
+
+  useEffect(() => {
+    prevAvailCountRef.current = available.length;
+  }, [available.length]);
+
+  const driverHeaderAction = (
+    <button
+      type="button"
+      className="button button-ghost button-sm"
+      style={{ position: 'relative', fontSize: '1.1rem', padding: '0.25rem 0.5rem' }}
+      title={`${available.length} trip${available.length !== 1 ? 's' : ''} available`}
+      onClick={() => availableSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+      {available.length > 0 && (
+        <span style={{
+          position: 'absolute', top: -2, right: -2,
+          background: 'var(--danger)', color: '#fff',
+          fontSize: '0.6rem', fontWeight: 700,
+          minWidth: '16px', height: '16px',
+          borderRadius: '8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 4px', lineHeight: 1,
+          animation: notifPulse ? 'notifPulse 0.4s ease 3' : undefined,
+        }}>
+          {available.length}
+        </span>
+      )}
+    </button>
+  );
+
   if (loading) {
     return (
       <AppShell title="Driver" subtitle="…" userRole={me?.role}>
@@ -140,6 +185,7 @@ export default function DriverDashboardPage() {
       title="Driver"
       subtitle="Accept and complete approved trips"
       userRole={me?.role}
+      headerAction={driverHeaderAction}
     >
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
@@ -282,7 +328,7 @@ export default function DriverDashboardPage() {
 
       {/* ── Trip Cards (Upcoming first, then Active) ── */}
       <div style={{ display: 'grid', gap: '1.25rem' }}>
-        <article className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <article className="card" ref={availableSectionRef} style={{ padding: 0, overflow: 'hidden' }}>
           {/* Collapsible header */}
           <button
             type="button"

@@ -1387,6 +1387,11 @@ main > .shell {
   background: var(--surface-alt, rgba(255,255,255,0.04));
 }
 
+@keyframes notifPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+}
+
 .noti-badge {
   position: absolute;
   top: -4px;
