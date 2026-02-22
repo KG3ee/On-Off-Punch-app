@@ -115,6 +115,27 @@ export class RegistrationsService {
     return rows.map((row) => this.toPublicRequest(row));
   }
 
+  async getAdminSummary(): Promise<{
+    pending: number;
+    readyReview: number;
+    actionable: number;
+  }> {
+    const [pending, readyReview] = await Promise.all([
+      this.prisma.registrationRequest.count({
+        where: { status: RegistrationRequestStatus.PENDING },
+      }),
+      this.prisma.registrationRequest.count({
+        where: { status: RegistrationRequestStatus.READY_REVIEW },
+      }),
+    ]);
+
+    return {
+      pending,
+      readyReview,
+      actionable: pending + readyReview,
+    };
+  }
+
   async approveRequest(
     requestId: string,
     dto: ApproveRegistrationRequestDto,

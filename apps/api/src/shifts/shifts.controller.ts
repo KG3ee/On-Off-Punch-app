@@ -90,6 +90,13 @@ export class ShiftsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @Get('admin/requests/summary')
+  async getRequestSummary() {
+    return this.shiftsService.getAdminRequestSummary();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Post('admin/requests/:id/approve')
   async approveRequest(
     @CurrentUser() authUser: AuthUser,

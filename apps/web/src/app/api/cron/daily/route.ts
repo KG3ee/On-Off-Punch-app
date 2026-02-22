@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 function isAuthorized(request: NextRequest): boolean {
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = process.env.CRON_SECRET?.trim();
   if (!cronSecret) {
-    return true;
+    return process.env.NODE_ENV !== 'production';
   }
 
   const authHeader = request.headers.get('authorization') || '';
@@ -13,6 +13,13 @@ function isAuthorized(request: NextRequest): boolean {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (process.env.NODE_ENV === 'production' && !process.env.CRON_SECRET?.trim()) {
+    return NextResponse.json(
+      { ok: false, message: 'CRON_SECRET is required in production' },
+      { status: 500 }
+    );
+  }
+
   if (!isAuthorized(request)) {
     return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
   }

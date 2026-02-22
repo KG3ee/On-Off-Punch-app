@@ -578,6 +578,7 @@ export default function EmployeeDashboardPage() {
   useEffect(() => {
     if (me?.role !== 'CHEF' || !mealRequestId) return;
     const poll = async () => {
+      if (document.hidden) return;
       try {
         const reqs = await apiFetch<MealDriverRequest[]>('/driver-requests/me');
         const req = reqs.find((r) => r.id === mealRequestId);
@@ -689,6 +690,7 @@ export default function EmployeeDashboardPage() {
     if (!me || me.role === 'DRIVER' || me.role === 'ADMIN') return;
     const lastSeen = localStorage.getItem(LAST_SEEN_KEY) || '1970-01-01T00:00:00Z';
     const poll = async () => {
+      if (document.hidden) return;
       try {
         const [shiftReqs, driverReqs] = await Promise.all([
           apiFetch<{ id: string; status: string; updatedAt: string; requestType: string }[]>('/shifts/requests/me'),

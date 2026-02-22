@@ -152,7 +152,11 @@ export default function LeaderTeamPage() {
 
   useEffect(() => {
     void load();
-    const refreshTimer = window.setInterval(() => void load(true), 15_000);
+    const refreshTimer = window.setInterval(() => {
+      if (!document.hidden) {
+        void load(true);
+      }
+    }, 15_000);
     const tickTimer = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => {
       clearInterval(refreshTimer);

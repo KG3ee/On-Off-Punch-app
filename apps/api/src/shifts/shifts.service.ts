@@ -487,6 +487,14 @@ export class ShiftsService {
     });
   }
 
+  async getAdminRequestSummary() {
+    const pending = await this.prisma.shiftChangeRequest.count({
+      where: { status: ShiftChangeRequestStatus.PENDING },
+    });
+
+    return { pending };
+  }
+
   async approveRequest(requestId: string, reviewerId: string) {
     const req = await this.prisma.shiftChangeRequest.findUnique({
       where: { id: requestId },

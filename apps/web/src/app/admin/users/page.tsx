@@ -165,7 +165,11 @@ function AdminUsersContent() {
         setTimeout(() => registrationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
       }
     });
-    const timer = window.setInterval(() => void load(true), 30_000);
+    const timer = window.setInterval(() => {
+      if (!document.hidden) {
+        void load(true);
+      }
+    }, 30_000);
     return () => clearInterval(timer);
   }, [load, searchParams]);
 

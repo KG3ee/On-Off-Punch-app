@@ -33,6 +33,13 @@ export class DriverRequestsController {
     return this.driverRequestsService.listAllRequests();
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('admin/driver-requests/summary')
+  async getAdminSummary() {
+    return this.driverRequestsService.getAdminSummary();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('driver-requests/available')
   async listAvailableForDrivers(@CurrentUser() authUser: AuthUser) {

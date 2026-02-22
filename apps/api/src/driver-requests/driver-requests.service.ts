@@ -98,6 +98,13 @@ export class DriverRequestsService {
     });
   }
 
+  async getAdminSummary(): Promise<{ pending: number }> {
+    const pending = await this.prisma.driverRequest.count({
+      where: { status: DriverRequestStatus.PENDING },
+    });
+    return { pending };
+  }
+
   async listAvailableForDrivers(driverId: string): Promise<DriverRequestWithRelations[]> {
     return this.prisma.driverRequest.findMany({
       where: {

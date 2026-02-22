@@ -47,6 +47,14 @@ type BreakHistoryItem = {
   };
 };
 
+type ShiftRequestsSummary = { pending: number };
+type DriverRequestsSummary = { pending: number };
+type RegistrationRequestsSummary = {
+  pending: number;
+  readyReview: number;
+  actionable: number;
+};
+
 export default function AdminLivePage() {
   const router = useRouter();
   const [data, setData] = useState<LiveBoard | null>(null);
@@ -60,7 +68,11 @@ export default function AdminLivePage() {
   useEffect(() => {
     setNowTick(Date.now());
     void load();
-    const refreshTimer = window.setInterval(() => void load(), 15000);
+    const refreshTimer = window.setInterval(() => {
+      if (!document.hidden) {
+        void load();
+      }
+    }, 15000);
     const tickTimer = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => {
       window.clearInterval(refreshTimer);
@@ -73,15 +85,15 @@ export default function AdminLivePage() {
       const [live, history, shifts, drivers, signups] = await Promise.all([
         apiFetch<LiveBoard>('/attendance/admin/live'),
         apiFetch<BreakHistoryItem[]>(`/breaks/admin/history?from=${encodeURIComponent(new Date().toISOString().slice(0, 10))}&to=${encodeURIComponent(new Date().toISOString().slice(0, 10))}&limit=250`),
-        apiFetch<{ status: string }[]>('/admin/requests'),
-        apiFetch<{ status: string }[]>('/admin/driver-requests'),
-        apiFetch<{ status: string }[]>('/admin/registration-requests'),
+        apiFetch<ShiftRequestsSummary>('/admin/requests/summary'),
+        apiFetch<DriverRequestsSummary>('/admin/driver-requests/summary'),
+        apiFetch<RegistrationRequestsSummary>('/admin/registration-requests/summary'),
       ]);
       setData(live);
       setBreakHistory(history);
-      setPendingShifts(shifts.filter(r => r.status === 'PENDING').length);
-      setPendingDrivers(drivers.filter(r => r.status === 'PENDING').length);
-      setPendingSignups(signups.filter(r => r.status === 'PENDING' || r.status === 'READY_REVIEW').length);
+      setPendingShifts(shifts.pending);
+      setPendingDrivers(drivers.pending);
+      setPendingSignups(signups.actionable);
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');

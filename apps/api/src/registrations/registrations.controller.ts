@@ -37,6 +37,13 @@ export class RegistrationsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @Get('admin/registration-requests/summary')
+  async getSummary() {
+    return this.registrationsService.getAdminSummary();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Post('admin/registration-requests/:id/approve')
   async approveRequest(
     @Param('id') id: string,

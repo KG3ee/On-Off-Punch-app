@@ -69,7 +69,11 @@ export default function DriverDashboardPage() {
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(true), 15_000);
+    const timer = window.setInterval(() => {
+      if (!document.hidden) {
+        void load(true);
+      }
+    }, 15_000);
     return () => clearInterval(timer);
   }, [load]);
 
