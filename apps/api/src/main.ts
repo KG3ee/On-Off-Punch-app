@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import cookieParser = require("cookie-parser");
+import express = require("express");
 import { AppModule } from "./app.module";
 
 type CorsCallback = (err: Error | null, allow?: boolean) => void;
@@ -105,7 +106,10 @@ function createPostRateLimiter(options: {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+  });
+  const bodyLimit = process.env.BODY_LIMIT || "2mb";
   const slowRequestMs = Number(process.env.SLOW_REQUEST_LOG_MS || 400);
   const loginRateLimitMax = parsePositiveInt(
     process.env.AUTH_LOGIN_RATE_LIMIT_MAX,
@@ -123,6 +127,9 @@ async function bootstrap(): Promise<void> {
     process.env.REGISTRATION_RATE_LIMIT_WINDOW_MS,
     60_000,
   );
+
+  app.use(express.json({ limit: bodyLimit }));
+  app.use(express.urlencoded({ extended: true, limit: bodyLimit }));
 
   app.use((req: any, res: any, next: () => void) => {
     const startAt = process.hrtime.bigint();
