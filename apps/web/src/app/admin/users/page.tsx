@@ -621,7 +621,7 @@ function AdminUsersContent() {
         {/* ═══ Users ═══ */}
         <section className="dash-section">
           <h2 className="dash-section-title">All Users</h2>
-          <article className="card">
+          <article className="card users-card">
             <div className="table-wrap">
               <table>
                 <thead>
@@ -649,7 +649,10 @@ function AdminUsersContent() {
                       </td>
                       <td>{user.mustChangePassword ? <span className="tag warning">Required</span> : '—'}</td>
                       <td>
-                        <div className="action-menu-wrap" ref={openMenuId === user.id ? menuRef : undefined}>
+                        <div
+                          className={`action-menu-wrap${openMenuId === user.id ? ' is-open' : ''}`}
+                          ref={openMenuId === user.id ? menuRef : undefined}
+                        >
                           <button
                             className="action-menu-btn"
                             onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}

@@ -1066,6 +1066,24 @@ main > .shell {
   position: relative;
 }
 
+/* Keep user-row action menus above table/card clipping */
+.users-card {
+  overflow: visible;
+}
+
+.users-card .table-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.users-card .action-menu-wrap {
+  z-index: 5;
+}
+
+.users-card .action-menu-wrap.is-open {
+  z-index: 60;
+}
+
 .action-menu-btn {
   background: transparent;
   border: 1px solid transparent;
@@ -1093,7 +1111,7 @@ main > .shell {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   min-width: 168px;
-  z-index: 20;
+  z-index: 80;
   padding: 0.25rem;
   animation: fadeIn 100ms ease-out;
 }
