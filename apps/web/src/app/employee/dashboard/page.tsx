@@ -91,6 +91,17 @@ const BREAK_SHORTCUT_KEY_TO_CODE: Record<string, string> = {
   '2': 'cf+2',
   '3': 'cf+3'
 };
+const BREAK_SHORTCUT_EVENT_CODE_TO_CODE: Record<string, string> = {
+  KeyB: 'bwc',
+  KeyW: 'wc',
+  KeyC: 'cy',
+  Digit1: 'cf+1',
+  Digit2: 'cf+2',
+  Digit3: 'cf+3',
+  Numpad1: 'cf+1',
+  Numpad2: 'cf+2',
+  Numpad3: 'cf+3'
+};
 const BREAK_SHORTCUT_CODE_TO_LABEL: Record<string, string> = {
   bwc: 'B',
   wc: 'W',
@@ -355,7 +366,6 @@ export default function EmployeeDashboardPage() {
         e.altKey ||
         e.ctrlKey ||
         e.metaKey ||
-        e.shiftKey ||
         e.repeat ||
         shortcutConfirmPolicy ||
         !canStartBreak ||
@@ -364,8 +374,9 @@ export default function EmployeeDashboardPage() {
         return;
       }
 
-      const pressed = e.key.toLowerCase();
-      const code = BREAK_SHORTCUT_KEY_TO_CODE[pressed];
+      const code =
+        BREAK_SHORTCUT_EVENT_CODE_TO_CODE[e.code] ||
+        BREAK_SHORTCUT_KEY_TO_CODE[e.key.toLowerCase()];
       if (!code) return;
 
       const policy = policies.find((item) => item.code.toLowerCase() === code);
