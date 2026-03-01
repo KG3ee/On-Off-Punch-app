@@ -1116,6 +1116,13 @@ main > .shell {
   animation: fadeIn 100ms ease-out;
 }
 
+.action-menu-floating {
+  position: fixed;
+  right: auto;
+  top: auto;
+  z-index: 2000;
+}
+
 .action-menu button {
   display: flex;
   align-items: center;

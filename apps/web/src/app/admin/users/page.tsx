@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { createPortal } from 'react-dom';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
 
@@ -69,6 +70,13 @@ type RegistrationRequestRow = {
   reviewNote?: string | null;
 };
 
+type ActionMenuState = {
+  userId: string;
+  x: number;
+  y: number;
+  openUp: boolean;
+};
+
 function createRowId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -124,8 +132,9 @@ function AdminUsersContent() {
   const [editEffectiveFrom, setEditEffectiveFrom] = useState(todayStr());
 
   // Action menu
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<ActionMenuState | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Reset password modal
   const [resetPasswordUser, setResetPasswordUser] = useState<UserRow | null>(null);
@@ -173,16 +182,76 @@ function AdminUsersContent() {
     return () => clearInterval(timer);
   }, [load, searchParams]);
 
-  // Close action menu on outside click
+  const closeActionMenu = useCallback(() => {
+    setOpenMenu(null);
+    menuButtonRef.current = null;
+  }, []);
+
+  const toggleActionMenu = useCallback((userId: string, button: HTMLButtonElement) => {
+    if (openMenu?.userId === userId) {
+      closeActionMenu();
+      return;
+    }
+
+    const rect = button.getBoundingClientRect();
+    const menuWidth = 180;
+    const estimatedHeight = 186;
+    const sidePadding = 8;
+    const menuGap = 4;
+
+    const maxLeft = window.innerWidth - menuWidth - sidePadding;
+    const x = Math.min(Math.max(rect.right - menuWidth, sidePadding), maxLeft);
+    const openUp = window.innerHeight - rect.bottom < estimatedHeight && rect.top > estimatedHeight;
+    const y = openUp ? rect.top - menuGap : rect.bottom + menuGap;
+
+    menuButtonRef.current = button;
+    setOpenMenu({
+      userId,
+      x,
+      y,
+      openUp
+    });
+  }, [closeActionMenu, openMenu?.userId]);
+
+  // Close action menu on outside click, escape, or viewport changes
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenuId(null);
+      const target = e.target as Node;
+      const clickedMenu = menuRef.current?.contains(target) ?? false;
+      const clickedButton = menuButtonRef.current?.contains(target as Node) ?? false;
+      if (!clickedMenu && !clickedButton) {
+        closeActionMenu();
       }
     }
+
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        closeActionMenu();
+      }
+    }
+
+    function handleViewportChange() {
+      closeActionMenu();
+    }
+
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+    document.addEventListener('keydown', handleEscape);
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [closeActionMenu]);
+
+  useEffect(() => {
+    if (openMenu && !users.some((user) => user.id === openMenu.userId)) {
+      closeActionMenu();
+    }
+  }, [closeActionMenu, openMenu, users]);
 
   function flash(msg: string) {
     setMessage(msg);
@@ -350,7 +419,7 @@ function AdminUsersContent() {
     try {
       await apiFetch(`/admin/users/${userId}`, { method: 'PATCH', body: JSON.stringify(data) });
       flash('User updated');
-      setOpenMenuId(null);
+      closeActionMenu();
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed');
@@ -397,7 +466,7 @@ function AdminUsersContent() {
     try {
       await apiFetch(`/admin/users/${id}`, { method: 'DELETE' });
       flash('User deleted permanently');
-      setOpenMenuId(null);
+      closeActionMenu();
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete user');
@@ -408,13 +477,13 @@ function AdminUsersContent() {
     setEditingUser(user);
     setEditRole(user.role);
     setEditTeamId(user.team?.id || '');
-    setOpenMenuId(null);
+    closeActionMenu();
   }
 
   function openResetPassword(user: UserRow) {
     setResetPasswordUser(user);
     setNewPassword('');
-    setOpenMenuId(null);
+    closeActionMenu();
   }
 
   function updateShiftRow(rowId: string, key: 'startTime' | 'endTime', value: string) {
@@ -636,7 +705,7 @@ function AdminUsersContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user, index) => (
+                  {filteredUsers.map((user) => (
                     <tr key={user.id}>
                       <td style={{ fontWeight: 500 }}>{user.displayName}</td>
                       <td className="mono">{user.username}</td>
@@ -650,32 +719,15 @@ function AdminUsersContent() {
                       <td>{user.mustChangePassword ? <span className="tag warning">Required</span> : '—'}</td>
                       <td>
                         <div
-                          className={`action-menu-wrap${openMenuId === user.id ? ' is-open' : ''}`}
-                          ref={openMenuId === user.id ? menuRef : undefined}
+                          className={`action-menu-wrap${openMenu?.userId === user.id ? ' is-open' : ''}`}
                         >
                           <button
                             className="action-menu-btn"
-                            onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                            onClick={(event) => toggleActionMenu(user.id, event.currentTarget)}
                             title="Actions"
                           >
                             ⋮
                           </button>
-                          {openMenuId === user.id ? (
-                            <div
-                              className="action-menu"
-                              style={index >= filteredUsers.length - 2 ? { top: 'auto', bottom: '100%', marginBottom: '4px' } : undefined}
-                            >
-                              <button onClick={() => openEditUser(user)}>Edit Role &amp; Team</button>
-                              <button onClick={() => openResetPassword(user)}>Reset Password</button>
-                              <button onClick={() => void updateUserField(user.id, { isActive: !user.isActive })}>
-                                {user.isActive ? 'Deactivate' : 'Reactivate'}
-                              </button>
-                              <hr style={{ margin: '0.2rem 0', border: 0, borderTop: '1px solid var(--border)' }} />
-                              <button onClick={() => void deleteUser(user.id, user.displayName)} style={{ color: 'var(--danger)' }}>
-                                Delete Permanently
-                              </button>
-                            </div>
-                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -688,6 +740,40 @@ function AdminUsersContent() {
             </div>
           </article>
         </section>
+
+        {openMenu && typeof document !== 'undefined'
+          ? createPortal(
+            <div
+              ref={menuRef}
+              className="action-menu action-menu-floating"
+              style={{
+                left: `${openMenu.x}px`,
+                top: `${openMenu.y}px`,
+                transform: openMenu.openUp ? 'translateY(-100%)' : undefined
+              }}
+            >
+              {(() => {
+                const user = users.find((item) => item.id === openMenu.userId);
+                if (!user) return null;
+
+                return (
+                  <>
+                    <button onClick={() => openEditUser(user)}>Edit Role &amp; Team</button>
+                    <button onClick={() => openResetPassword(user)}>Reset Password</button>
+                    <button onClick={() => void updateUserField(user.id, { isActive: !user.isActive })}>
+                      {user.isActive ? 'Deactivate' : 'Reactivate'}
+                    </button>
+                    <hr style={{ margin: '0.2rem 0', border: 0, borderTop: '1px solid var(--line)' }} />
+                    <button onClick={() => void deleteUser(user.id, user.displayName)} style={{ color: 'var(--danger)' }}>
+                      Delete Permanently
+                    </button>
+                  </>
+                );
+              })()}
+            </div>,
+            document.body
+          )
+          : null}
 
       {/* ══════════════════════════════════════ */}
       {/* ── MODALS ── */}
