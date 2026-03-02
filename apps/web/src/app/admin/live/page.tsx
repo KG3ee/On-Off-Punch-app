@@ -339,46 +339,7 @@ export default function AdminLivePage() {
 
         {/* ═══ MY DUTY & BREAKS ═══ */}
         <section className="dash-section">
-          <h2 className="dash-section-title">🧑‍💼 My Duty</h2>
-
-          {/* Punch strip */}
-          <div className="dash-punch-strip" style={{ marginBottom: '0.75rem' }}>
-            <button
-              type="button"
-              className="punch-btn punch-on"
-              disabled={(personalLoading && !isOffline) || !!activeSession}
-              onClick={() => void runAction('/attendance/on')}
-              style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
-            >
-              <span className="punch-icon" style={{ fontSize: '1.1rem' }}>⏻</span>
-              <span className="punch-label" style={{ fontSize: '0.7rem' }}>ON</span>
-            </button>
-
-            <div className="dash-punch-status">
-              {activeSession ? (
-                <>
-                  <span className="status-dot active" />
-                  <span style={{ fontWeight: 700, color: 'var(--ok)', fontSize: '1rem' }}>
-                    {Math.max(0, Math.round((nowTick - new Date(activeSession.punchedOnAt).getTime()) / 60000))}m
-                  </span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>on duty</span>
-                </>
-              ) : (
-                <span style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>Off Duty</span>
-              )}
-            </div>
-
-            <button
-              type="button"
-              className="punch-btn punch-off"
-              disabled={(personalLoading && !isOffline) || !activeSession}
-              onClick={() => void runAction('/attendance/off')}
-              style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
-            >
-              <span className="punch-icon" style={{ fontSize: '1.1rem' }}>⏼</span>
-              <span className="punch-label" style={{ fontSize: '0.7rem' }}>OFF</span>
-            </button>
-          </div>
+          <h2 className="dash-section-title">🧑‍💼 My Breaks</h2>
 
           {actionMsg ? <div className="alert alert-success" style={{ marginBottom: '0.5rem' }}>{actionMsg}</div> : null}
 
