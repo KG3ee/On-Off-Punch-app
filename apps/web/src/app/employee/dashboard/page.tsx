@@ -580,8 +580,8 @@ export default function EmployeeDashboardPage() {
   async function loadTargeted(endpoints: ('sessions' | 'breaks' | 'summary')[]): Promise<void> {
     const fetchers = {
       sessions: () => apiFetch<DutySession[]>('/attendance/me/today'),
-      breaks:   () => apiFetch<BreakSession[]>('/breaks/me/today'),
-      summary:  () => apiFetch<MonthlySummary>('/attendance/me/summary'),
+      breaks: () => apiFetch<BreakSession[]>('/breaks/me/today'),
+      summary: () => apiFetch<MonthlySummary>('/attendance/me/summary'),
     };
     const results = await Promise.allSettled(endpoints.map(e => fetchers[e]()));
     endpoints.forEach((ep, i) => {
@@ -938,8 +938,8 @@ export default function EmployeeDashboardPage() {
 
   const headerAction = (
     <div className="action-menu-wrap" ref={notificationsRef}>
-      <button 
-        type="button" 
+      <button
+        type="button"
         className={`noti-bell${isOffline ? ' noti-bell-offline' : ''}`}
         onClick={() => { const opening = !notificationsOpen; setNotificationsOpen(opening); if (opening && requestUpdates.length > 0) markRequestsSeen(); }}
         title={isOffline ? 'No internet connection' : 'Notifications'}
@@ -1030,347 +1030,351 @@ export default function EmployeeDashboardPage() {
         <LeaderDashboard
           activeSession={activeSession}
           activeDutyMinutes={activeDutyMinutes}
+          activeBreak={activeBreak}
+          activeBreakMinutes={activeBreakMinutes}
+          policies={policies}
+          breakSessions={breakSessions}
           monthlySummary={monthlySummary}
           loading={loading}
           isOffline={isOffline}
           runAction={runAction}
         />
       ) : (
-      <>
-      {/* ── Monthly KPI Row (non-Leader) ── */}
-      {monthlySummary && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-        <section className="kpi-grid">
-          <article className="kpi">
-            <p className="kpi-label">Month Hours</p>
-            <p className="kpi-value">{fmtDuration(monthlySummary.totalWorkedMinutes)}</p>
-          </article>
-          <article className="kpi">
-            <p className="kpi-label">Month Late</p>
-            <p className="kpi-value" style={{ color: monthlySummary.totalLateMinutes > 0 ? 'var(--danger)' : undefined }}>
-              {monthlySummary.totalLateMinutes}m
-            </p>
-          </article>
-          <article className="kpi">
-            <p className="kpi-label">Overtime</p>
-            <p className="kpi-value" style={{ color: monthlySummary.totalOvertimeMinutes > 0 ? 'var(--ok)' : undefined }}>
-              {monthlySummary.totalOvertimeMinutes}m
-            </p>
-          </article>
-        </section>
-      ) : null}
-
-      {/* ── Today KPI Row (non-Leader) ── */}
-      <section className="kpi-grid">
-        <article className="kpi">
-          <p className="kpi-label">Sessions</p>
-          <p className="kpi-value">{sessions.length}</p>
-        </article>
-        <article className="kpi">
-          <p className="kpi-label">Duty</p>
-          <p className="kpi-value" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <span className={`status-dot ${activeSession ? 'active' : 'inactive'}`} />
-            {activeSession ? fmtDuration(activeDutyMinutes) : 'Off'}
-          </p>
-        </article>
-        {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-          <article className="kpi">
-            <p className="kpi-label">Break</p>
-            <p className="kpi-value">
-              {activeBreak ? (
-                <span style={{ color: 'var(--ok)' }}>{activeBreak.breakPolicy.code.toUpperCase()}</span>
-              ) : 'None'}
-            </p>
-          </article>
-        ) : null}
-        {activeSession?.isLate && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-          <article className="kpi">
-            <p className="kpi-label">Late</p>
-            <p className="kpi-value" style={{ color: 'var(--danger)' }}>{activeSession.lateMinutes}m</p>
-          </article>
-        ) : null}
-      </section>
-
-      {/* ── Main Layout (non-Leader) ── */}
-      <section className="split">
-        {/* Left column — Actions */}
-        <div className="grid">
-          {/* Duty */}
-          <article className="card">
-            <h3>Duty</h3>
-            <div className="action-row">
-              <button
-                type="button"
-                className="punch-btn punch-on"
-                disabled={(loading && !isOffline) || !!activeSession}
-                onClick={() => void runAction('/attendance/on')}
-              >
-                <span className="punch-icon">⏻</span>
-                <span className="punch-label">Punch ON</span>
-              </button>
-              <button
-                type="button"
-                className="punch-btn punch-off"
-                disabled={(loading && !isOffline) || !activeSession}
-                onClick={() => void runAction('/attendance/off')}
-              >
-                <span className="punch-icon">⏼</span>
-                <span className="punch-label">Punch OFF</span>
-              </button>
-            </div>
-          </article>
-
-          {me?.role === 'CHEF' ? (
-            <article className="card">
-              <h3>🍽️ Meal Ready</h3>
-              {mealDeliveryStatus && mealDeliveryStatus !== 'COMPLETED' && mealDeliveryStatus !== 'REJECTED' && !mealSent ? (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  padding: '0.75rem 1rem', borderRadius: '0.75rem', marginTop: '0.5rem',
-                  background: mealDeliveryStatus === 'IN_PROGRESS' ? 'rgba(59,130,246,0.1)' : mealDeliveryStatus === 'APPROVED' ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.1)',
-                  border: `1px solid ${mealDeliveryStatus === 'IN_PROGRESS' ? 'rgba(59,130,246,0.3)' : mealDeliveryStatus === 'APPROVED' ? 'rgba(34,197,94,0.3)' : 'rgba(251,191,36,0.3)'}`,
-                }}>
-                  <span style={{ fontSize: '1.5rem' }}>
-                    {mealDeliveryStatus === 'IN_PROGRESS' ? '🚗' : mealDeliveryStatus === 'APPROVED' ? '✅' : '⏳'}
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>
-                      {mealDeliveryStatus === 'PENDING' && 'Waiting for admin approval...'}
-                      {mealDeliveryStatus === 'APPROVED' && 'Approved! Waiting for driver...'}
-                      {mealDeliveryStatus === 'IN_PROGRESS' && 'Driver is on the way!'}
-                    </p>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '0.125rem 0 0' }}>
-                      Auto-refreshing every 10s
-                    </p>
-                  </div>
-                  <span className={`status-dot active`} style={{ animationDuration: '1.5s' }} />
-                </div>
-              ) : (
-                <div
-                  ref={mealTrackRef}
-                  className="slide-track"
-                  style={{
-                    position: 'relative',
-                    height: `${MEAL_THUMB_SIZE}px`,
-                    borderRadius: `${MEAL_THUMB_SIZE / 2}px`,
-                    background: mealSent
-                      ? 'var(--ok)'
-                      : 'linear-gradient(90deg, var(--surface-alt, #2a2a3e) 0%, var(--brand) 100%)',
-                    overflow: 'hidden',
-                    marginTop: '0.5rem',
-                    touchAction: 'none',
-                    userSelect: 'none',
-                    transition: 'background 0.3s',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: 'rgba(255,255,255,0.5)',
-                      pointerEvents: 'none',
-                      letterSpacing: '0.03em',
-                    }}
-                  >
-                    {mealSent ? '✓ Sent!' : 'Slide to report meal ready →'}
-                  </div>
-
-                  <div
-                    onTouchStart={handleMealTouchStart}
-                    onMouseDown={handleMealMouseDown}
-                    style={{
-                      position: 'absolute',
-                      top: 3,
-                      left: 3 + mealSlideX,
-                      width: MEAL_THUMB_SIZE - 6,
-                      height: MEAL_THUMB_SIZE - 6,
-                      borderRadius: '50%',
-                      background: mealSent ? '#fff' : 'var(--brand)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '1.4rem',
-                      cursor: 'grab',
-                      transition: mealSliding ? 'none' : 'left 0.3s ease',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      zIndex: 2,
-                    }}
-                  >
-                    {mealSent ? '✓' : '🍽️'}
-                  </div>
-                </div>
-              )}
-            </article>
+        <>
+          {/* ── Monthly KPI Row (non-Leader) ── */}
+          {monthlySummary && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+            <section className="kpi-grid">
+              <article className="kpi">
+                <p className="kpi-label">Month Hours</p>
+                <p className="kpi-value">{fmtDuration(monthlySummary.totalWorkedMinutes)}</p>
+              </article>
+              <article className="kpi">
+                <p className="kpi-label">Month Late</p>
+                <p className="kpi-value" style={{ color: monthlySummary.totalLateMinutes > 0 ? 'var(--danger)' : undefined }}>
+                  {monthlySummary.totalLateMinutes}m
+                </p>
+              </article>
+              <article className="kpi">
+                <p className="kpi-label">Overtime</p>
+                <p className="kpi-value" style={{ color: monthlySummary.totalOvertimeMinutes > 0 ? 'var(--ok)' : undefined }}>
+                  {monthlySummary.totalOvertimeMinutes}m
+                </p>
+              </article>
+            </section>
           ) : null}
 
-          {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-          <article className="card">
-            <h3>Breaks</h3>
-            {activeBreak ? (
-              <div className="break-banner">
-                <span className="status-dot active" />
-                <span><strong>{activeBreak.breakPolicy.code.toUpperCase()}</strong> · {activeBreak.breakPolicy.name}</span>
-                <span className="elapsed">{activeBreakMinutes}m</span>
-                <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-                  <button className="button button-ok button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/end')} title="Space bar">
-                    End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
+          {/* ── Today KPI Row (non-Leader) ── */}
+          <section className="kpi-grid">
+            <article className="kpi">
+              <p className="kpi-label">Sessions</p>
+              <p className="kpi-value">{sessions.length}</p>
+            </article>
+            <article className="kpi">
+              <p className="kpi-label">Duty</p>
+              <p className="kpi-value" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <span className={`status-dot ${activeSession ? 'active' : 'inactive'}`} />
+                {activeSession ? fmtDuration(activeDutyMinutes) : 'Off'}
+              </p>
+            </article>
+            {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+              <article className="kpi">
+                <p className="kpi-label">Break</p>
+                <p className="kpi-value">
+                  {activeBreak ? (
+                    <span style={{ color: 'var(--ok)' }}>{activeBreak.breakPolicy.code.toUpperCase()}</span>
+                  ) : 'None'}
+                </p>
+              </article>
+            ) : null}
+            {activeSession?.isLate && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+              <article className="kpi">
+                <p className="kpi-label">Late</p>
+                <p className="kpi-value" style={{ color: 'var(--danger)' }}>{activeSession.lateMinutes}m</p>
+              </article>
+            ) : null}
+          </section>
+
+          {/* ── Main Layout (non-Leader) ── */}
+          <section className="split">
+            {/* Left column — Actions */}
+            <div className="grid">
+              {/* Duty */}
+              <article className="card">
+                <h3>Duty</h3>
+                <div className="action-row">
+                  <button
+                    type="button"
+                    className="punch-btn punch-on"
+                    disabled={(loading && !isOffline) || !!activeSession}
+                    onClick={() => void runAction('/attendance/on')}
+                  >
+                    <span className="punch-icon">⏻</span>
+                    <span className="punch-label">Punch ON</span>
                   </button>
-                  {activeBreakMinutes < 2 ? (
-                    <button className="button button-danger button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/cancel')} title="Escape">
-                      Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="punch-btn punch-off"
+                    disabled={(loading && !isOffline) || !activeSession}
+                    onClick={() => void runAction('/attendance/off')}
+                  >
+                    <span className="punch-icon">⏼</span>
+                    <span className="punch-label">Punch OFF</span>
+                  </button>
+                </div>
+              </article>
+
+              {me?.role === 'CHEF' ? (
+                <article className="card">
+                  <h3>🍽️ Meal Ready</h3>
+                  {mealDeliveryStatus && mealDeliveryStatus !== 'COMPLETED' && mealDeliveryStatus !== 'REJECTED' && !mealSent ? (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '0.75rem',
+                      padding: '0.75rem 1rem', borderRadius: '0.75rem', marginTop: '0.5rem',
+                      background: mealDeliveryStatus === 'IN_PROGRESS' ? 'rgba(59,130,246,0.1)' : mealDeliveryStatus === 'APPROVED' ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.1)',
+                      border: `1px solid ${mealDeliveryStatus === 'IN_PROGRESS' ? 'rgba(59,130,246,0.3)' : mealDeliveryStatus === 'APPROVED' ? 'rgba(34,197,94,0.3)' : 'rgba(251,191,36,0.3)'}`,
+                    }}>
+                      <span style={{ fontSize: '1.5rem' }}>
+                        {mealDeliveryStatus === 'IN_PROGRESS' ? '🚗' : mealDeliveryStatus === 'APPROVED' ? '✅' : '⏳'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>
+                          {mealDeliveryStatus === 'PENDING' && 'Waiting for admin approval...'}
+                          {mealDeliveryStatus === 'APPROVED' && 'Approved! Waiting for driver...'}
+                          {mealDeliveryStatus === 'IN_PROGRESS' && 'Driver is on the way!'}
+                        </p>
+                        <p style={{ fontSize: '0.72rem', color: 'var(--muted)', margin: '0.125rem 0 0' }}>
+                          Auto-refreshing every 10s
+                        </p>
+                      </div>
+                      <span className={`status-dot active`} style={{ animationDuration: '1.5s' }} />
+                    </div>
+                  ) : (
+                    <div
+                      ref={mealTrackRef}
+                      className="slide-track"
+                      style={{
+                        position: 'relative',
+                        height: `${MEAL_THUMB_SIZE}px`,
+                        borderRadius: `${MEAL_THUMB_SIZE / 2}px`,
+                        background: mealSent
+                          ? 'var(--ok)'
+                          : 'linear-gradient(90deg, var(--surface-alt, #2a2a3e) 0%, var(--brand) 100%)',
+                        overflow: 'hidden',
+                        marginTop: '0.5rem',
+                        touchAction: 'none',
+                        userSelect: 'none',
+                        transition: 'background 0.3s',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          color: 'rgba(255,255,255,0.5)',
+                          pointerEvents: 'none',
+                          letterSpacing: '0.03em',
+                        }}
+                      >
+                        {mealSent ? '✓ Sent!' : 'Slide to report meal ready →'}
+                      </div>
+
+                      <div
+                        onTouchStart={handleMealTouchStart}
+                        onMouseDown={handleMealMouseDown}
+                        style={{
+                          position: 'absolute',
+                          top: 3,
+                          left: 3 + mealSlideX,
+                          width: MEAL_THUMB_SIZE - 6,
+                          height: MEAL_THUMB_SIZE - 6,
+                          borderRadius: '50%',
+                          background: mealSent ? '#fff' : 'var(--brand)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '1.4rem',
+                          cursor: 'grab',
+                          transition: mealSliding ? 'none' : 'left 0.3s ease',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          zIndex: 2,
+                        }}
+                      >
+                        {mealSent ? '✓' : '🍽️'}
+                      </div>
+                    </div>
+                  )}
+                </article>
+              ) : null}
+
+              {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+                <article className="card">
+                  <h3>Breaks</h3>
+                  {activeBreak ? (
+                    <div className="break-banner">
+                      <span className="status-dot active" />
+                      <span><strong>{activeBreak.breakPolicy.code.toUpperCase()}</strong> · {activeBreak.breakPolicy.name}</span>
+                      <span className="elapsed">{activeBreakMinutes}m</span>
+                      <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
+                      <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
+                        <button className="button button-ok button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/end')} title="Space bar">
+                          End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
+                        </button>
+                        {activeBreakMinutes < 2 ? (
+                          <button className="button button-danger button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/cancel')} title="Escape">
+                            Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {breakBlockedReason ? (
+                        <div className="alert alert-warning">{breakBlockedReason}</div>
+                      ) : null}
+                      <div className="break-chips-layout">
+                        {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
+                        {bottomRowPolicies.length > 0 ? (
+                          <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div>
+                        ) : null}
+                        {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
+                        {policies.length === 0 ? (
+                          <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p>
+                        ) : null}
+                      </div>
+                    </>
+                  )}
+                </article>
+              ) : null}
+            </div>
+
+            {/* Right column — Current Session */}
+            <div className="grid">
+              <article className="card">
+                <h3>Current Session</h3>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>On</th>
+                        <th>Off</th>
+                        <th>Status</th>
+                        {me?.role !== 'MAID' && me?.role !== 'CHEF' ? <th>Late</th> : null}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeSession ? (
+                        <tr>
+                          <td className="mono">{activeSession.shiftDate}</td>
+                          <td className="mono">{fmtTime(activeSession.punchedOnAt)}</td>
+                          <td className="mono">{activeSession.punchedOffAt ? fmtTime(activeSession.punchedOffAt) : '—'}</td>
+                          <td>
+                            <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
+                          </td>
+                          {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+                            <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
+                          ) : null}
+                        </tr>
+                      ) : (
+                        <tr><td colSpan={me?.role === 'MAID' || me?.role === 'CHEF' ? 4 : 5} className="table-empty">Not on duty</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
+                <article className="card">
+                  <h3>Session Breaks</h3>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Code</th>
+                          <th>Start</th>
+                          <th>End</th>
+                          <th>Min</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sessionBreaks.map((session) => (
+                          <tr key={session.id}>
+                            <td><span className="tag">{session.breakPolicy.code.toUpperCase()}</span></td>
+                            <td className="mono">{fmtTime(session.startedAt)}</td>
+                            <td className="mono">{session.endedAt ? fmtTime(session.endedAt) : '—'}</td>
+                            <td>{formatBreakMinutes(session)}</td>
+                            <td>
+                              {session.status === 'CANCELLED' ? (
+                                <span className="tag danger">Cancelled</span>
+                              ) : session.status === 'ACTIVE' ? (
+                                <span className="tag ok">Active</span>
+                              ) : session.isOvertime ? (
+                                <span className="tag warning">Late</span>
+                              ) : (
+                                <span className="tag brand">On time</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {sessionBreaks.length === 0 ? (
+                          <tr><td colSpan={5} className="table-empty">{activeSession ? 'No breaks this session' : 'Not on duty'}</td></tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              ) : null}
+            </div>
+          </section>
+
+          {shortcutConfirmPolicy ? (
+            <div
+              className="modal-overlay"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setShortcutConfirmPolicy(null);
+                }
+              }}
+            >
+              <div className="modal shortcut-confirm-modal">
+                <h3>Confirm Break Shortcut</h3>
+                <p style={{ marginBottom: '0.35rem' }}>
+                  Start <strong>{shortcutConfirmPolicy.code.toUpperCase()}</strong> - {shortcutConfirmPolicy.name}?
+                </p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                  Press <kbd>Enter</kbd> to confirm or <kbd>Esc</kbd> to cancel.
+                </p>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="button button-ghost"
+                    onClick={() => setShortcutConfirmPolicy(null)}
+                  >
+                    Cancel (Esc)
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => {
+                      const policy = shortcutConfirmPolicy;
+                      if (!policy) return;
+                      setShortcutConfirmPolicy(null);
+                      void runAction('/breaks/start', { code: policy.code });
+                    }}
+                  >
+                    Confirm (Enter)
+                  </button>
                 </div>
               </div>
-            ) : (
-              <>
-                {breakBlockedReason ? (
-                  <div className="alert alert-warning">{breakBlockedReason}</div>
-                ) : null}
-                <div className="break-chips-layout">
-                  {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
-                  {bottomRowPolicies.length > 0 ? (
-                    <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div>
-                  ) : null}
-                  {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
-                  {policies.length === 0 ? (
-                    <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p>
-                  ) : null}
-                </div>
-              </>
-            )}
-          </article>
+            </div>
           ) : null}
-        </div>
-
-        {/* Right column — Current Session */}
-        <div className="grid">
-          <article className="card">
-            <h3>Current Session</h3>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>On</th>
-                    <th>Off</th>
-                    <th>Status</th>
-                    {me?.role !== 'MAID' && me?.role !== 'CHEF' ? <th>Late</th> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeSession ? (
-                    <tr>
-                      <td className="mono">{activeSession.shiftDate}</td>
-                      <td className="mono">{fmtTime(activeSession.punchedOnAt)}</td>
-                      <td className="mono">{activeSession.punchedOffAt ? fmtTime(activeSession.punchedOffAt) : '—'}</td>
-                      <td>
-                        <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
-                      </td>
-                      {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-                        <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
-                      ) : null}
-                    </tr>
-                  ) : (
-                    <tr><td colSpan={me?.role === 'MAID' || me?.role === 'CHEF' ? 4 : 5} className="table-empty">Not on duty</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </article>
-
-          {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-          <article className="card">
-            <h3>Session Breaks</h3>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Min</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sessionBreaks.map((session) => (
-                    <tr key={session.id}>
-                      <td><span className="tag">{session.breakPolicy.code.toUpperCase()}</span></td>
-                      <td className="mono">{fmtTime(session.startedAt)}</td>
-                      <td className="mono">{session.endedAt ? fmtTime(session.endedAt) : '—'}</td>
-                      <td>{formatBreakMinutes(session)}</td>
-                      <td>
-                        {session.status === 'CANCELLED' ? (
-                          <span className="tag danger">Cancelled</span>
-                        ) : session.status === 'ACTIVE' ? (
-                          <span className="tag ok">Active</span>
-                        ) : session.isOvertime ? (
-                          <span className="tag warning">Late</span>
-                        ) : (
-                          <span className="tag brand">On time</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {sessionBreaks.length === 0 ? (
-                    <tr><td colSpan={5} className="table-empty">{activeSession ? 'No breaks this session' : 'Not on duty'}</td></tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </article>
-          ) : null}
-        </div>
-      </section>
-
-      {shortcutConfirmPolicy ? (
-        <div
-          className="modal-overlay"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              setShortcutConfirmPolicy(null);
-            }
-          }}
-        >
-          <div className="modal shortcut-confirm-modal">
-            <h3>Confirm Break Shortcut</h3>
-            <p style={{ marginBottom: '0.35rem' }}>
-              Start <strong>{shortcutConfirmPolicy.code.toUpperCase()}</strong> - {shortcutConfirmPolicy.name}?
-            </p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-              Press <kbd>Enter</kbd> to confirm or <kbd>Esc</kbd> to cancel.
-            </p>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="button button-ghost"
-                onClick={() => setShortcutConfirmPolicy(null)}
-              >
-                Cancel (Esc)
-              </button>
-              <button
-                type="button"
-                className="button button-primary"
-                onClick={() => {
-                  const policy = shortcutConfirmPolicy;
-                  if (!policy) return;
-                  setShortcutConfirmPolicy(null);
-                  void runAction('/breaks/start', { code: policy.code });
-                }}
-              >
-                Confirm (Enter)
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      </>
+        </>
       )}
 
     </AppShell>

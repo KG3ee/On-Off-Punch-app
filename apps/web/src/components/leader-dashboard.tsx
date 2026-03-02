@@ -3,6 +3,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 
+/* ── Break constants (mirrors employee dashboard) ── */
+const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
+const BOTTOM_BREAK_CODES = ['cf+1', 'cf+2', 'cf+3'] as const;
+const FIXED_BREAK_CODES: ReadonlySet<string> = new Set([...TOP_BREAK_CODES, ...BOTTOM_BREAK_CODES]);
+const BREAK_EMOJI_MAP: Record<string, string> = {
+  wc: '🚽',
+  bwc: '💩',
+  cy: '🚬',
+  'cf+1': '🥐',
+  'cf+2': '🍛',
+  'cf+3': '🍽️',
+};
+const BREAK_SHORTCUT_CODE_TO_LABEL: Record<string, string> = {
+  bwc: 'B',
+  wc: 'W',
+  cy: 'C',
+  'cf+1': '1',
+  'cf+2': '2',
+  'cf+3': '3',
+};
+
 /* ── Types shared with the parent dashboard ── */
 type DutySession = {
   id: string;
@@ -63,6 +84,27 @@ type BreakHistoryItem = {
   user: { displayName: string };
 };
 
+type BreakPolicy = {
+  id: string;
+  code: string;
+  name: string;
+  expectedDurationMinutes: number;
+  dailyLimit: number;
+};
+
+type BreakSession = {
+  id: string;
+  localDate: string;
+  dutySessionId: string;
+  startedAt: string;
+  endedAt?: string | null;
+  expectedDurationMinutes: number;
+  actualMinutes?: number | null;
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CLOSED';
+  isOvertime: boolean;
+  breakPolicy: { code: string; name: string };
+};
+
 type AttendanceRecord = {
   id: string;
   localDate: string;
@@ -92,10 +134,14 @@ type DriverInfo = {
 export type LeaderDashboardProps = {
   activeSession: DutySession | null;
   activeDutyMinutes: number;
+  activeBreak: BreakSession | null;
+  activeBreakMinutes: number;
+  policies: BreakPolicy[];
+  breakSessions: BreakSession[];
   monthlySummary: MonthlySummary | null;
   loading: boolean;
   isOffline: boolean;
-  runAction: (path: string) => Promise<void>;
+  runAction: (path: string, body?: Record<string, unknown>) => Promise<void>;
 };
 
 /* ── Constants ── */
@@ -108,14 +154,18 @@ const REQUEST_TYPE_LABEL: Record<ShiftRequestType, string> = {
 
 const DRIVER_STATUS: Record<string, { emoji: string; label: string; cls: string }> = {
   AVAILABLE: { emoji: '🟢', label: 'Available', cls: 'ok' },
-  BUSY:      { emoji: '🟡', label: 'Driving',   cls: 'warning' },
-  ON_BREAK:  { emoji: '🟠', label: 'On Break',  cls: 'warning' },
-  OFFLINE:   { emoji: '⚫', label: 'Off Duty',  cls: '' },
+  BUSY: { emoji: '🟡', label: 'Driving', cls: 'warning' },
+  ON_BREAK: { emoji: '🟠', label: 'On Break', cls: 'warning' },
+  OFFLINE: { emoji: '⚫', label: 'Off Duty', cls: '' },
 };
 
 export function LeaderDashboard({
   activeSession,
   activeDutyMinutes,
+  activeBreak,
+  activeBreakMinutes,
+  policies,
+  breakSessions,
   monthlySummary,
   loading,
   isOffline,
@@ -216,6 +266,27 @@ export function LeaderDashboard({
   const pendingReqs = useMemo(() => requests.filter(r => r.status === 'PENDING'), [requests]);
   const resolvedReqs = useMemo(() => requests.filter(r => r.status !== 'PENDING'), [requests]);
 
+  const topRowPolicies = useMemo(
+    () => TOP_BREAK_CODES.map(code => policies.find(p => p.code.toLowerCase() === code)).filter((p): p is BreakPolicy => Boolean(p)),
+    [policies]
+  );
+  const bottomRowPolicies = useMemo(
+    () => BOTTOM_BREAK_CODES.map(code => policies.find(p => p.code.toLowerCase() === code)).filter((p): p is BreakPolicy => Boolean(p)),
+    [policies]
+  );
+  const extraPolicies = useMemo(
+    () => policies.filter(p => !FIXED_BREAK_CODES.has(p.code.toLowerCase())).sort((a, b) => a.code.localeCompare(b.code)),
+    [policies]
+  );
+
+  const canStartBreak = !!activeSession && !activeBreak && !((loading && !isOffline));
+  const breakBlockedReason = useMemo(() => {
+    if (!activeSession) return 'Punch ON first';
+    if (activeBreak) return `Active break (${activeBreak.breakPolicy.code.toUpperCase()}) — end it first`;
+    if (policies.length === 0) return 'No break policies configured';
+    return '';
+  }, [activeBreak, activeSession, policies.length]);
+
   /* ── Helpers ── */
   function fmtTime(iso: string) {
     return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -228,6 +299,32 @@ export function LeaderDashboard({
     if (item.actualMinutes != null) return `${item.actualMinutes}m`;
     if (item.status === 'ACTIVE') return `${Math.max(0, Math.round((nowTick - new Date(item.startedAt).getTime()) / 60000))}m`;
     return '-';
+  }
+  function sessionBreakMin(b: BreakSession) {
+    if (b.actualMinutes != null) return `${b.actualMinutes}m`;
+    if (b.status === 'ACTIVE') return `${Math.max(0, Math.round((nowTick - new Date(b.startedAt).getTime()) / 60000))}m`;
+    return '-';
+  }
+
+  function renderPolicyButton(policy: BreakPolicy) {
+    const normalizedCode = policy.code.toLowerCase();
+    const emoji = BREAK_EMOJI_MAP[normalizedCode] || '☕';
+    const shortcutLabel = BREAK_SHORTCUT_CODE_TO_LABEL[normalizedCode];
+    return (
+      <button
+        key={policy.id}
+        type="button"
+        className="button-chip"
+        disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
+        onClick={() => void runAction('/breaks/start', { code: policy.code })}
+        title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/day${shortcutLabel ? ` · Shortcut ${shortcutLabel}` : ''}`}
+      >
+        {shortcutLabel ? <span className="chip-shortcut" aria-hidden="true">{shortcutLabel}</span> : null}
+        <span className="chip-emoji">{emoji}</span>
+        <span className="chip-code">{policy.code.toUpperCase()} · {policy.expectedDurationMinutes}m</span>
+        <span className="chip-name">{policy.name}</span>
+      </button>
+    );
   }
 
   return (
@@ -271,6 +368,63 @@ export function LeaderDashboard({
           <span className="punch-label" style={{ fontSize: '0.7rem' }}>OFF</span>
         </button>
       </div>
+
+      {/* ═══ 1b. PERSONAL BREAKS ═══ */}
+      <article className="card">
+        <h3>Breaks</h3>
+        {activeBreak ? (
+          <div className="break-banner">
+            <span className="status-dot active" />
+            <span><strong>{activeBreak.breakPolicy.code.toUpperCase()}</strong> · {activeBreak.breakPolicy.name}</span>
+            <span className="elapsed">{activeBreakMinutes}m</span>
+            <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
+              <button className="button button-ok button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/end')}>
+                End
+              </button>
+              {activeBreakMinutes < 2 ? (
+                <button className="button button-danger button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/cancel')}>
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <>
+            {breakBlockedReason ? (
+              <div className="alert alert-warning">{breakBlockedReason}</div>
+            ) : null}
+            <div className="break-chips-layout">
+              {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
+              {bottomRowPolicies.length > 0 ? <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div> : null}
+              {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
+              {policies.length === 0 ? <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p> : null}
+            </div>
+          </>
+        )}
+        {breakSessions.filter(b => b.dutySessionId === activeSession?.id).length > 0 ? (
+          <div className="table-wrap" style={{ marginTop: '0.75rem' }}>
+            <table>
+              <thead><tr><th>Code</th><th>Start</th><th>Min</th><th>Status</th></tr></thead>
+              <tbody>
+                {breakSessions.filter(b => b.dutySessionId === activeSession?.id).map(b => (
+                  <tr key={b.id}>
+                    <td><span className="tag">{b.breakPolicy.code.toUpperCase()}</span></td>
+                    <td className="mono">{fmtTime(b.startedAt)}</td>
+                    <td>{sessionBreakMin(b)}</td>
+                    <td>
+                      {b.status === 'CANCELLED' ? <span className="tag danger">Cancelled</span>
+                        : b.status === 'ACTIVE' ? <span className="tag ok">Active</span>
+                          : b.isOvertime ? <span className="tag warning">Late</span>
+                            : <span className="tag brand">On time</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </article>
 
       {/* ═══ 2. TEAM KPIs ═══ */}
       <section className="kpi-grid">
@@ -487,18 +641,18 @@ export function LeaderDashboard({
           {drivers.length === 0
             ? <p style={{ color: 'var(--muted)', fontSize: '0.8rem', textAlign: 'center', padding: '0.5rem 0' }}>No drivers</p>
             : <div style={{ display: 'grid', gap: '0.375rem' }}>
-                {drivers.map((d) => {
-                  const st = d.driverStatus || 'OFFLINE';
-                  const cfg = DRIVER_STATUS[st] || DRIVER_STATUS.OFFLINE;
-                  return (
-                    <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                      <span style={{ fontSize: '0.8rem', flexShrink: 0 }}>{cfg.emoji}</span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.displayName}</span>
-                      <span className={`tag ${cfg.cls}`} style={{ fontSize: '0.6rem' }}>{cfg.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              {drivers.map((d) => {
+                const st = d.driverStatus || 'OFFLINE';
+                const cfg = DRIVER_STATUS[st] || DRIVER_STATUS.OFFLINE;
+                return (
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                    <span style={{ fontSize: '0.8rem', flexShrink: 0 }}>{cfg.emoji}</span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.displayName}</span>
+                    <span className={`tag ${cfg.cls}`} style={{ fontSize: '0.6rem' }}>{cfg.label}</span>
+                  </div>
+                );
+              })}
+            </div>
           }
         </article>
       </section>
@@ -525,7 +679,7 @@ export function LeaderDashboard({
         </section>
       ) : null}
 
-    
+
     </div>
   );
 }
