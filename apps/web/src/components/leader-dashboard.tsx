@@ -214,6 +214,7 @@ export function LeaderDashboard({
 
   const [showTeam, setShowTeam] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showTodayBreaks, setShowTodayBreaks] = useState(false);
   const [historyFrom, setHistoryFrom] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 7);
     return d.toISOString().slice(0, 10);
@@ -717,26 +718,31 @@ export function LeaderDashboard({
 
       {/* ═══ 7. TODAY BREAKS ═══ */}
       <section className="dash-section">
-        <h2 className="dash-section-title">☕ Today Breaks</h2>
-        <article className="card">
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Name</th><th>Code</th><th>Start</th><th>Min</th><th>Status</th></tr></thead>
-              <tbody>
-                {breakHistory.map((b) => (
-                  <tr key={b.id}>
-                    <td>{b.user.displayName}</td>
-                    <td><span className="tag">{b.breakPolicy.code.toUpperCase()}</span></td>
-                    <td className="mono">{fmtTime(b.startedAt)}</td>
-                    <td>{breakMin(b)}</td>
-                    <td><span className={`tag ${b.status === 'ACTIVE' ? 'ok' : b.status === 'CANCELLED' ? 'danger' : ''}`}>{b.status}</span></td>
-                  </tr>
-                ))}
-                {breakHistory.length === 0 ? <tr><td colSpan={5} className="table-empty">No breaks today</td></tr> : null}
-              </tbody>
-            </table>
-          </div>
-        </article>
+        <div className="dash-collapse-header" onClick={() => setShowTodayBreaks(v => !v)}>
+          <h2 className="dash-section-title" style={{ marginBottom: 0 }}>☕ Today Breaks</h2>
+          <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{showTodayBreaks ? '▲ Hide' : '▼ Show'}</span>
+        </div>
+        {showTodayBreaks ? (
+          <article className="card">
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Code</th><th>Start</th><th>Min</th><th>Status</th></tr></thead>
+                <tbody>
+                  {breakHistory.map((b) => (
+                    <tr key={b.id}>
+                      <td>{b.user.displayName}</td>
+                      <td><span className="tag">{b.breakPolicy.code.toUpperCase()}</span></td>
+                      <td className="mono">{fmtTime(b.startedAt)}</td>
+                      <td>{breakMin(b)}</td>
+                      <td><span className={`tag ${b.status === 'ACTIVE' ? 'ok' : b.status === 'CANCELLED' ? 'danger' : ''}`}>{b.status}</span></td>
+                    </tr>
+                  ))}
+                  {breakHistory.length === 0 ? <tr><td colSpan={5} className="table-empty">No breaks today</td></tr> : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        ) : null}
       </section>
 
       {/* ═══ 8. DRIVERS ═══ */}
