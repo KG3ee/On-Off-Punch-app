@@ -71,17 +71,33 @@ export class ShiftsService {
       throw new NotFoundException('Shift preset not found');
     }
 
-    const [assignmentCount, overrideCount, dutySessionCount, requestCount] = await this.prisma.$transaction([
-      this.prisma.shiftAssignment.count({ where: { shiftPresetId: id } }),
-      this.prisma.shiftOverride.count({ where: { shiftPresetId: id } }),
+    const now = new Date();
+    const timeZone = process.env.APP_TIMEZONE || 'Asia/Dubai';
+    const localDate = formatDateInZone(now, timeZone);
+    const localDayStart = new Date(`${localDate}T00:00:00.000Z`);
+
+    const [activeAssignmentCount, activeOverrideCount, dutySessionCount, requestCount] = await this.prisma.$transaction([
+      this.prisma.shiftAssignment.count({
+        where: {
+          shiftPresetId: id,
+          isActive: true,
+          OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }]
+        }
+      }),
+      this.prisma.shiftOverride.count({
+        where: {
+          shiftPresetId: id,
+          overrideDate: { gte: localDayStart }
+        }
+      }),
       this.prisma.dutySession.count({ where: { shiftPresetId: id } }),
       this.prisma.shiftChangeRequest.count({ where: { shiftPresetId: id } })
     ]);
 
-    const linkedCount = assignmentCount + overrideCount + dutySessionCount + requestCount;
+    const linkedCount = activeAssignmentCount + activeOverrideCount + dutySessionCount + requestCount;
     if (linkedCount > 0) {
       throw new BadRequestException(
-        `Cannot delete preset "${existing.name}" because it is already used (assignments: ${assignmentCount}, overrides: ${overrideCount}, dutySessions: ${dutySessionCount}, requests: ${requestCount})`
+        `Cannot delete preset "${existing.name}" because it is still in use (active/future assignments: ${activeAssignmentCount}, today/future overrides: ${activeOverrideCount}, dutySessions: ${dutySessionCount}, requests: ${requestCount})`
       );
     }
 
