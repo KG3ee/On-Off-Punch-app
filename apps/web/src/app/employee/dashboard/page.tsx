@@ -157,6 +157,19 @@ const BREAK_EMOJI_MAP: Record<string, string> = {
   'cf+3': '🍽️'
 };
 
+function PunchIcon({ mode }: { mode: 'ON' | 'OFF' }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
+      {mode === 'ON' ? (
+        <line x1="12" y1="4" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      ) : (
+        <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
+
 function loadDashboardCache(): DashboardCache | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -1215,7 +1228,7 @@ export default function EmployeeDashboardPage() {
                     disabled={(loading && !isOffline) || !!activeSession}
                     onClick={() => void runAction('/attendance/on')}
                   >
-                    <span className="punch-icon">⏻</span>
+                    <span className="punch-icon"><PunchIcon mode="ON" /></span>
                     <span className="punch-label">Punch ON</span>
                   </button>
                   <button
@@ -1224,7 +1237,7 @@ export default function EmployeeDashboardPage() {
                     disabled={(loading && !isOffline) || !activeSession}
                     onClick={() => void runAction('/attendance/off')}
                   >
-                    <span className="punch-icon">⏼</span>
+                    <span className="punch-icon"><PunchIcon mode="OFF" /></span>
                     <span className="punch-label">Punch OFF</span>
                   </button>
                 </div>

@@ -217,6 +217,19 @@ const VIOLATION_REASON_LABEL: Record<ViolationReason, string> = {
   OTHER: 'Other',
 };
 
+function PunchIcon({ mode }: { mode: 'ON' | 'OFF' }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
+      {mode === 'ON' ? (
+        <line x1="12" y1="4" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      ) : (
+        <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
+
 export function LeaderDashboard({
   activeSession,
   activeDutyMinutes,
@@ -548,7 +561,7 @@ export function LeaderDashboard({
           onClick={() => void runAction('/attendance/on')}
           style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
         >
-          <span className="punch-icon" style={{ fontSize: '1.1rem' }}>⏻</span>
+          <span className="punch-icon" style={{ width: '1.1rem', height: '1.1rem' }}><PunchIcon mode="ON" /></span>
           <span className="punch-label" style={{ fontSize: '0.7rem' }}>ON</span>
         </button>
 
@@ -571,7 +584,7 @@ export function LeaderDashboard({
           onClick={() => void runAction('/attendance/off')}
           style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
         >
-          <span className="punch-icon" style={{ fontSize: '1.1rem' }}>⏼</span>
+          <span className="punch-icon" style={{ width: '1.1rem', height: '1.1rem' }}><PunchIcon mode="OFF" /></span>
           <span className="punch-label" style={{ fontSize: '0.7rem' }}>OFF</span>
         </button>
       </div>
