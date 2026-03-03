@@ -9,6 +9,14 @@ type Team = {
   name: string;
 };
 
+type UserOption = {
+  id: string;
+  displayName: string;
+  username: string;
+  team?: Team | null;
+  isActive: boolean;
+};
+
 type ShiftSegment = {
   id: string;
   segmentNo: number;
@@ -87,6 +95,7 @@ function createDefaultSegments(): SegmentDraft[] {
 
 export default function AdminShiftsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
   const [presets, setPresets] = useState<ShiftPreset[]>([]);
   const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
 
@@ -100,7 +109,9 @@ export default function AdminShiftsPage() {
   const [presetIsDefault, setPresetIsDefault] = useState(false);
   const [segments, setSegments] = useState<SegmentDraft[]>(createDefaultSegments());
 
+  const [assignmentTargetType, setAssignmentTargetType] = useState<'TEAM' | 'USER'>('TEAM');
   const [assignmentTeamId, setAssignmentTeamId] = useState('');
+  const [assignmentUserId, setAssignmentUserId] = useState('');
   const [assignmentPresetId, setAssignmentPresetId] = useState('');
   const [assignmentFrom, setAssignmentFrom] = useState(todayStr());
 
@@ -118,17 +129,24 @@ export default function AdminShiftsPage() {
     setAssignmentTeamId((prev) => prev || teams[0].id);
   }, [teams]);
 
+  useEffect(() => {
+    if (users.length === 0) return;
+    setAssignmentUserId((prev) => prev || users[0].id);
+  }, [users]);
+
   async function load(): Promise<void> {
     setLoading(true);
     setError('');
 
     try {
-      const [teamData, presetData, assignmentData] = await Promise.all([
+      const [teamData, userData, presetData, assignmentData] = await Promise.all([
         apiFetch<Team[]>('/teams'),
+        apiFetch<UserOption[]>('/admin/users'),
         apiFetch<ShiftPreset[]>('/admin/shift-presets'),
         apiFetch<ShiftAssignment[]>('/admin/shift-assignments')
       ]);
       setTeams(teamData);
+      setUsers(userData.filter((user) => user.isActive));
       setPresets(presetData);
       setAssignments(assignmentData);
     } catch (err) {
@@ -222,8 +240,9 @@ export default function AdminShiftsPage() {
     event.preventDefault();
     setError('');
 
-    if (!assignmentTeamId || !assignmentPresetId || !assignmentFrom) {
-      setError('Team, preset, and effective date are required');
+    const targetId = assignmentTargetType === 'TEAM' ? assignmentTeamId : assignmentUserId;
+    if (!targetId || !assignmentPresetId || !assignmentFrom) {
+      setError(`${assignmentTargetType === 'TEAM' ? 'Team' : 'User'}, preset, and effective date are required`);
       return;
     }
 
@@ -231,8 +250,8 @@ export default function AdminShiftsPage() {
       await apiFetch('/admin/shift-assignments', {
         method: 'POST',
         body: JSON.stringify({
-          targetType: 'TEAM',
-          targetId: assignmentTeamId,
+          targetType: assignmentTargetType,
+          targetId,
           shiftPresetId: assignmentPresetId,
           effectiveFrom: assignmentFrom
         })
@@ -246,6 +265,9 @@ export default function AdminShiftsPage() {
   }
 
   const teamMap = useMemo(() => new Map(teams.map((team) => [team.id, team.name])), [teams]);
+  const userMap = useMemo(() => {
+    return new Map(users.map((user) => [user.id, user.displayName || user.username]));
+  }, [users]);
 
   const latestTeamAssignments = useMemo(() => {
     const byTeam = new Map<string, ShiftAssignment>();
@@ -271,8 +293,32 @@ export default function AdminShiftsPage() {
     });
   }, [assignments, teamMap]);
 
+  const latestUserAssignments = useMemo(() => {
+    const byUser = new Map<string, ShiftAssignment>();
+
+    const userAssignments = assignments
+      .filter((assignment) => assignment.targetType === 'USER' && assignment.isActive)
+      .sort((a, b) => {
+        const aTime = new Date(a.effectiveFrom).getTime();
+        const bTime = new Date(b.effectiveFrom).getTime();
+        return bTime - aTime;
+      });
+
+    for (const assignment of userAssignments) {
+      if (!byUser.has(assignment.targetId)) {
+        byUser.set(assignment.targetId, assignment);
+      }
+    }
+
+    return [...byUser.values()].sort((a, b) => {
+      const userA = userMap.get(a.targetId) || '';
+      const userB = userMap.get(b.targetId) || '';
+      return userA.localeCompare(userB);
+    });
+  }, [assignments, userMap]);
+
   return (
-    <AppShell title="Shifts" subtitle="Create split-shift presets and assign them to teams" admin userRole="ADMIN">
+    <AppShell title="Shifts" subtitle="Create split-shift presets and assign them to teams or specific users" admin userRole="ADMIN">
       {message ? <div className="alert alert-success">{message}</div> : null}
       {error ? <div className="alert alert-error">⚠ {error}</div> : null}
 
@@ -394,20 +440,47 @@ export default function AdminShiftsPage() {
         </article>
 
         <article className="card">
-          <h3>Assign Preset To Team</h3>
+          <h3>Assign Preset</h3>
           <form className="form-grid" onSubmit={(event) => void submitAssignment(event)}>
             <select
               className="select"
-              value={assignmentTeamId}
-              onChange={(event) => setAssignmentTeamId(event.target.value)}
+              value={assignmentTargetType}
+              onChange={(event) => setAssignmentTargetType(event.target.value as 'TEAM' | 'USER')}
             >
-              <option value="">Select team</option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
+              <option value="TEAM">Team</option>
+              <option value="USER">User</option>
             </select>
+
+            {assignmentTargetType === 'TEAM' ? (
+              <select
+                className="select"
+                value={assignmentTeamId}
+                onChange={(event) => setAssignmentTeamId(event.target.value)}
+              >
+                <option value="">Select team</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                className="select"
+                value={assignmentUserId}
+                onChange={(event) => setAssignmentUserId(event.target.value)}
+              >
+                <option value="">Select user</option>
+                {users
+                  .slice()
+                  .sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username))
+                  .map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.displayName || user.username}
+                    </option>
+                  ))}
+              </select>
+            )}
 
             <select
               className="select"
@@ -461,6 +534,37 @@ export default function AdminShiftsPage() {
                   {latestTeamAssignments.length === 0 ? (
                     <tr>
                       <td colSpan={4} style={{ color: 'var(--muted)' }}>No team assignments yet</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '0.85rem' }}>
+            <h3 style={{ marginBottom: '0.35rem' }}>Current User Assignments</h3>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Preset</th>
+                    <th>Effective From</th>
+                    <th>Effective To</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {latestUserAssignments.map((assignment) => (
+                    <tr key={assignment.id}>
+                      <td>{userMap.get(assignment.targetId) || assignment.targetId}</td>
+                      <td>{assignment.shiftPreset.name}</td>
+                      <td className="mono">{formatDate(assignment.effectiveFrom)}</td>
+                      <td className="mono">{assignment.effectiveTo ? formatDate(assignment.effectiveTo) : 'Open'}</td>
+                    </tr>
+                  ))}
+                  {latestUserAssignments.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ color: 'var(--muted)' }}>No user assignments yet</td>
                     </tr>
                   ) : null}
                 </tbody>
