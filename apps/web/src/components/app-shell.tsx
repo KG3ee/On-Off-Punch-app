@@ -22,6 +22,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/shifts', label: 'Shifts' },
   { href: '/admin/requests', label: 'Requests' },
+  { href: '/admin/workflow', label: 'Guide' },
 ];
 
 function ProfileAvatar({ me, admin, currentPath }: { me: MeUser | null; admin: boolean; currentPath: string }) {
@@ -285,9 +286,14 @@ export function AppShell({
           <nav className="shell-nav">
             {isEmployeeView ? (
               userRole === 'DRIVER' ? (
-                <Link href="/employee/driver" className={pathname === '/employee/driver' ? 'active' : ''}>
-                  Dashboard
-                </Link>
+                <>
+                  <Link href="/employee/driver" className={pathname === '/employee/driver' ? 'active' : ''}>
+                    Dashboard
+                  </Link>
+                  <Link href="/employee/workflow" className={pathname === '/employee/workflow' ? 'active' : ''}>
+                    Guide
+                  </Link>
+                </>
               ) : userRole === 'LEADER' ? (
                 <>
                   <Link href="/employee/dashboard" className={pathname === '/employee/dashboard' ? 'active' : ''}>
@@ -295,6 +301,9 @@ export function AppShell({
                   </Link>
                   <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
                     Requests
+                  </Link>
+                  <Link href="/employee/workflow" className={pathname === '/employee/workflow' ? 'active' : ''}>
+                    Guide
                   </Link>
                 </>
               ) : (
@@ -304,6 +313,9 @@ export function AppShell({
                   </Link>
                   <Link href="/employee/requests" className={pathname?.startsWith('/employee/requests') ? 'active' : ''}>
                     Requests
+                  </Link>
+                  <Link href="/employee/workflow" className={pathname === '/employee/workflow' ? 'active' : ''}>
+                    Guide
                   </Link>
                 </>
               )

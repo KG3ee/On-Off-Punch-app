@@ -1705,3 +1705,508 @@ main > .shell {
     max-width: none;
   }
 }
+
+/* ── Workflow Page ── */
+.wf-intro {
+  text-align: center;
+  padding: 2rem 0 1rem;
+}
+
+.wf-hero-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.wf-hero-desc {
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 540px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Section tabs */
+.wf-section-tabs {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+  padding: 0.25rem;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.wf-section-tab {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.825rem;
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.wf-section-tab:hover {
+  color: var(--ink);
+}
+
+.wf-section-tab.active {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.wf-section {
+  margin-bottom: 2rem;
+}
+
+.wf-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ── Overview vertical flow ── */
+.wf-flow-vertical {
+  position: relative;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.wf-flow-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  position: relative;
+}
+
+.wf-flow-line-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 44px;
+}
+
+.wf-flow-dot {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--brand);
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.wf-flow-icon {
+  font-size: 1.15rem;
+}
+
+.wf-flow-connector {
+  width: 2px;
+  height: 32px;
+  background: linear-gradient(to bottom, var(--line-hover), var(--line));
+  flex-shrink: 0;
+}
+
+.wf-flow-content {
+  padding: 0.625rem 0 1.5rem;
+}
+
+.wf-flow-label {
+  font-size: 0.925rem;
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+}
+
+.wf-flow-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ── Role grid ── */
+.wf-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.wf-role-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 180ms ease;
+  text-align: left;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.wf-role-card:hover {
+  border-color: var(--role-color, var(--brand));
+  background: color-mix(in srgb, var(--role-color, var(--brand)) 5%, var(--card));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.wf-role-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wf-role-summary {
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  line-height: 1.55;
+  flex: 1;
+}
+
+.wf-role-cta {
+  font-size: 0.75rem;
+  color: var(--role-color, var(--brand));
+  font-weight: 500;
+}
+
+/* ── Role picker pills ── */
+.wf-role-picker {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.wf-role-pill {
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.wf-role-pill:hover {
+  border-color: var(--role-color, var(--brand));
+}
+
+.wf-role-pill.active {
+  border-color: var(--role-color, var(--brand));
+  background: color-mix(in srgb, var(--role-color, var(--brand)) 10%, var(--card));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--role-color, var(--brand)) 20%, transparent);
+}
+
+/* Empty state */
+.wf-empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+}
+
+/* ── Role detail ── */
+.wf-role-detail {
+  animation: wfFadeIn 250ms ease;
+}
+
+@keyframes wfFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wf-role-detail-header {
+  background: color-mix(in srgb, var(--role-color) 6%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--role-color) 20%, var(--line));
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.wf-role-detail-desc {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
+.wf-sub-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--ink);
+}
+
+/* ── Timeline steps ── */
+.wf-steps-timeline {
+  position: relative;
+  margin-left: 0.5rem;
+}
+
+.wf-timeline-item {
+  display: flex;
+  gap: 1rem;
+}
+
+.wf-timeline-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 32px;
+}
+
+.wf-timeline-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.wf-timeline-line {
+  width: 2px;
+  flex: 1;
+  min-height: 16px;
+  background: var(--line-hover);
+}
+
+.wf-timeline-card {
+  display: flex;
+  gap: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.5rem;
+  flex: 1;
+  transition: border-color var(--transition);
+}
+
+.wf-timeline-card:hover {
+  border-color: var(--line-hover);
+}
+
+.wf-timeline-card-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 0.125rem;
+}
+
+.wf-timeline-card-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.wf-timeline-card-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── Feature grid ── */
+.wf-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.wf-feature-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+  transition: border-color var(--transition);
+}
+
+.wf-feature-card:hover {
+  border-color: var(--line-hover);
+}
+
+.wf-feature-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.wf-feature-title {
+  font-size: 0.825rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.wf-feature-desc {
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── Workflow blocks ── */
+.wf-workflow-block {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.wf-workflow-title {
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.375rem;
+}
+
+.wf-workflow-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+/* Pipeline (horizontal flow) */
+.wf-pipeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.wf-pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  min-width: 130px;
+  flex: 1;
+}
+
+.wf-pipeline-node {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--brand);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.625rem;
+  position: relative;
+  z-index: 1;
+}
+
+.wf-pipeline-icon {
+  font-size: 1.25rem;
+}
+
+.wf-pipeline-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+}
+
+.wf-pipeline-desc {
+  font-size: 0.7rem;
+  color: var(--muted);
+  line-height: 1.4;
+  max-width: 130px;
+}
+
+.wf-pipeline-actor {
+  font-size: 0.65rem;
+  font-weight: 600;
+  margin-top: 0.375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wf-pipeline-arrow {
+  position: absolute;
+  right: -12px;
+  top: 18px;
+  font-size: 1.1rem;
+  color: var(--muted);
+  z-index: 2;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .wf-hero-title {
+    font-size: 1.2rem;
+  }
+
+  .wf-section-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .wf-section-tab {
+    padding: 0.4rem 0.875rem;
+    font-size: 0.775rem;
+    white-space: nowrap;
+  }
+
+  .wf-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wf-features-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .wf-pipeline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wf-pipeline-step {
+    flex-direction: row;
+    text-align: left;
+    gap: 0.75rem;
+    min-width: unset;
+  }
+
+  .wf-pipeline-node {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .wf-pipeline-desc {
+    max-width: none;
+  }
+
+  .wf-pipeline-arrow {
+    position: static;
+    transform: rotate(90deg);
+    align-self: center;
+    margin: 0.25rem 0;
+    display: none;
+  }
+
+  .wf-flow-vertical {
+    max-width: 100%;
+  }
+}
