@@ -283,9 +283,14 @@ export class ShiftsService {
           isDefault: true,
           teamId: user.teamId
         },
+        orderBy: { createdAt: 'desc' },
         include: { segments: { orderBy: { segmentNo: 'asc' } } }
       });
       if (teamDefault) return teamDefault;
+
+      // Team users should not silently inherit global defaults.
+      // If there is no team-level schedule, treat as no preset.
+      return null;
     }
 
     return this.prisma.shiftPreset.findFirst({
@@ -294,6 +299,7 @@ export class ShiftsService {
         isDefault: true,
         teamId: null
       },
+      orderBy: { createdAt: 'desc' },
       include: { segments: { orderBy: { segmentNo: 'asc' } } }
     });
   }
