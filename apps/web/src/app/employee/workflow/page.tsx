@@ -155,8 +155,7 @@ const ROLES: RoleWorkflow[] = [
       { id: 'md2', icon: '\u{1F7E2}', title: 'Punch On', desc: 'Start your shift by punching on.', color: 'var(--ok)' },
       { id: 'md3', icon: '\u2615', title: 'Duty Rules', desc: 'Maid role follows duty tracking without break shortcut buttons.', color: 'var(--warning)' },
       { id: 'md4', icon: '\u{1F4CB}', title: 'Submit Requests', desc: 'Submit shift change requests or driver requests as needed.', color: 'var(--brand)' },
-      { id: 'md5', icon: '\u{1F6A8}', title: 'Report Violations', desc: 'Report violations anonymously if you witness them.', color: 'var(--danger)' },
-      { id: 'md6', icon: '\u{1F534}', title: 'Punch Off', desc: 'End your shift by punching off. Hours and overtime tracked automatically.', color: 'var(--danger)' },
+      { id: 'md5', icon: '\u{1F534}', title: 'Punch Off', desc: 'End your shift by punching off. Hours and overtime tracked automatically.', color: 'var(--danger)' },
     ],
     features: [
       { icon: '\u{1F552}', title: 'Punch System', desc: 'Full punch on/off with late and overtime tracking' },
