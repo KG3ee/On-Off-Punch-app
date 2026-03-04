@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsNumber, Min } from 'class-validator';
+import { ArrayMinSize, IsArray, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateDeductionPolicyDto {
   @IsArray()
@@ -11,4 +11,8 @@ export class UpdateDeductionPolicyDto {
   @IsNumber({ maxDecimalPlaces: 2 }, { each: true })
   @Min(0, { each: true })
   amountsAed!: number[];
+
+  @IsOptional()
+  @IsString()
+  effectiveFromLocalDate?: string | null;
 }

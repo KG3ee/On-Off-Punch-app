@@ -579,6 +579,16 @@ model DeductionTier {
   @@index([category])
 }
 
+model DeductionPolicy {
+  id                     String            @id @default(cuid())
+  category               DeductionCategory @unique
+  effectiveFromLocalDate String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  @@index([category])
+}
+
 model DeductionEntry {
   id                           String              @id @default(cuid())
   userId                       String

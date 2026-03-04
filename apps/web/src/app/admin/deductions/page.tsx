@@ -23,8 +23,13 @@ type DeductionTier = {
   amountAed: number;
 };
 
+type DeductionPolicyConfig = {
+  effectiveFromLocalDate: string | null;
+  tiers: DeductionTier[];
+};
+
 type PoliciesResponse = {
-  policies: Record<DeductionCategory, DeductionTier[]>;
+  policies: Record<DeductionCategory, DeductionPolicyConfig>;
 };
 
 type DeductionSummaryRow = {
@@ -115,13 +120,18 @@ export default function AdminDeductionsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserRef[]>([]);
 
-  const [policies, setPolicies] = useState<Record<DeductionCategory, DeductionTier[]>>({
-    PUNCH_LATE: [],
-    BREAK_LATE: [],
-  });
-  const [policyDrafts, setPolicyDrafts] = useState<Record<DeductionCategory, string[]>>({
-    PUNCH_LATE: [],
-    BREAK_LATE: [],
+  const [policyDrafts, setPolicyDrafts] = useState<Record<DeductionCategory, {
+    amountsAed: string[];
+    effectiveFromLocalDate: string;
+  }>>({
+    PUNCH_LATE: {
+      amountsAed: [],
+      effectiveFromLocalDate: '',
+    },
+    BREAK_LATE: {
+      amountsAed: [],
+      effectiveFromLocalDate: '',
+    },
   });
 
   const [summary, setSummary] = useState<DeductionSummaryResponse | null>(null);
@@ -170,10 +180,15 @@ export default function AdminDeductionsPage() {
 
   const loadPolicies = useCallback(async () => {
     const result = await apiFetch<PoliciesResponse>('/admin/deductions/policies');
-    setPolicies(result.policies);
     setPolicyDrafts({
-      PUNCH_LATE: result.policies.PUNCH_LATE.map((tier) => tier.amountAed.toFixed(2)),
-      BREAK_LATE: result.policies.BREAK_LATE.map((tier) => tier.amountAed.toFixed(2)),
+      PUNCH_LATE: {
+        amountsAed: result.policies.PUNCH_LATE.tiers.map((tier) => tier.amountAed.toFixed(2)),
+        effectiveFromLocalDate: result.policies.PUNCH_LATE.effectiveFromLocalDate || '',
+      },
+      BREAK_LATE: {
+        amountsAed: result.policies.BREAK_LATE.tiers.map((tier) => tier.amountAed.toFixed(2)),
+        effectiveFromLocalDate: result.policies.BREAK_LATE.effectiveFromLocalDate || '',
+      },
     });
   }, []);
 
@@ -238,28 +253,49 @@ export default function AdminDeductionsPage() {
   function addTier(category: DeductionCategory) {
     setPolicyDrafts((current) => ({
       ...current,
-      [category]: [...current[category], '0.00'],
+      [category]: {
+        ...current[category],
+        amountsAed: [...current[category].amountsAed, '0.00'],
+      },
     }));
   }
 
   function removeTier(category: DeductionCategory, index: number) {
     setPolicyDrafts((current) => {
-      const next = [...current[category]];
+      const next = [...current[category].amountsAed];
       next.splice(index, 1);
       return {
         ...current,
-        [category]: next,
+        [category]: {
+          ...current[category],
+          amountsAed: next,
+        },
       };
     });
   }
 
   function updateTierAmount(category: DeductionCategory, index: number, value: string) {
     setPolicyDrafts((current) => {
-      const next = [...current[category]];
+      const next = [...current[category].amountsAed];
       next[index] = value;
       return {
         ...current,
-        [category]: next,
+        [category]: {
+          ...current[category],
+          amountsAed: next,
+        },
+      };
+    });
+  }
+
+  function updateEffectiveFromDate(category: DeductionCategory, value: string) {
+    setPolicyDrafts((current) => {
+      return {
+        ...current,
+        [category]: {
+          ...current[category],
+          effectiveFromLocalDate: value,
+        },
       };
     });
   }
@@ -268,7 +304,8 @@ export default function AdminDeductionsPage() {
     setError('');
     setMessage('');
 
-    const amounts = policyDrafts[category]
+    const draft = policyDrafts[category];
+    const amounts = draft.amountsAed
       .map((value) => Number(value))
       .filter((value) => Number.isFinite(value));
 
@@ -288,6 +325,7 @@ export default function AdminDeductionsPage() {
         method: 'PUT',
         body: JSON.stringify({
           amountsAed: amounts,
+          effectiveFromLocalDate: draft.effectiveFromLocalDate || null,
         }),
       });
 
@@ -352,14 +390,30 @@ export default function AdminDeductionsPage() {
             return (
               <article key={category} className="card" style={{ margin: 0 }}>
                 <h4 style={{ marginTop: 0 }}>{CATEGORY_LABEL[category]}</h4>
-                {draft.length === 0 ? (
+                {draft.amountsAed.length === 0 ? (
                   <div className="alert alert-warning" style={{ marginBottom: '0.5rem' }}>
                     No tiers configured yet. Add at least one tier.
                   </div>
                 ) : null}
 
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.2rem', color: 'var(--muted)', fontSize: '0.78rem' }}>
+                    Effective Start Date (optional)
+                  </label>
+                  <input
+                    className="input"
+                    type="date"
+                    value={draft.effectiveFromLocalDate}
+                    onChange={(e) => updateEffectiveFromDate(category, e.target.value)}
+                    style={{ maxWidth: '170px' }}
+                  />
+                  <div style={{ color: 'var(--muted)', fontSize: '0.74rem', marginTop: '0.2rem' }}>
+                    Occurrence counting starts from this date. Leave empty to count the full month.
+                  </div>
+                </div>
+
                 <div style={{ display: 'grid', gap: '0.45rem' }}>
-                  {draft.map((value, index) => (
+                  {draft.amountsAed.map((value, index) => (
                     <div key={`${category}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                       <span className="tag" style={{ minWidth: '72px', textAlign: 'center' }}>#{index + 1}</span>
                       <input
@@ -377,7 +431,7 @@ export default function AdminDeductionsPage() {
                         type="button"
                         className="button button-danger button-sm"
                         onClick={() => removeTier(category, index)}
-                        disabled={draft.length <= 1}
+                        disabled={draft.amountsAed.length <= 1}
                       >
                         Remove
                       </button>

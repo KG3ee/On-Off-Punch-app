@@ -21,28 +21,57 @@ type RecordDeductionInput = {
   actorUserId?: string | null;
 };
 
+type DeductionTierView = {
+  id: string;
+  occurrenceNo: number;
+  amountAed: number;
+};
+
+type DeductionPolicyView = {
+  effectiveFromLocalDate: string | null;
+  tiers: DeductionTierView[];
+};
+
 @Injectable()
 export class DeductionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listPolicies() {
-    const rows = await this.prisma.deductionTier.findMany({
-      orderBy: [{ category: 'asc' }, { occurrenceNo: 'asc' }],
-      select: {
-        id: true,
-        category: true,
-        occurrenceNo: true,
-        amountAed: true,
-      },
-    });
+    const [tierRows, policyRows] = await Promise.all([
+      this.prisma.deductionTier.findMany({
+        orderBy: [{ category: 'asc' }, { occurrenceNo: 'asc' }],
+        select: {
+          id: true,
+          category: true,
+          occurrenceNo: true,
+          amountAed: true,
+        },
+      }),
+      this.prisma.deductionPolicy.findMany({
+        select: {
+          category: true,
+          effectiveFromLocalDate: true,
+        },
+      }),
+    ]);
 
-    const policies: Record<DeductionCategory, Array<{ id: string; occurrenceNo: number; amountAed: number }>> = {
-      PUNCH_LATE: [],
-      BREAK_LATE: [],
+    const policies: Record<DeductionCategory, DeductionPolicyView> = {
+      PUNCH_LATE: {
+        effectiveFromLocalDate: null,
+        tiers: [],
+      },
+      BREAK_LATE: {
+        effectiveFromLocalDate: null,
+        tiers: [],
+      },
     };
 
-    rows.forEach((row) => {
-      policies[row.category].push({
+    policyRows.forEach((row) => {
+      policies[row.category].effectiveFromLocalDate = row.effectiveFromLocalDate;
+    });
+
+    tierRows.forEach((row) => {
+      policies[row.category].tiers.push({
         id: row.id,
         occurrenceNo: row.occurrenceNo,
         amountAed: this.toNumber(row.amountAed),
@@ -58,8 +87,17 @@ export class DeductionsService {
     dto: UpdateDeductionPolicyDto,
   ) {
     const amounts = this.normalizeAmounts(dto.amountsAed);
+    const existingPolicy = await this.prisma.deductionPolicy.findUnique({
+      where: { category },
+      select: {
+        effectiveFromLocalDate: true,
+      },
+    });
+    const effectiveFromLocalDate = dto.effectiveFromLocalDate === undefined
+      ? existingPolicy?.effectiveFromLocalDate ?? null
+      : this.normalizeEffectiveFromLocalDate(dto.effectiveFromLocalDate);
 
-    const tiers = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.deductionTier.deleteMany({ where: { category } });
 
       await tx.deductionTier.createMany({
@@ -70,7 +108,7 @@ export class DeductionsService {
         })),
       });
 
-      return tx.deductionTier.findMany({
+      const tiers = await tx.deductionTier.findMany({
         where: { category },
         orderBy: { occurrenceNo: 'asc' },
         select: {
@@ -80,6 +118,26 @@ export class DeductionsService {
           amountAed: true,
         },
       });
+
+      const policy = await tx.deductionPolicy.upsert({
+        where: { category },
+        create: {
+          category,
+          effectiveFromLocalDate,
+        },
+        update: {
+          effectiveFromLocalDate,
+        },
+        select: {
+          category: true,
+          effectiveFromLocalDate: true,
+        },
+      });
+
+      return {
+        tiers,
+        policy,
+      };
     });
 
     await this.createAuditEvent(
@@ -89,7 +147,8 @@ export class DeductionsService {
       category,
       {
         category,
-        tiers: tiers.map((tier) => ({
+        effectiveFromLocalDate: result.policy.effectiveFromLocalDate,
+        tiers: result.tiers.map((tier) => ({
           occurrenceNo: tier.occurrenceNo,
           amountAed: this.toNumber(tier.amountAed),
         })),
@@ -98,7 +157,8 @@ export class DeductionsService {
 
     return {
       category,
-      tiers: tiers.map((tier) => ({
+      effectiveFromLocalDate: result.policy.effectiveFromLocalDate,
+      tiers: result.tiers.map((tier) => ({
         id: tier.id,
         occurrenceNo: tier.occurrenceNo,
         amountAed: this.toNumber(tier.amountAed),
@@ -405,17 +465,28 @@ export class DeductionsService {
       return null;
     }
 
-    const periodMonth = this.periodMonthFromLocalDate(input.localDate);
+    const [tierConfig, tierRows] = await Promise.all([
+      this.prisma.deductionPolicy.findUnique({
+        where: { category: input.category },
+        select: { effectiveFromLocalDate: true },
+      }),
+      this.prisma.deductionTier.findMany({
+        where: { category: input.category },
+        orderBy: { occurrenceNo: 'asc' },
+        select: { occurrenceNo: true, amountAed: true },
+      }),
+    ]);
+    const effectiveFromLocalDate = tierConfig?.effectiveFromLocalDate || null;
 
-    const tiers = await this.prisma.deductionTier.findMany({
-      where: { category: input.category },
-      orderBy: { occurrenceNo: 'asc' },
-      select: { occurrenceNo: true, amountAed: true },
-    });
-
-    if (tiers.length === 0) {
+    if (tierRows.length === 0) {
       return null;
     }
+
+    if (effectiveFromLocalDate && input.localDate < effectiveFromLocalDate) {
+      return null;
+    }
+
+    const periodMonth = this.periodMonthFromLocalDate(input.localDate);
 
     const occurrenceNo =
       (await this.prisma.deductionEntry.count({
@@ -423,11 +494,18 @@ export class DeductionsService {
           userId: input.userId,
           category: input.category,
           periodMonth,
+          ...(effectiveFromLocalDate
+            ? {
+                localDate: {
+                  gte: effectiveFromLocalDate,
+                },
+              }
+            : {}),
         },
       })) + 1;
 
     const selectedTier =
-      tiers.find((tier) => tier.occurrenceNo === occurrenceNo) || tiers[tiers.length - 1];
+      tierRows.find((tier) => tier.occurrenceNo === occurrenceNo) || tierRows[tierRows.length - 1];
 
     try {
       const created = await this.prisma.deductionEntry.create({
@@ -474,6 +552,7 @@ export class DeductionsService {
           periodMonth: created.periodMonth,
           occurrenceNo: created.occurrenceNo,
           amountAed: this.toNumber(created.amountAed),
+          effectiveFromLocalDate,
           lateMinutesSnapshot: created.lateMinutesSnapshot,
           breakOvertimeMinutesSnapshot: created.breakOvertimeMinutesSnapshot,
         },
@@ -530,6 +609,23 @@ export class DeductionsService {
     }
 
     return normalized.map((value) => Number(value.toFixed(2)));
+  }
+
+  private normalizeEffectiveFromLocalDate(value: string | null | undefined): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    const normalized = String(value).trim();
+    if (!normalized) {
+      return null;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      throw new BadRequestException('effectiveFromLocalDate must be YYYY-MM-DD');
+    }
+
+    return normalized;
   }
 
   private parseTake(limit?: string): number {
