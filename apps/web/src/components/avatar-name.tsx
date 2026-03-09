@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 type AvatarNameProps = {
   displayName: string;
   profilePhotoUrl?: string | null;
@@ -20,6 +22,12 @@ export function AvatarName({
   subtitle,
   size = 28,
 }: AvatarNameProps) {
+  const [showImage, setShowImage] = useState(Boolean(profilePhotoUrl));
+
+  useEffect(() => {
+    setShowImage(Boolean(profilePhotoUrl));
+  }, [profilePhotoUrl]);
+
   const initials = initialsFromName(displayName);
   const fontSize = Math.max(11, Math.round(size * 0.42));
 
@@ -38,13 +46,14 @@ export function AvatarName({
           flexShrink: 0,
         }}
       >
-        {profilePhotoUrl ? (
+        {showImage && profilePhotoUrl ? (
           <img
             src={profilePhotoUrl}
             alt=""
             width={size}
             height={size}
             loading="lazy"
+            onError={() => setShowImage(false)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (

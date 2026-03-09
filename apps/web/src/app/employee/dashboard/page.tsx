@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
+import { AvatarName } from '@/components/avatar-name';
 import { apiFetch } from '@/lib/api';
 import {
   fetchNotificationUnreadCount,
@@ -114,6 +115,7 @@ type DashboardToast = {
 type PublicLiveSession = {
   userId: string;
   displayName: string;
+  profilePhotoUrl?: string | null;
   teamName: string;
   punchedOnAt: string;
   activeBreak: {
@@ -1527,7 +1529,13 @@ export default function EmployeeDashboardPage() {
                       <tbody>
                         {publicBreakSessions.map((session) => (
                           <tr key={`${session.userId}-${session.activeBreak?.startedAt || 'none'}`}>
-                            <td>{session.displayName}</td>
+                            <td>
+                              <AvatarName
+                                displayName={session.displayName}
+                                profilePhotoUrl={session.profilePhotoUrl}
+                                size={30}
+                              />
+                            </td>
                             <td>{session.teamName}</td>
                             <td>
                               {session.activeBreak ? (

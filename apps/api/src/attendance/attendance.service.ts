@@ -353,6 +353,7 @@ export class AttendanceService {
           select: {
             id: true,
             displayName: true,
+            profilePhotoUrl: true,
           },
         },
         team: {
@@ -383,6 +384,7 @@ export class AttendanceService {
       sessions: activeDutySessions.map((session) => ({
         userId: session.user.id,
         displayName: session.user.displayName,
+        profilePhotoUrl: session.user.profilePhotoUrl,
         teamName: session.team?.name || "No Team",
         punchedOnAt: session.punchedOnAt,
         activeBreak: session.breakSessions[0]
