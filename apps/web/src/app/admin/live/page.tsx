@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
+import { AvatarName } from '@/components/avatar-name';
 import { apiFetch } from '@/lib/api';
 import {
   clearSynced,
@@ -84,7 +85,7 @@ type LiveDuty = {
   punchedOnAt: string;
   isLate: boolean;
   lateMinutes: number;
-  user: { displayName: string; role?: string };
+  user: { displayName: string; profilePhotoUrl?: string | null; role?: string };
   team?: { name: string } | null;
   breakSessions: LiveBreak[];
 };
@@ -103,7 +104,7 @@ type BreakHistoryItem = {
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CLOSED';
   isOvertime: boolean;
   breakPolicy: { code: string; name: string };
-  user: { displayName: string; team?: { name: string } | null };
+  user: { displayName: string; profilePhotoUrl?: string | null; team?: { name: string } | null };
 };
 
 type ShiftRequestsSummary = { pending: number };
@@ -678,7 +679,13 @@ export default function AdminLivePage() {
                 <tbody>
                   {data?.activeDutySessions.map((session) => (
                     <tr key={session.id}>
-                      <td>{session.user.displayName}</td>
+                      <td>
+                        <AvatarName
+                          displayName={session.user.displayName}
+                          profilePhotoUrl={session.user.profilePhotoUrl}
+                          subtitle={session.user.role || null}
+                        />
+                      </td>
                       <td>{session.team?.name ? <span className="tag brand">{session.team.name}</span> : <span className="tag">Service</span>}</td>
                       <td>{session.user.role ? <span className={`tag role-${session.user.role.toLowerCase()}`}>{session.user.role}</span> : '—'}</td>
                       <td className="mono">{fmtTime(session.punchedOnAt)}</td>
@@ -728,7 +735,13 @@ export default function AdminLivePage() {
                 <tbody>
                   {breakHistory.map((item) => (
                     <tr key={item.id}>
-                      <td>{item.user.displayName}</td>
+                      <td>
+                        <AvatarName
+                          displayName={item.user.displayName}
+                          profilePhotoUrl={item.user.profilePhotoUrl}
+                          subtitle={item.user.team?.name || null}
+                        />
+                      </td>
                       <td>{item.user.team?.name ? <span className="tag brand">{item.user.team.name}</span> : '—'}</td>
                       <td><span className="tag">{item.breakPolicy.code.toUpperCase()}</span></td>
                       <td className="mono">{fmtTime(item.startedAt)}</td>

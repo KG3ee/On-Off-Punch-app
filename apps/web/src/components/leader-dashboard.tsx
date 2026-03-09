@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AvatarName } from '@/components/avatar-name';
 import { apiFetch } from '@/lib/api';
 
 /* ── Break constants (mirrors employee dashboard) ── */
@@ -71,7 +72,7 @@ type LiveDuty = {
   punchedOnAt: string;
   isLate: boolean;
   lateMinutes: number;
-  user: { id: string; displayName: string };
+  user: { id: string; displayName: string; profilePhotoUrl?: string | null };
   breakSessions: LiveBreak[];
 };
 type LiveBoard = {
@@ -83,7 +84,7 @@ type LiveBoard = {
 type ShiftRequestType = 'HALF_DAY_MORNING' | 'HALF_DAY_EVENING' | 'FULL_DAY_OFF' | 'CUSTOM';
 type ShiftChangeRequest = {
   id: string;
-  user: { displayName: string; username: string };
+  user: { displayName: string; username: string; profilePhotoUrl?: string | null };
   requestType: ShiftRequestType;
   requestedDate: string;
   reason: string | null;
@@ -100,7 +101,7 @@ type BreakHistoryItem = {
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CLOSED';
   isOvertime: boolean;
   breakPolicy: { code: string; name: string };
-  user: { displayName: string };
+  user: { displayName: string; username: string; profilePhotoUrl?: string | null };
 };
 
 type BreakPolicy = {
@@ -759,7 +760,12 @@ export function LeaderDashboard({
               <tbody>
                 {liveData?.activeDutySessions.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.user.displayName}</td>
+                    <td>
+                      <AvatarName
+                        displayName={s.user.displayName}
+                        profilePhotoUrl={s.user.profilePhotoUrl}
+                      />
+                    </td>
                     <td className="mono">{fmtTime(s.punchedOnAt)}</td>
                     <td>{s.lateMinutes > 0 ? <span className="tag danger">{s.lateMinutes}m</span> : <span className="tag ok">OK</span>}</td>
                     <td>{s.breakSessions.length > 0
@@ -957,7 +963,13 @@ export function LeaderDashboard({
                 <tbody>
                   {breakHistory.map((b) => (
                     <tr key={b.id}>
-                      <td>{b.user.displayName}</td>
+                      <td>
+                        <AvatarName
+                          displayName={b.user.displayName}
+                          profilePhotoUrl={b.user.profilePhotoUrl}
+                          subtitle={`@${b.user.username}`}
+                        />
+                      </td>
                       <td><span className="tag">{b.breakPolicy.code.toUpperCase()}</span></td>
                       <td className="mono">{fmtTime(b.startedAt)}</td>
                       <td>{breakMin(b)}</td>

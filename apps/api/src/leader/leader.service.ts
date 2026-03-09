@@ -60,7 +60,7 @@ export class LeaderService {
           punchedOnAt: true,
           isLate: true,
           lateMinutes: true,
-          user: { select: { id: true, username: true, displayName: true } },
+          user: { select: { id: true, username: true, displayName: true, profilePhotoUrl: true } },
           team: { select: { id: true, name: true } },
           breakSessions: {
             where: { status: 'ACTIVE' },
@@ -256,7 +256,7 @@ export class LeaderService {
         status: true,
         isOvertime: true,
         breakPolicy: { select: { code: true, name: true } },
-        user: { select: { id: true, username: true, displayName: true } }
+        user: { select: { id: true, username: true, displayName: true, profilePhotoUrl: true } }
       },
       orderBy: [{ localDate: 'desc' }, { startedAt: 'desc' }],
       take,

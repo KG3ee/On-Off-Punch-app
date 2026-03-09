@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from 'r
 import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { AppShell } from '@/components/app-shell';
+import { AvatarName } from '@/components/avatar-name';
 import { apiFetch } from '@/lib/api';
 
 type Team = { id: string; name: string; shiftStartTime?: string | null; shiftEndTime?: string | null };
@@ -48,6 +49,7 @@ type UserRow = {
   displayName: string;
   firstName: string;
   lastName?: string;
+  profilePhotoUrl?: string | null;
   role: 'ADMIN' | 'MEMBER' | 'DRIVER' | 'LEADER' | 'MAID' | 'CHEF';
   team?: Team | null;
   isActive: boolean;
@@ -815,7 +817,13 @@ function AdminUsersContent() {
                 <tbody>
                   {filteredUsers.map((user) => (
                     <tr key={user.id}>
-                      <td style={{ fontWeight: 500 }}>{user.displayName}</td>
+                      <td>
+                        <AvatarName
+                          displayName={user.displayName}
+                          profilePhotoUrl={user.profilePhotoUrl}
+                          subtitle={`@${user.username}`}
+                        />
+                      </td>
                       <td className="mono">{user.username}</td>
                       <td>{user.team ? <span className="tag brand">{user.team.name}</span> : <span className="tag">Service</span>}</td>
                       <td>

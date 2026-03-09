@@ -305,7 +305,7 @@ export class AttendanceService {
           punchedOnAt: true,
           isLate: true,
           lateMinutes: true,
-          user: { select: { id: true, username: true, displayName: true, role: true } },
+          user: { select: { id: true, username: true, displayName: true, profilePhotoUrl: true, role: true } },
           team: { select: { id: true, name: true } },
           breakSessions: {
             where: { status: "ACTIVE" },
@@ -427,7 +427,7 @@ export class AttendanceService {
         isLate: true,
         lateMinutes: true,
         overtimeMinutes: true,
-        user: { select: { id: true, username: true, displayName: true, role: true } },
+          user: { select: { id: true, username: true, displayName: true, profilePhotoUrl: true, role: true } },
         team: { select: { id: true, name: true } },
       },
       orderBy: [{ localDate: "desc" }, { punchedOnAt: "desc" }],

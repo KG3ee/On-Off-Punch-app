@@ -157,6 +157,7 @@ export class BreaksService {
         user: {
           select: {
             displayName: true,
+            profilePhotoUrl: true,
             team: {
               select: {
                 name: true,
