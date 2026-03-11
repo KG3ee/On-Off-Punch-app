@@ -8,4 +8,16 @@ export class PunchDto {
   @IsOptional()
   @IsDateString()
   clientTimestamp?: string;
+
+  @IsOptional()
+  @IsString()
+  clientActionId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientDeviceId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientDutySessionRef?: string;
 }

@@ -94,6 +94,12 @@ type BreakStartResult = {
   dailyLimit?: number;
   quotaScope?: 'DUTY_SESSION';
   quotaScopeId?: string;
+  breakSessionId?: string | null;
+  dutySessionId?: string | null;
+  clientBreakRef?: string | null;
+  clientDutySessionRef?: string | null;
+  syncStatus?: 'APPLIED' | 'IDEMPOTENT' | 'STALE';
+  syncReason?: string | null;
   breakPolicy?: {
     code?: string;
     name?: string;
@@ -184,6 +190,30 @@ function PunchIcon({ mode }: { mode: 'ON' | 'OFF' }) {
       )}
     </svg>
   );
+}
+
+function isClientRefId(value?: string | null): boolean {
+  return typeof value === 'string' && (value.startsWith('duty-') || value.startsWith('break-'));
+}
+
+function describeDiscardedQueueAction(action: QueuedAction): string {
+  const reason = action.result?.syncReason || '';
+  if (action.path === '/breaks/start' && reason === 'BREAK_ALREADY_RECORDED_FROM_ANOTHER_DEVICE') {
+    return 'Queued break from this device was discarded because the break was already recorded from another device.';
+  }
+  if (action.path === '/breaks/end' && reason === 'BREAK_ALREADY_ENDED') {
+    return 'Queued break end was discarded because the break had already been ended.';
+  }
+  if (action.path === '/breaks/end' && reason === 'BREAK_ALREADY_CANCELLED') {
+    return 'Queued break end was discarded because the break had already been cancelled.';
+  }
+  if (action.path === '/breaks/cancel' && reason === 'BREAK_ALREADY_CANCELLED') {
+    return 'Queued cancel was discarded because the break had already been cancelled.';
+  }
+  if (action.path === '/breaks/cancel' && reason === 'BREAK_ALREADY_ENDED') {
+    return 'Queued cancel was discarded because the break had already been ended.';
+  }
+  return 'A queued action from this device was discarded because the server had already recorded the canonical action.';
 }
 
 function loadDashboardCache(): DashboardCache | null {
@@ -281,7 +311,7 @@ export default function EmployeeDashboardPage() {
   const [violationNote, setViolationNote] = useState('');
   const [violationSubmitting, setViolationSubmitting] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const syncedActionIdsRef = useRef<Set<string>>(new Set());
+  const settledActionIdsRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
 
   function showToast(
@@ -336,8 +366,12 @@ export default function EmployeeDashboardPage() {
       if (action.path === '/attendance/on') {
         if (!projectedSession) {
           const date = queueDate(action.clientTimestamp);
+          const clientDutySessionRef =
+            typeof action.body?.clientDutySessionRef === 'string'
+              ? action.body.clientDutySessionRef
+              : `duty-${action.id}`;
           projectedSession = {
-            id: `local-duty-${action.id}`,
+            id: clientDutySessionRef,
             shiftDate: date,
             localDate: date,
             punchedOnAt: action.clientTimestamp,
@@ -361,8 +395,12 @@ export default function EmployeeDashboardPage() {
           const rawCode = action.body?.code;
           const code = typeof rawCode === 'string' ? rawCode : 'break';
           const policy = policies.find((item) => item.code.toLowerCase() === code.toLowerCase());
+          const clientBreakRef =
+            typeof action.body?.clientBreakRef === 'string'
+              ? action.body.clientBreakRef
+              : `break-${action.id}`;
           projectedBreak = {
-            id: `local-break-${action.id}`,
+            id: clientBreakRef,
             localDate: queueDate(action.clientTimestamp),
             dutySessionId: projectedSession.id,
             startedAt: action.clientTimestamp,
@@ -439,9 +477,9 @@ export default function EmployeeDashboardPage() {
     setPendingActions(getPendingCount());
     setFailedActions(getFailedCount());
     setQueueActions(initialQueue);
-    syncedActionIdsRef.current = new Set(
+    settledActionIdsRef.current = new Set(
       initialQueue
-        .filter((item) => item.status === 'synced')
+        .filter((item) => item.status === 'synced' || item.status === 'discarded')
         .map((item) => item.id)
     );
 
@@ -452,12 +490,17 @@ export default function EmployeeDashboardPage() {
       setFailedActions(failed);
       setQueueActions(q);
 
-      const syncedIds = q.filter((item) => item.status === 'synced').map((item) => item.id);
-      const hadNewSynced = syncedIds.some((id) => !syncedActionIdsRef.current.has(id));
-      syncedActionIdsRef.current = new Set(syncedIds);
+      const settled = q.filter((item) => item.status === 'synced' || item.status === 'discarded');
+      const settledIds = settled.map((item) => item.id);
+      const newlySettled = settled.filter((item) => !settledActionIdsRef.current.has(item.id));
+      settledActionIdsRef.current = new Set(settledIds);
 
       // Refresh once when new sync finishes, then clear synced queue entries.
-      if (hadNewSynced) {
+      if (newlySettled.length > 0) {
+        const discarded = newlySettled.find((item) => item.status === 'discarded');
+        if (discarded) {
+          showToast('warning', describeDiscardedQueueAction(discarded), 6500);
+        }
         void loadData({ background: true });
         clearSynced();
       }
@@ -511,10 +554,10 @@ export default function EmployeeDashboardPage() {
 
       if (e.code === 'Space') {
         e.preventDefault();
-        void runAction('/breaks/end');
+        void runAction('/breaks/end', getActiveBreakSyncFields());
       } else if (e.code === 'Escape' && activeBreak && (Date.now() - new Date(activeBreak.startedAt).getTime()) < 120000) {
         e.preventDefault();
-        void runAction('/breaks/cancel');
+        void runAction('/breaks/cancel', getActiveBreakSyncFields());
       }
     }
 
@@ -566,7 +609,7 @@ export default function EmployeeDashboardPage() {
         const policy = shortcutConfirmPolicy;
         if (!policy) return;
         setShortcutConfirmPolicy(null);
-        void runAction('/breaks/start', { code: policy.code });
+        void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() });
         return;
       }
 
@@ -709,6 +752,46 @@ export default function EmployeeDashboardPage() {
     });
   }
 
+  function getActiveSessionSyncFields(): Record<string, unknown> {
+    if (!activeSession) return {};
+    if (isClientRefId(activeSession.id)) {
+      return { clientDutySessionRef: activeSession.id };
+    }
+    return { dutySessionId: activeSession.id };
+  }
+
+  function getPunchOffSyncFields(): Record<string, unknown> {
+    if (!activeSession) return {};
+    if (isClientRefId(activeSession.id)) {
+      return { clientDutySessionRef: activeSession.id };
+    }
+    return {};
+  }
+
+  function getActiveBreakSyncFields(): Record<string, unknown> {
+    if (!activeBreak) return {};
+    const fields: Record<string, unknown> = {};
+    if (isClientRefId(activeBreak.id)) {
+      fields.clientBreakRef = activeBreak.id;
+    } else {
+      fields.breakSessionId = activeBreak.id;
+    }
+    return fields;
+  }
+
+  function buildActionBody(path: string, body?: Record<string, unknown>): Record<string, unknown> | undefined {
+    if (path === '/breaks/start') {
+      return { ...getActiveSessionSyncFields(), ...(body || {}) };
+    }
+    if (path === '/breaks/end' || path === '/breaks/cancel') {
+      return { ...getActiveBreakSyncFields(), ...(body || {}) };
+    }
+    if (path === '/attendance/off') {
+      return { ...getPunchOffSyncFields(), ...(body || {}) };
+    }
+    return body;
+  }
+
   async function runAction(path: string, body?: Record<string, unknown>): Promise<void> {
     setActionMessage('');
     setWarningMessage('');
@@ -719,13 +802,17 @@ export default function EmployeeDashboardPage() {
       setLoading(true);
     }
 
-    const result = await runQueuedAction(path, body);
+    const actionBody = buildActionBody(path, body);
+    const result = await runQueuedAction(path, actionBody);
 
     if (result.ok) {
       if (path === '/breaks/start') {
         const payload = result.data as BreakStartResult | undefined;
-        if (payload?.isOverLimit) {
-          const rawCode = payload.breakPolicy?.code || body?.code;
+        if (payload?.syncStatus === 'STALE') {
+          setWarningMessage('This device action was discarded because the server had already recorded the canonical break.');
+          setTimeout(() => setWarningMessage(''), 6000);
+        } else if (payload?.isOverLimit) {
+          const rawCode = payload.breakPolicy?.code || actionBody?.code;
           const code = typeof rawCode === 'string' && rawCode.trim() ? rawCode.trim() : 'break';
           const localDate = payload.localDate || queueDate(new Date().toISOString());
           const usageText =
@@ -793,7 +880,10 @@ export default function EmployeeDashboardPage() {
     const action = punchConfirmAction;
     if (!action) return;
     setPunchConfirmAction(null);
-    await runAction(action === 'on' ? '/attendance/on' : '/attendance/off');
+    await runAction(
+      action === 'on' ? '/attendance/on' : '/attendance/off',
+      action === 'on' ? undefined : getPunchOffSyncFields(),
+    );
   }
 
   function retryFailedQueueActions(): void {
@@ -877,7 +967,7 @@ export default function EmployeeDashboardPage() {
         type="button"
         className="button-chip"
         disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
-        onClick={() => void runAction('/breaks/start', { code: policy.code })}
+        onClick={() => void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() })}
         title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/session${shortcutLabel ? ` · Shortcut ${shortcutLabel}` : ''}`}
       >
         {shortcutLabel ? (
@@ -1464,11 +1554,11 @@ export default function EmployeeDashboardPage() {
                       <span className="elapsed">{activeBreakMinutes}m</span>
                       <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
                       <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-                        <button className="button button-ok button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/end')} title="Space bar">
+                        <button className="button button-ok button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/end', getActiveBreakSyncFields())} title="Space bar">
                           End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
                         </button>
                         {activeBreakMinutes < 2 ? (
-                          <button className="button button-danger button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/cancel')} title="Escape">
+                          <button className="button button-danger button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/cancel', getActiveBreakSyncFields())} title="Escape">
                             Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
                           </button>
                         ) : null}
@@ -1722,7 +1812,7 @@ export default function EmployeeDashboardPage() {
                       const policy = shortcutConfirmPolicy;
                       if (!policy) return;
                       setShortcutConfirmPolicy(null);
-                      void runAction('/breaks/start', { code: policy.code });
+                      void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() });
                     }}
                   >
                     Confirm (Enter)

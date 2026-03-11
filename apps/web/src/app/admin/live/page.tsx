@@ -137,6 +137,12 @@ type BreakStartResult = {
   dailyLimit?: number;
   quotaScope?: 'DUTY_SESSION';
   quotaScopeId?: string;
+  breakSessionId?: string | null;
+  dutySessionId?: string | null;
+  clientBreakRef?: string | null;
+  clientDutySessionRef?: string | null;
+  syncStatus?: 'APPLIED' | 'IDEMPOTENT' | 'STALE';
+  syncReason?: string | null;
   breakPolicy?: {
     code?: string;
     name?: string;
@@ -192,6 +198,30 @@ function consumeOverLimitToastToken(
   return true;
 }
 
+function isClientRefId(value?: string | null): boolean {
+  return typeof value === 'string' && (value.startsWith('duty-') || value.startsWith('break-'));
+}
+
+function describeDiscardedQueueAction(action: QueuedAction): string {
+  const reason = action.result?.syncReason || '';
+  if (action.path === '/breaks/start' && reason === 'BREAK_ALREADY_RECORDED_FROM_ANOTHER_DEVICE') {
+    return 'Queued break from this device was discarded because the break was already recorded from another device.';
+  }
+  if (action.path === '/breaks/end' && reason === 'BREAK_ALREADY_ENDED') {
+    return 'Queued break end was discarded because the break had already been ended.';
+  }
+  if (action.path === '/breaks/end' && reason === 'BREAK_ALREADY_CANCELLED') {
+    return 'Queued break end was discarded because the break had already been cancelled.';
+  }
+  if (action.path === '/breaks/cancel' && reason === 'BREAK_ALREADY_CANCELLED') {
+    return 'Queued cancel was discarded because the break had already been cancelled.';
+  }
+  if (action.path === '/breaks/cancel' && reason === 'BREAK_ALREADY_ENDED') {
+    return 'Queued cancel was discarded because the break had already been ended.';
+  }
+  return 'A queued action from this device was discarded because the server had already recorded the canonical action.';
+}
+
 export default function AdminLivePage() {
   const router = useRouter();
 
@@ -222,7 +252,7 @@ export default function AdminLivePage() {
   const [queueActions, setQueueActions] = useState<QueuedAction[]>([]);
   const [toast, setToast] = useState<DashboardToast | null>(null);
   const [shortcutConfirmPolicy, setShortcutConfirmPolicy] = useState<BreakPolicy | null>(null);
-  const syncedIdsRef = useRef<Set<string>>(new Set());
+  const settledIdsRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
 
   function showToast(
@@ -264,7 +294,11 @@ export default function AdminLivePage() {
       if (action.path === '/attendance/on') {
         if (!projectedSession) {
           const date = queueDate(action.clientTimestamp);
-          projectedSession = { id: `local-duty-${action.id}`, shiftDate: date, localDate: date, punchedOnAt: action.clientTimestamp, status: 'ACTIVE', isLate: false, lateMinutes: 0, overtimeMinutes: 0 };
+          const clientDutySessionRef =
+            typeof action.body?.clientDutySessionRef === 'string'
+              ? action.body.clientDutySessionRef
+              : `duty-${action.id}`;
+          projectedSession = { id: clientDutySessionRef, shiftDate: date, localDate: date, punchedOnAt: action.clientTimestamp, status: 'ACTIVE', isLate: false, lateMinutes: 0, overtimeMinutes: 0 };
         }
         continue;
       }
@@ -274,7 +308,11 @@ export default function AdminLivePage() {
           const rawCode = action.body?.code;
           const code = typeof rawCode === 'string' ? rawCode : 'break';
           const policy = policies.find(p => p.code.toLowerCase() === code.toLowerCase());
-          projectedBreak = { id: `local-break-${action.id}`, localDate: queueDate(action.clientTimestamp), dutySessionId: projectedSession.id, startedAt: action.clientTimestamp, expectedDurationMinutes: policy?.expectedDurationMinutes ?? 10, status: 'ACTIVE', isOvertime: false, breakPolicy: { code: policy?.code || code, name: policy?.name || 'Queued Break' } };
+          const clientBreakRef =
+            typeof action.body?.clientBreakRef === 'string'
+              ? action.body.clientBreakRef
+              : `break-${action.id}`;
+          projectedBreak = { id: clientBreakRef, localDate: queueDate(action.clientTimestamp), dutySessionId: projectedSession.id, startedAt: action.clientTimestamp, expectedDurationMinutes: policy?.expectedDurationMinutes ?? 10, status: 'ACTIVE', isOvertime: false, breakPolicy: { code: policy?.code || code, name: policy?.name || 'Queued Break' } };
         }
         continue;
       }
@@ -331,17 +369,53 @@ export default function AdminLivePage() {
     if (!background) setPersonalLoading(false);
   }
 
+  function getActiveSessionSyncFields(): Record<string, unknown> {
+    if (!activeSession) return {};
+    if (isClientRefId(activeSession.id)) {
+      return { clientDutySessionRef: activeSession.id };
+    }
+    return { dutySessionId: activeSession.id };
+  }
+
+  function getActiveBreakSyncFields(): Record<string, unknown> {
+    if (!activeBreak) return {};
+    const fields: Record<string, unknown> = {};
+    if (isClientRefId(activeBreak.id)) {
+      fields.clientBreakRef = activeBreak.id;
+    } else {
+      fields.breakSessionId = activeBreak.id;
+    }
+    return fields;
+  }
+
+  function buildActionBody(path: string, body?: Record<string, unknown>): Record<string, unknown> | undefined {
+    if (path === '/breaks/start') {
+      return { ...getActiveSessionSyncFields(), ...(body || {}) };
+    }
+    if (path === '/breaks/end' || path === '/breaks/cancel') {
+      return { ...getActiveBreakSyncFields(), ...(body || {}) };
+    }
+    return body;
+  }
+
   /* ── Queue subscription ── */
   useEffect(() => {
     const init = getQueueSnapshot();
     setQueueActions(init);
-    syncedIdsRef.current = new Set(init.filter(a => a.status === 'synced').map(a => a.id));
+    settledIdsRef.current = new Set(init.filter(a => a.status === 'synced' || a.status === 'discarded').map(a => a.id));
     const unsub = subscribeQueue((q: QueuedAction[]) => {
       setQueueActions(q);
-      const syncedIds = q.filter(a => a.status === 'synced').map(a => a.id);
-      const hadNew = syncedIds.some(id => !syncedIdsRef.current.has(id));
-      syncedIdsRef.current = new Set(syncedIds);
-      if (hadNew) { void loadPersonal(true); clearSynced(); }
+      const settled = q.filter(a => a.status === 'synced' || a.status === 'discarded');
+      const newlySettled = settled.filter(a => !settledIdsRef.current.has(a.id));
+      settledIdsRef.current = new Set(settled.map(a => a.id));
+      if (newlySettled.length > 0) {
+        const discarded = newlySettled.find((item) => item.status === 'discarded');
+        if (discarded) {
+          showToast('warning', describeDiscardedQueueAction(discarded), 6500);
+        }
+        void loadPersonal(true);
+        clearSynced();
+      }
     });
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -365,12 +439,16 @@ export default function AdminLivePage() {
     if (!navigator.onLine) { /* queue will handle it */ }
     else setPersonalLoading(true);
 
-    const result = await runQueuedAction(path, body);
+    const actionBody = buildActionBody(path, body);
+    const result = await runQueuedAction(path, actionBody);
     if (result.ok) {
       if (path === '/breaks/start') {
         const payload = result.data as BreakStartResult | undefined;
-        if (payload?.isOverLimit) {
-          const rawCode = payload.breakPolicy?.code || body?.code;
+        if (payload?.syncStatus === 'STALE') {
+          setActionMsg('This device action was discarded because the server had already recorded the canonical break.');
+          setTimeout(() => setActionMsg(''), 6000);
+        } else if (payload?.isOverLimit) {
+          const rawCode = payload.breakPolicy?.code || actionBody?.code;
           const code = typeof rawCode === 'string' && rawCode.trim() ? rawCode.trim() : 'break';
           const localDate = payload.localDate || queueDate(new Date().toISOString());
           const usageText =
@@ -423,10 +501,10 @@ export default function AdminLivePage() {
 
       if (e.code === 'Space') {
         e.preventDefault();
-        void runAction('/breaks/end');
+        void runAction('/breaks/end', getActiveBreakSyncFields());
       } else if (e.code === 'Escape' && (Date.now() - new Date(activeBreakStartedAt).getTime()) < 120000) {
         e.preventDefault();
-        void runAction('/breaks/cancel');
+        void runAction('/breaks/cancel', getActiveBreakSyncFields());
       }
     }
 
@@ -477,7 +555,7 @@ export default function AdminLivePage() {
         const policy = shortcutConfirmPolicy;
         if (!policy) return;
         setShortcutConfirmPolicy(null);
-        void runAction('/breaks/start', { code: policy.code });
+        void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() });
         return;
       }
 
@@ -501,7 +579,7 @@ export default function AdminLivePage() {
         type="button"
         className="button-chip"
         disabled={(personalLoading && !isOffline) || !activeSession || !!activeBreak}
-        onClick={() => void runAction('/breaks/start', { code: policy.code })}
+        onClick={() => void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() })}
         title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/session`}
       >
         {shortcutLabel ? <span className="chip-shortcut" aria-hidden="true">{shortcutLabel}</span> : null}
@@ -666,11 +744,11 @@ export default function AdminLivePage() {
                 <span className="elapsed">{activeBreakMinutes}m</span>
                 <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-                  <button className="button button-ok button-sm" disabled={personalLoading && !isOffline} onClick={() => void runAction('/breaks/end')}>
+                  <button className="button button-ok button-sm" disabled={personalLoading && !isOffline} onClick={() => void runAction('/breaks/end', getActiveBreakSyncFields())}>
                     End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
                   </button>
                   {activeBreakMinutes < 2 ? (
-                    <button className="button button-danger button-sm" disabled={personalLoading && !isOffline} onClick={() => void runAction('/breaks/cancel')}>
+                    <button className="button button-danger button-sm" disabled={personalLoading && !isOffline} onClick={() => void runAction('/breaks/cancel', getActiveBreakSyncFields())}>
                       Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
                     </button>
                   ) : null}
@@ -961,7 +1039,7 @@ export default function AdminLivePage() {
                     const policy = shortcutConfirmPolicy;
                     if (!policy) return;
                     setShortcutConfirmPolicy(null);
-                    void runAction('/breaks/start', { code: policy.code });
+                    void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() });
                   }}
                 >
                   Confirm (Enter)

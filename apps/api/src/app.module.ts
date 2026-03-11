@@ -19,6 +19,7 @@ import { LeaderModule } from "./leader/leader.module";
 import { ViolationsModule } from "./violations/violations.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { DeductionsModule } from "./deductions/deductions.module";
+import { ClientSyncModule } from "./client-sync/client-sync.module";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DeductionsModule } from "./deductions/deductions.module";
       isGlobal: true,
     }),
     PrismaModule,
+    ClientSyncModule,
     AuthModule,
     UsersModule,
     TeamsModule,

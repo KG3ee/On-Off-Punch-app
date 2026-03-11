@@ -12,9 +12,11 @@ import {
   serializeEventTime,
 } from "../core";
 import { BreakSessionStatus, DutySessionStatus, Team, User } from "@prisma/client";
+import { ClientSyncIdentity, ClientSyncService, CLIENT_SYNC_ACTION, CLIENT_SYNC_STATUS } from "../client-sync/client-sync.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { DeductionsService } from "../deductions/deductions.service";
 import { ShiftsService } from "../shifts/shifts.service";
+import { PunchDto } from "./dto/punch.dto";
 
 @Injectable()
 export class AttendanceService {
@@ -22,9 +24,20 @@ export class AttendanceService {
     private readonly prisma: PrismaService,
     private readonly shiftsService: ShiftsService,
     private readonly deductionsService: DeductionsService,
+    private readonly clientSyncService: ClientSyncService,
   ) { }
 
-  async punchOn(user: User, note?: string, clientTimestamp?: string) {
+  async punchOn(user: User, dto: PunchDto) {
+    const identity = this.toClientSyncIdentity(dto);
+    const receipt = await this.clientSyncService.findReceiptResponse<unknown>(
+      user.id,
+      identity,
+    );
+    if (receipt) {
+      return receipt;
+    }
+
+    const { note, clientTimestamp } = dto;
     const eventTime = resolveEventTime(clientTimestamp, {
       maxPastHours: this.envNumber("MAX_CLIENT_PAST_HOURS", 72),
       maxFutureMinutes: this.envNumber("MAX_CLIENT_FUTURE_MINUTES", 2),
@@ -127,32 +140,61 @@ export class AttendanceService {
       }
     }
 
-    const created = await this.prisma.dutySession.create({
-      data: {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.dutySession.create({
+        data: {
+          userId: user.id,
+          teamId: user.teamId || null,
+          shiftPresetId,
+          shiftPresetSegmentId,
+          shiftDate,
+          localDate,
+          scheduledStartLocal,
+          scheduledEndLocal,
+          punchedOnAt: now,
+          status: DutySessionStatus.ACTIVE,
+          isLate,
+          lateMinutes,
+          note,
+          createdById: user.id,
+        },
+      });
+
+      await this.clientSyncService.saveDutySessionRef(
+        tx,
+        user.id,
+        identity,
+        created.id,
+      );
+
+      const response = {
+        ...created,
+        dutySessionId: created.id,
+        clientDutySessionRef: identity.clientDutySessionRef ?? null,
+        syncStatus: CLIENT_SYNC_STATUS.APPLIED,
+        syncReason: null,
+      };
+
+      await this.clientSyncService.recordReceipt(tx, {
         userId: user.id,
-        teamId: user.teamId || null,
-        shiftPresetId,
-        shiftPresetSegmentId,
-        shiftDate,
-        localDate,
-        scheduledStartLocal,
-        scheduledEndLocal,
-        punchedOnAt: now,
-        status: DutySessionStatus.ACTIVE,
-        isLate,
-        lateMinutes,
-        note,
-        createdById: user.id,
-      },
+        identity,
+        actionType: CLIENT_SYNC_ACTION.DUTY_PUNCH_ON,
+        clientTimestamp,
+        status: CLIENT_SYNC_STATUS.APPLIED,
+        resolvedDutySessionId: created.id,
+        response,
+      });
+
+      return response;
     });
 
-    if (created.lateMinutes > 0) {
+    if (result.lateMinutes > 0) {
       await this.deductionsService
         .recordPunchLateFromDutySession({
-          dutySessionId: created.id,
-          userId: created.userId,
-          localDate: created.localDate,
-          lateMinutes: created.lateMinutes,
+          dutySessionId: result.id,
+          userId: result.userId,
+          localDate: result.localDate,
+          lateMinutes: result.lateMinutes,
           actorUserId: user.id,
         })
         .catch(() => undefined);
@@ -164,7 +206,7 @@ export class AttendanceService {
         actorUserId: user.id,
         action: "DUTY_PUNCH_ON",
         entityType: "DutySession",
-        entityId: created.id,
+        entityId: result.id,
         payload: {
           shiftDate,
           isLate,
@@ -179,10 +221,20 @@ export class AttendanceService {
       },
     }).catch(() => { /* audit failure is non-critical */ });
 
-    return created;
+    return result;
   }
 
-  async punchOff(user: User, note?: string, clientTimestamp?: string) {
+  async punchOff(user: User, dto: PunchDto) {
+    const identity = this.toClientSyncIdentity(dto);
+    const receipt = await this.clientSyncService.findReceiptResponse<unknown>(
+      user.id,
+      identity,
+    );
+    if (receipt) {
+      return receipt;
+    }
+
+    const { note, clientTimestamp } = dto;
     // Fetch active session and team data in parallel (team doesn't depend on session)
     const [activeSession, team] = await Promise.all([
       this.prisma.dutySession.findFirst({
@@ -244,14 +296,37 @@ export class AttendanceService {
       active.scheduledEndLocal,
     );
 
-    const updated = await this.prisma.dutySession.update({
-      where: { id: active.id },
-      data: {
-        punchedOffAt: now,
-        status: DutySessionStatus.CLOSED,
-        note: note || active.note,
-        overtimeMinutes,
-      },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.dutySession.update({
+        where: { id: active.id },
+        data: {
+          punchedOffAt: now,
+          status: DutySessionStatus.CLOSED,
+          note: note || active.note,
+          overtimeMinutes,
+        },
+      });
+
+      const response = {
+        ...updated,
+        workedMinutes,
+        dutySessionId: updated.id,
+        clientDutySessionRef: identity.clientDutySessionRef ?? null,
+        syncStatus: CLIENT_SYNC_STATUS.APPLIED,
+        syncReason: null,
+      };
+
+      await this.clientSyncService.recordReceipt(tx, {
+        userId: user.id,
+        identity,
+        actionType: CLIENT_SYNC_ACTION.DUTY_PUNCH_OFF,
+        clientTimestamp,
+        status: CLIENT_SYNC_STATUS.APPLIED,
+        resolvedDutySessionId: updated.id,
+        response,
+      });
+
+      return response;
     });
 
     // Fire audit non-blocking — does not affect the response
@@ -260,7 +335,7 @@ export class AttendanceService {
         actorUserId: user.id,
         action: "DUTY_PUNCH_OFF",
         entityType: "DutySession",
-        entityId: updated.id,
+        entityId: result.id,
         payload: {
           workedMinutes,
           overtimeMinutes,
@@ -274,10 +349,7 @@ export class AttendanceService {
       },
     }).catch(() => { /* audit failure is non-critical */ });
 
-    return {
-      ...updated,
-      workedMinutes,
-    };
+    return result;
   }
 
   async myTodaySessions(userId: string): Promise<unknown> {
@@ -700,6 +772,14 @@ export class AttendanceService {
     const parsed = Number(limit);
     if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
     return Math.min(500, Math.trunc(parsed));
+  }
+
+  private toClientSyncIdentity(dto?: PunchDto): ClientSyncIdentity {
+    return {
+      clientActionId: dto?.clientActionId,
+      clientDeviceId: dto?.clientDeviceId,
+      clientDutySessionRef: dto?.clientDutySessionRef,
+    };
   }
 
   private parseSkip(offset?: string): number | undefined {

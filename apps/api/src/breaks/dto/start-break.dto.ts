@@ -8,4 +8,24 @@ export class StartBreakDto {
   @IsOptional()
   @IsDateString()
   clientTimestamp?: string;
+
+  @IsOptional()
+  @IsString()
+  clientActionId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientDeviceId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientDutySessionRef?: string;
+
+  @IsOptional()
+  @IsString()
+  dutySessionId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientBreakRef?: string;
 }

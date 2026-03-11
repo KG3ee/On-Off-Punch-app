@@ -70,7 +70,7 @@ export class BreaksController {
     @Body() dto: StartBreakDto,
   ) {
     const user = await this.usersService.getOrThrow(authUser.sub);
-    return this.breaksService.startBreak(user, dto.code, dto.clientTimestamp);
+    return this.breaksService.startBreak(user, dto);
   }
 
   @Post("end")
@@ -79,7 +79,7 @@ export class BreaksController {
     @Body() dto: EndBreakDto,
   ) {
     const user = await this.usersService.getOrThrow(authUser.sub);
-    return this.breaksService.endBreak(user, dto.clientTimestamp);
+    return this.breaksService.endBreak(user, dto);
   }
 
   @Post("cancel")
@@ -88,6 +88,6 @@ export class BreaksController {
     @Body() dto: EndBreakDto,
   ) {
     const user = await this.usersService.getOrThrow(authUser.sub);
-    return this.breaksService.cancelBreak(user, dto.clientTimestamp);
+    return this.breaksService.cancelBreak(user, dto);
   }
 }

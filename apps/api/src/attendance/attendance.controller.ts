@@ -20,13 +20,13 @@ export class AttendanceController {
   @Post("on")
   async punchOn(@CurrentUser() authUser: AuthUser, @Body() dto: PunchDto) {
     const user = await this.usersService.getOrThrow(authUser.sub);
-    return this.attendanceService.punchOn(user, dto.note, dto.clientTimestamp);
+    return this.attendanceService.punchOn(user, dto);
   }
 
   @Post("off")
   async punchOff(@CurrentUser() authUser: AuthUser, @Body() dto: PunchDto) {
     const user = await this.usersService.getOrThrow(authUser.sub);
-    return this.attendanceService.punchOff(user, dto.note, dto.clientTimestamp);
+    return this.attendanceService.punchOff(user, dto);
   }
 
   @Get("me/today")
