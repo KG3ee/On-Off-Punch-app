@@ -80,6 +80,25 @@ type LiveBoard = {
   activeDutySessions: LiveDuty[];
   summary: { totalSessionsToday: number; totalLateMinutesToday: number };
 };
+type PublicBreakBoardSession = {
+  userId: string;
+  displayName: string;
+  profilePhotoUrl?: string | null;
+  teamName: string;
+  punchedOnAt: string;
+  activeBreak: {
+    id: string;
+    code: string;
+    name: string;
+    startedAt: string;
+    expectedDurationMinutes: number;
+  } | null;
+};
+type PublicLiveBoard = {
+  localDate: string;
+  serverNow: string;
+  sessions: PublicBreakBoardSession[];
+};
 
 type ShiftRequestType = 'HALF_DAY_MORNING' | 'HALF_DAY_EVENING' | 'FULL_DAY_OFF' | 'CUSTOM';
 type ShiftChangeRequest = {
@@ -249,6 +268,9 @@ export function LeaderDashboard({
 
   /* ── Team state ── */
   const [liveData, setLiveData] = useState<LiveBoard | null>(null);
+  const [publicBreakSessions, setPublicBreakSessions] = useState<PublicBreakBoardSession[]>([]);
+  const [breakBoardError, setBreakBoardError] = useState('');
+  const [publicBoardOffsetMs, setPublicBoardOffsetMs] = useState(0);
   const [breakHistory, setBreakHistory] = useState<BreakHistoryItem[]>([]);
   const [requests, setRequests] = useState<ShiftChangeRequest[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -276,22 +298,36 @@ export function LeaderDashboard({
 
   /* ── Data loading ── */
   const loadTeam = useCallback(async () => {
-    try {
-      const [live, breaks, reqs, mems, drvs, vios] = await Promise.all([
+    const [teamResult, publicBoardResult] = await Promise.allSettled([
+      Promise.all([
         apiFetch<LiveBoard>('/leader/live'),
         apiFetch<BreakHistoryItem[]>('/leader/breaks?limit=250'),
         apiFetch<ShiftChangeRequest[]>('/leader/requests'),
         apiFetch<TeamMember[]>('/leader/team'),
         apiFetch<DriverInfo[]>('/leader/drivers'),
         apiFetch<LeaderViolationCase[]>('/leader/violations?limit=200'),
-      ]);
+      ]),
+      apiFetch<PublicLiveBoard>('/attendance/live/public'),
+    ]);
+
+    if (teamResult.status === 'fulfilled') {
+      const [live, breaks, reqs, mems, drvs, vios] = teamResult.value;
       setLiveData(live);
       setBreakHistory(breaks);
       setRequests(reqs);
       setMembers(mems);
       setDrivers(drvs);
       setViolations(vios);
-    } catch { /* retry on next interval */ }
+    }
+
+    if (publicBoardResult.status === 'fulfilled') {
+      setPublicBreakSessions(publicBoardResult.value.sessions.filter((session) => session.activeBreak));
+      setPublicBoardOffsetMs(new Date(publicBoardResult.value.serverNow).getTime() - Date.now());
+      setBreakBoardError('');
+    } else {
+      setPublicBreakSessions([]);
+      setBreakBoardError(publicBoardResult.reason instanceof Error ? publicBoardResult.reason.message : 'Failed to load break board');
+    }
   }, []);
 
   useEffect(() => {
@@ -375,6 +411,7 @@ export function LeaderDashboard({
       setError('Please select an accused user from active list');
       return;
     }
+    const isOwnTeamAccused = members.some((member) => member.id === observedAccusedUserId);
     setViolationActionId('observed-create');
     setError('');
     try {
@@ -390,7 +427,11 @@ export function LeaderDashboard({
       setObservedAccusedUserId('');
       setObservedReason('LEFT_WITHOUT_PUNCH');
       setObservedNote('');
-      setMessage('Observed incident submitted');
+      setMessage(
+        isOwnTeamAccused
+          ? 'Observed incident submitted'
+          : 'Observed incident submitted to Admin. It may not appear in your queue because the accused user is outside your team.',
+      );
       notifyPendingBadgesRefresh();
       await loadTeam();
     } catch (err) {
@@ -417,6 +458,20 @@ export function LeaderDashboard({
       label: `${session.user.displayName}`,
     }));
   }, [liveData?.activeDutySessions]);
+  const observedAccusedOptions = useMemo(() => {
+    const options = new Map<string, { userId: string; label: string }>();
+    for (const option of activeAccusedOptions) {
+      options.set(option.userId, option);
+    }
+    for (const session of publicBreakSessions) {
+      if (!session.activeBreak) continue;
+      options.set(session.userId, {
+        userId: session.userId,
+        label: `${session.displayName} · ${session.teamName}`,
+      });
+    }
+    return Array.from(options.values());
+  }, [activeAccusedOptions, publicBreakSessions]);
 
   const topRowPolicies = useMemo(
     () => TOP_BREAK_CODES.map(code => policies.find(p => p.code.toLowerCase() === code)).filter((p): p is BreakPolicy => Boolean(p)),
@@ -456,6 +511,20 @@ export function LeaderDashboard({
     if (b.actualMinutes != null) return `${b.actualMinutes}m`;
     if (b.status === 'ACTIVE') return `${Math.max(0, Math.round((nowTick - new Date(b.startedAt).getTime()) / 60000))}m`;
     return '-';
+  }
+
+  function breakBoardElapsedMinutes(startedAt: string) {
+    const startedMs = new Date(startedAt).getTime();
+    if (Number.isNaN(startedMs)) return 0;
+    const referenceMs = nowTick + publicBoardOffsetMs;
+    return Math.max(0, Math.floor(referenceMs / 60000) - Math.floor(startedMs / 60000));
+  }
+
+  function openObservedModalForSession(session: PublicBreakBoardSession) {
+    setObservedAccusedUserId(session.userId);
+    setObservedReason('UNAUTHORIZED_ABSENCE');
+    setObservedNote('');
+    setShowObservedModal(true);
   }
 
   function renderPolicyButton(policy: BreakPolicy) {
@@ -782,6 +851,72 @@ export function LeaderDashboard({
         </article>
       </section>
 
+      <section className="dash-section">
+        <h2 className="dash-section-title">⏱️ Who&apos;s On Break Now</h2>
+        <article className="card">
+          <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 0, marginBottom: '0.6rem' }}>
+            All active breaks across all teams. Use this to submit an observed incident when needed.
+          </p>
+          {breakBoardError ? (
+            <div className="alert alert-warning" style={{ marginBottom: '0.75rem' }}>{breakBoardError}</div>
+          ) : null}
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Team</th>
+                  <th>Break</th>
+                  <th>Start</th>
+                  <th>Elapsed</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {publicBreakSessions.map((session) => {
+                  const activeBreak = session.activeBreak;
+                  if (!activeBreak) return null;
+                  const elapsedMinutes = breakBoardElapsedMinutes(activeBreak.startedAt);
+                  const isOverdue = elapsedMinutes > activeBreak.expectedDurationMinutes;
+                  return (
+                    <tr key={activeBreak.id}>
+                      <td>
+                        <AvatarName
+                          displayName={session.displayName}
+                          profilePhotoUrl={session.profilePhotoUrl}
+                        />
+                      </td>
+                      <td>{session.teamName}</td>
+                      <td><span className="tag warning">{activeBreak.code.toUpperCase()}</span></td>
+                      <td className="mono">{fmtTime(activeBreak.startedAt)}</td>
+                      <td>{elapsedMinutes}m / {activeBreak.expectedDurationMinutes}m</td>
+                      <td>
+                        <span className={`tag ${isOverdue ? 'danger' : 'ok'}`}>
+                          {isOverdue ? 'Overdue' : 'Active'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="button button-danger button-sm"
+                          onClick={() => openObservedModalForSession(session)}
+                        >
+                          Observed Incident
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {publicBreakSessions.length === 0 ? (
+                  <tr><td colSpan={7} className="table-empty">No one is on break right now</td></tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
       {/* ═══ 5. VIOLATIONS ═══ */}
       <section className="dash-section">
         <div className="dash-collapse-header" onClick={() => setShowViolations((v) => !v)}>
@@ -1092,7 +1227,7 @@ export function LeaderDashboard({
               onChange={(e) => setObservedAccusedUserId(e.target.value)}
               disabled={!!violationActionId}
             >
-              {activeAccusedOptions.map((option) => (
+              {observedAccusedOptions.map((option) => (
                 <option key={option.userId} value={option.userId}>{option.label}</option>
               ))}
             </select>

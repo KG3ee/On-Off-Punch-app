@@ -94,6 +94,26 @@ type LiveBoard = {
   activeDutySessions: LiveDuty[];
   summary: { totalSessionsToday: number; totalLateMinutesToday: number };
 };
+type ViolationReason = 'LEFT_WITHOUT_PUNCH' | 'UNAUTHORIZED_ABSENCE' | 'OTHER';
+type PublicBreakBoardSession = {
+  userId: string;
+  displayName: string;
+  profilePhotoUrl?: string | null;
+  teamName: string;
+  punchedOnAt: string;
+  activeBreak: {
+    id: string;
+    code: string;
+    name: string;
+    startedAt: string;
+    expectedDurationMinutes: number;
+  } | null;
+};
+type PublicLiveBoard = {
+  localDate: string;
+  serverNow: string;
+  sessions: PublicBreakBoardSession[];
+};
 type BreakHistoryItem = {
   id: string;
   localDate: string;
@@ -179,10 +199,18 @@ export default function AdminLivePage() {
   const [data, setData] = useState<LiveBoard | null>(null);
   const [breakHistory, setBreakHistory] = useState<BreakHistoryItem[]>([]);
   const [error, setError] = useState('');
+  const [breakBoardError, setBreakBoardError] = useState('');
   const [nowTick, setNowTick] = useState(0);
   const [pendingShifts, setPendingShifts] = useState(0);
   const [pendingDrivers, setPendingDrivers] = useState(0);
   const [pendingSignups, setPendingSignups] = useState(0);
+  const [publicBreakSessions, setPublicBreakSessions] = useState<PublicBreakBoardSession[]>([]);
+  const [publicBoardOffsetMs, setPublicBoardOffsetMs] = useState(0);
+  const [showObservedModal, setShowObservedModal] = useState(false);
+  const [observedAccusedUserId, setObservedAccusedUserId] = useState('');
+  const [observedReason, setObservedReason] = useState<ViolationReason>('LEFT_WITHOUT_PUNCH');
+  const [observedNote, setObservedNote] = useState('');
+  const [violationActionId, setViolationActionId] = useState<string | null>(null);
 
   /* ── Personal duty/break state ── */
   const [sessions, setSessions] = useState<DutySession[]>([]);
@@ -501,22 +529,36 @@ export default function AdminLivePage() {
   }, []);
 
   async function load(): Promise<void> {
-    try {
-      const [live, history, shifts, drivers, signups] = await Promise.all([
+    const [mainResult, publicBoardResult] = await Promise.allSettled([
+      Promise.all([
         apiFetch<LiveBoard>('/attendance/admin/live'),
         apiFetch<BreakHistoryItem[]>(`/breaks/admin/history?from=${encodeURIComponent(new Date().toISOString().slice(0, 10))}&to=${encodeURIComponent(new Date().toISOString().slice(0, 10))}&limit=250`),
         apiFetch<ShiftRequestsSummary>('/admin/requests/summary'),
         apiFetch<DriverRequestsSummary>('/admin/driver-requests/summary'),
         apiFetch<RegistrationRequestsSummary>('/admin/registration-requests/summary'),
-      ]);
+      ]),
+      apiFetch<PublicLiveBoard>('/attendance/live/public'),
+    ]);
+
+    if (mainResult.status === 'fulfilled') {
+      const [live, history, shifts, drivers, signups] = mainResult.value;
       setData(live);
       setBreakHistory(history);
       setPendingShifts(shifts.pending);
       setPendingDrivers(drivers.pending);
       setPendingSignups(signups.actionable);
       setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
+    } else {
+      setError(mainResult.reason instanceof Error ? mainResult.reason.message : 'Failed to load');
+    }
+
+    if (publicBoardResult.status === 'fulfilled') {
+      setPublicBreakSessions(publicBoardResult.value.sessions.filter((session) => session.activeBreak));
+      setPublicBoardOffsetMs(new Date(publicBoardResult.value.serverNow).getTime() - Date.now());
+      setBreakBoardError('');
+    } else {
+      setPublicBreakSessions([]);
+      setBreakBoardError(publicBoardResult.reason instanceof Error ? publicBoardResult.reason.message : 'Failed to load break board');
     }
   }
 
@@ -530,13 +572,70 @@ export default function AdminLivePage() {
     return '-';
   }
 
+  function breakBoardElapsedMinutes(startedAt: string): number {
+    const startedMs = new Date(startedAt).getTime();
+    if (Number.isNaN(startedMs)) return 0;
+    const referenceMs = nowTick + publicBoardOffsetMs;
+    return Math.max(0, Math.floor(referenceMs / 60000) - Math.floor(startedMs / 60000));
+  }
+
   function sessionBreakMin(b: BreakSession) {
     if (b.actualMinutes != null) return `${b.actualMinutes}m`;
     if (b.status === 'ACTIVE') return `${Math.max(0, Math.round((nowTick - new Date(b.startedAt).getTime()) / 60000))}m`;
     return '-';
   }
 
+  function openObservedModalForSession(session: PublicBreakBoardSession): void {
+    setObservedAccusedUserId(session.userId);
+    setObservedReason('UNAUTHORIZED_ABSENCE');
+    setObservedNote('');
+    setShowObservedModal(true);
+  }
+
+  function notifyPendingBadgesRefresh(): void {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('pending-badges:refresh'));
+  }
+
+  async function submitObservedViolation(): Promise<void> {
+    if (!observedAccusedUserId) {
+      setError('Please select an accused user');
+      return;
+    }
+    setViolationActionId('observed-create');
+    setError('');
+    try {
+      await apiFetch('/admin/violations/observed', {
+        method: 'POST',
+        body: JSON.stringify({
+          accusedUserId: observedAccusedUserId,
+          reason: observedReason,
+          note: observedNote.trim() || undefined,
+        }),
+      });
+      setShowObservedModal(false);
+      setObservedAccusedUserId('');
+      setObservedReason('LEFT_WITHOUT_PUNCH');
+      setObservedNote('');
+      notifyPendingBadgesRefresh();
+      showToast('success', 'Observed incident created');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create observed incident');
+    } finally {
+      setViolationActionId(null);
+    }
+  }
+
   const totalPending = pendingShifts + pendingDrivers;
+  const publicBreakOptions = useMemo(
+    () =>
+      publicBreakSessions.map((session) => ({
+        userId: session.userId,
+        label: `${session.displayName} · ${session.teamName}`,
+      })),
+    [publicBreakSessions],
+  );
 
   return (
     <AppShell title="Dashboard" subtitle="Real-time overview" admin userRole="ADMIN">
@@ -714,6 +813,72 @@ export default function AdminLivePage() {
           </article>
         </section>
 
+        <section className="dash-section">
+          <h2 className="dash-section-title">⏱️ Who&apos;s On Break Now</h2>
+          <article className="card">
+            <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 0, marginBottom: '0.6rem' }}>
+              All active breaks across all teams. Open an observed-incident case from here when needed.
+            </p>
+            {breakBoardError ? (
+              <div className="alert alert-warning" style={{ marginBottom: '0.75rem' }}>{breakBoardError}</div>
+            ) : null}
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Team</th>
+                    <th>Break</th>
+                    <th>Start</th>
+                    <th>Elapsed</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {publicBreakSessions.map((session) => {
+                    const activeBreak = session.activeBreak;
+                    if (!activeBreak) return null;
+                    const elapsedMinutes = breakBoardElapsedMinutes(activeBreak.startedAt);
+                    const isOverdue = elapsedMinutes > activeBreak.expectedDurationMinutes;
+                    return (
+                      <tr key={activeBreak.id}>
+                        <td>
+                          <AvatarName
+                            displayName={session.displayName}
+                            profilePhotoUrl={session.profilePhotoUrl}
+                          />
+                        </td>
+                        <td>{session.teamName}</td>
+                        <td><span className="tag warning">{activeBreak.code.toUpperCase()}</span></td>
+                        <td className="mono">{fmtTime(activeBreak.startedAt)}</td>
+                        <td>{elapsedMinutes}m / {activeBreak.expectedDurationMinutes}m</td>
+                        <td>
+                          <span className={`tag ${isOverdue ? 'danger' : 'ok'}`}>
+                            {isOverdue ? 'Overdue' : 'Active'}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="button button-danger button-sm"
+                            onClick={() => openObservedModalForSession(session)}
+                          >
+                            Observed Incident
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {publicBreakSessions.length === 0 ? (
+                    <tr><td colSpan={7} className="table-empty">No one is on break right now</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
         {/* ═══ Break History ═══ */}
         <section className="dash-section">
           <h2 className="dash-section-title">☕ Today Break History</h2>
@@ -800,6 +965,77 @@ export default function AdminLivePage() {
                   }}
                 >
                   Confirm (Enter)
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showObservedModal ? (
+          <div
+            className="modal-overlay"
+            onClick={(event) => {
+              if (event.target === event.currentTarget && !violationActionId) {
+                setShowObservedModal(false);
+              }
+            }}
+          >
+            <div className="modal">
+              <h3>Create Observed Incident</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '0.6rem' }}>
+                Open a violation case from the live break board. Final confirmation still happens in Requests.
+              </p>
+              <label style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Accused User</label>
+              <select
+                className="select"
+                value={observedAccusedUserId}
+                onChange={(e) => setObservedAccusedUserId(e.target.value)}
+                disabled={!!violationActionId}
+              >
+                {publicBreakOptions.map((option) => (
+                  <option key={option.userId} value={option.userId}>{option.label}</option>
+                ))}
+              </select>
+
+              <label style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '0.6rem' }}>Reason</label>
+              <select
+                className="select"
+                value={observedReason}
+                onChange={(e) => setObservedReason(e.target.value as ViolationReason)}
+                disabled={!!violationActionId}
+              >
+                <option value="LEFT_WITHOUT_PUNCH">Left Without Punch</option>
+                <option value="UNAUTHORIZED_ABSENCE">Unauthorized Absence</option>
+                <option value="OTHER">Other</option>
+              </select>
+
+              <label style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '0.6rem' }}>Note (optional)</label>
+              <textarea
+                className="input"
+                rows={3}
+                maxLength={200}
+                value={observedNote}
+                onChange={(e) => setObservedNote(e.target.value)}
+                disabled={!!violationActionId}
+                placeholder="Short note (optional)"
+              />
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="button button-ghost"
+                  onClick={() => setShowObservedModal(false)}
+                  disabled={!!violationActionId}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="button button-danger"
+                  disabled={!observedAccusedUserId || !!violationActionId}
+                  onClick={() => void submitObservedViolation()}
+                >
+                  {violationActionId === 'observed-create' ? 'Submitting…' : 'Submit Incident'}
                 </button>
               </div>
             </div>

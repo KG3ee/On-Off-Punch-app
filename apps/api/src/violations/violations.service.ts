@@ -283,15 +283,15 @@ export class ViolationsService {
   }
 
   async createLeaderObserved(leaderUserId: string, dto: CreateObservedViolationDto) {
-    const teamId = await this.resolveLeaderTeamId(leaderUserId);
+    await this.resolveLeaderTeamId(leaderUserId);
+    if (dto.accusedUserId === leaderUserId) {
+      throw new BadRequestException('You cannot report yourself');
+    }
     const accused = await this.prisma.user.findUnique({
       where: { id: dto.accusedUserId },
       select: { id: true, teamId: true },
     });
     if (!accused) throw new NotFoundException('Accused user not found');
-    if (accused.teamId !== teamId) {
-      throw new ForbiddenException('Leader can only report observed incidents for own team');
-    }
 
     const occurredAt = this.parseOccurredAt(dto.occurredAt);
     await this.ensureUserOnDutyAt(dto.accusedUserId, occurredAt);
@@ -469,6 +469,9 @@ export class ViolationsService {
   }
 
   async createAdminObserved(adminUserId: string, dto: CreateObservedViolationDto) {
+    if (dto.accusedUserId === adminUserId) {
+      throw new BadRequestException('You cannot report yourself');
+    }
     const occurredAt = this.parseOccurredAt(dto.occurredAt);
     await this.ensureUserOnDutyAt(dto.accusedUserId, occurredAt);
 

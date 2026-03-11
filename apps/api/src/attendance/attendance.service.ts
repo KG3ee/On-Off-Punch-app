@@ -325,6 +325,8 @@ export class AttendanceService {
                 select: { id: true, code: true, name: true, expectedDurationMinutes: true },
               },
             },
+            orderBy: { startedAt: "desc" },
+            take: 1,
           },
           shiftPresetSegment: {
             select: { id: true, segmentNo: true, startTime: true, endTime: true, crossesMidnight: true },
@@ -351,7 +353,8 @@ export class AttendanceService {
 
   async getPublicLiveBoard() {
     const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
-    const localDate = formatDateInZone(new Date(), timezone);
+    const serverNow = new Date();
+    const localDate = formatDateInZone(serverNow, timezone);
 
     const activeDutySessions = await this.prisma.dutySession.findMany({
       where: { status: DutySessionStatus.ACTIVE },
@@ -374,10 +377,13 @@ export class AttendanceService {
         breakSessions: {
           where: { status: "ACTIVE" },
           select: {
+            id: true,
             startedAt: true,
             breakPolicy: {
               select: {
                 code: true,
+                name: true,
+                expectedDurationMinutes: true,
               },
             },
           },
@@ -390,6 +396,7 @@ export class AttendanceService {
 
     return {
       localDate,
+      serverNow: serverNow.toISOString(),
       sessions: activeDutySessions.map((session) => ({
         userId: session.user.id,
         displayName: session.user.displayName,
@@ -398,8 +405,12 @@ export class AttendanceService {
         punchedOnAt: session.punchedOnAt,
         activeBreak: session.breakSessions[0]
           ? {
+              id: session.breakSessions[0].id,
               code: session.breakSessions[0].breakPolicy.code,
+              name: session.breakSessions[0].breakPolicy.name,
               startedAt: session.breakSessions[0].startedAt,
+              expectedDurationMinutes:
+                session.breakSessions[0].breakPolicy.expectedDurationMinutes,
             }
           : null,
       })),

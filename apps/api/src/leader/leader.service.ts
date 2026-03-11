@@ -70,7 +70,9 @@ export class LeaderService {
               breakPolicy: {
                 select: { id: true, code: true, name: true, expectedDurationMinutes: true }
               }
-            }
+            },
+            orderBy: { startedAt: 'desc' },
+            take: 1,
           },
           shiftPresetSegment: {
             select: { id: true, segmentNo: true, startTime: true, endTime: true, crossesMidnight: true }
