@@ -571,6 +571,10 @@ export default function AdminLivePage() {
     return () => window.removeEventListener('keydown', handleConfirmKeys);
   }, [shortcutConfirmPolicy]);
 
+  function openBreakStartConfirm(policy: BreakPolicy): void {
+    setShortcutConfirmPolicy(policy);
+  }
+
   function renderPolicyButton(policy: BreakPolicy) {
     const code = policy.code.toLowerCase();
     const emoji = BREAK_EMOJI_MAP[code] || '☕';
@@ -581,7 +585,7 @@ export default function AdminLivePage() {
         type="button"
         className="button-chip"
         disabled={(personalLoading && !isOffline) || !activeSession || !!activeBreak}
-        onClick={() => void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() })}
+        onClick={() => openBreakStartConfirm(policy)}
         title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/session`}
       >
         {shortcutLabel ? <span className="chip-shortcut" aria-hidden="true">{shortcutLabel}</span> : null}
@@ -1029,7 +1033,7 @@ export default function AdminLivePage() {
             }}
           >
             <div className="modal shortcut-confirm-modal">
-              <h3>Confirm Break Shortcut</h3>
+              <h3>Confirm Break Start</h3>
               <p style={{ marginBottom: '0.35rem' }}>
                 Start <strong>{shortcutConfirmPolicy.code.toUpperCase()}</strong> - {shortcutConfirmPolicy.name}?
               </p>

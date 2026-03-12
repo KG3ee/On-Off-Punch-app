@@ -527,6 +527,10 @@ export function LeaderDashboard({
     setShowObservedModal(true);
   }
 
+  function openBreakStartConfirm(policy: BreakPolicy): void {
+    setShortcutConfirmPolicy(policy);
+  }
+
   function renderPolicyButton(policy: BreakPolicy) {
     const normalizedCode = policy.code.toLowerCase();
     const emoji = BREAK_EMOJI_MAP[normalizedCode] || '☕';
@@ -537,7 +541,7 @@ export function LeaderDashboard({
         type="button"
         className="button-chip"
         disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
-        onClick={() => void runAction('/breaks/start', { code: policy.code })}
+        onClick={() => openBreakStartConfirm(policy)}
         title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/session${shortcutLabel ? ` · Shortcut ${shortcutLabel}` : ''}`}
       >
         {shortcutLabel ? <span className="chip-shortcut" aria-hidden="true">{shortcutLabel}</span> : null}
@@ -1174,7 +1178,7 @@ export function LeaderDashboard({
           }}
         >
           <div className="modal shortcut-confirm-modal">
-            <h3>Confirm Break Shortcut</h3>
+            <h3>Confirm Break Start</h3>
             <p style={{ marginBottom: '0.35rem' }}>
               Start <strong>{shortcutConfirmPolicy.code.toUpperCase()}</strong> - {shortcutConfirmPolicy.name}?
             </p>
