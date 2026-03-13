@@ -13,7 +13,7 @@ RUN npm run build --workspace @modern-punch/core \
   && npm run build --workspace @modern-punch/web
 
 FROM node:22-bookworm-slim AS runner
-WORKDIR /app
+WORKDIR /opt/punch-web
 ENV NODE_ENV=production
 ENV PORT=3000
 
