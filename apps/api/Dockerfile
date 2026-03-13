@@ -14,16 +14,17 @@ RUN npm run build --workspace @modern-punch/core \
   && npm run build --workspace @modern-punch/api
 
 FROM node:22-bookworm-slim AS runner
-WORKDIR /var/lib/punch-api-runtime
+WORKDIR /
 ENV NODE_ENV=production
 ENV PORT=4000
 
-COPY --from=builder /app/package.json /app/package-lock.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
-COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/package.json /bundle/package.json
+COPY --from=builder /app/package-lock.json /bundle/package-lock.json
+COPY --from=builder /app/node_modules /bundle/node_modules
+COPY --from=builder /app/packages /bundle/packages
+COPY --from=builder /app/apps/api/package.json /bundle/apps/api/package.json
+COPY --from=builder /app/apps/api/prisma /bundle/apps/api/prisma
+COPY --from=builder /app/apps/api/dist /bundle/dist
 
 EXPOSE 4000
-CMD ["node", "/var/lib/punch-api-runtime/dist/main.js"]
+CMD ["node", "/bundle/dist/main.js"]
