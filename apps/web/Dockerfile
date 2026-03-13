@@ -5,7 +5,7 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/core/package.json packages/core/package.json
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY packages ./packages
 COPY apps/web ./apps/web
