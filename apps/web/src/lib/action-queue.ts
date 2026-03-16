@@ -333,6 +333,10 @@ function isStaleServerError(errorMsg: string): boolean {
   return stalePatterns.test(errorMsg);
 }
 
+function isDependencyNotReadyError(errorMsg: string): boolean {
+  return /queued (duty session|break) has not synced yet/i.test(errorMsg);
+}
+
 function cleanupQueue(): void {
   const queue = loadQueue();
   const nowMs = Date.now();
@@ -351,6 +355,13 @@ function cleanupQueue(): void {
       action.status = 'failed';
       action.error = 'Expired — action too old to sync';
       action.nextRetryAt = undefined;
+      changed = true;
+    }
+
+    if (action.status === 'failed' && action.error && isDependencyNotReadyError(action.error)) {
+      action.status = 'pending';
+      action.error = undefined;
+      action.nextRetryAt = new Date(Date.now() + computeRetryDelayMs(action.serverRetries || 0)).toISOString();
       changed = true;
     }
   }
@@ -427,6 +438,11 @@ async function processQueue(): Promise<void> {
             a.status = 'pending';
             a.error = errMsg;
             a.nextRetryAt = new Date(Date.now() + computeRetryDelayMs(a.retries)).toISOString();
+          } else if (isDependencyNotReadyError(errMsg)) {
+            a.serverRetries = (a.serverRetries || 0) + 1;
+            a.status = 'pending';
+            a.error = errMsg;
+            a.nextRetryAt = new Date(Date.now() + computeRetryDelayMs(a.serverRetries)).toISOString();
           } else if (isStaleServerError(errMsg)) {
             a.status = 'discarded';
             a.error = undefined;
