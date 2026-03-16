@@ -237,18 +237,6 @@ const VIOLATION_REASON_LABEL: Record<ViolationReason, string> = {
   OTHER: 'Other',
 };
 
-function PunchIcon({ mode }: { mode: 'ON' | 'OFF' }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
-      {mode === 'ON' ? (
-        <line x1="12" y1="4" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      ) : (
-        <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      )}
-    </svg>
-  );
-}
 
 export function LeaderDashboard({
   activeSession,
@@ -634,43 +622,6 @@ export function LeaderDashboard({
     <div className="dash-layout">
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
-
-      {/* ═══ 1. PUNCH STRIP ═══ */}
-      <div className="dash-punch-strip">
-        <button
-          type="button"
-          className="punch-btn punch-on"
-          disabled={(loading && !isOffline) || !!activeSession}
-          onClick={() => void runAction('/attendance/on')}
-          style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
-        >
-          <span className="punch-icon" style={{ width: '1.1rem', height: '1.1rem' }}><PunchIcon mode="ON" /></span>
-          <span className="punch-label" style={{ fontSize: '0.7rem' }}>ON</span>
-        </button>
-
-        <div className="dash-punch-status">
-          {activeSession ? (
-            <>
-              <span className="status-dot active" />
-              <span style={{ fontWeight: 700, color: 'var(--ok)', fontSize: '1rem' }}>{fmtDur(activeDutyMinutes)}</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>on duty</span>
-            </>
-          ) : (
-            <span style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>Off Duty</span>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="punch-btn punch-off"
-          disabled={(loading && !isOffline) || !activeSession}
-          onClick={() => void runAction('/attendance/off')}
-          style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
-        >
-          <span className="punch-icon" style={{ width: '1.1rem', height: '1.1rem' }}><PunchIcon mode="OFF" /></span>
-          <span className="punch-label" style={{ fontSize: '0.7rem' }}>OFF</span>
-        </button>
-      </div>
 
       {/* ═══ 1b. PERSONAL BREAKS ═══ */}
       <article className="card">
