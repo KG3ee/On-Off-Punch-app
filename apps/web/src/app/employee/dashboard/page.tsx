@@ -179,18 +179,6 @@ const BREAK_EMOJI_MAP: Record<string, string> = {
   'cf+3': '🍽️'
 };
 
-function PunchIcon({ mode }: { mode: 'ON' | 'OFF' }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
-      {mode === 'ON' ? (
-        <line x1="12" y1="4" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      ) : (
-        <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      )}
-    </svg>
-  );
-}
 
 function isClientRefId(value?: string | null): boolean {
   return typeof value === 'string' && (value.startsWith('duty-') || value.startsWith('break-'));
@@ -300,7 +288,6 @@ export default function EmployeeDashboardPage() {
   const [clockSkewMinutes, setClockSkewMinutes] = useState<number | null>(null);
   const [serverTimeZone, setServerTimeZone] = useState('');
   const [shortcutConfirmPolicy, setShortcutConfirmPolicy] = useState<BreakPolicy | null>(null);
-  const [punchConfirmAction, setPunchConfirmAction] = useState<'on' | 'off' | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [serverNotifications, setServerNotifications] = useState<UserNotification[]>([]);
   const [serverUnreadCount, setServerUnreadCount] = useState(0);
@@ -625,28 +612,6 @@ export default function EmployeeDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shortcutConfirmPolicy]);
 
-  useEffect(() => {
-    if (!punchConfirmAction) return;
-
-    function handlePunchConfirmKeys(e: KeyboardEvent) {
-      if (isTypingTarget(e.target)) return;
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        void confirmPunchAction();
-        return;
-      }
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setPunchConfirmAction(null);
-      }
-    }
-
-    window.addEventListener('keydown', handlePunchConfirmKeys);
-    return () => window.removeEventListener('keydown', handlePunchConfirmKeys);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [punchConfirmAction]);
 
   async function loadData(options?: { background?: boolean }): Promise<void> {
     const background = options?.background ?? false;
@@ -855,37 +820,6 @@ export default function EmployeeDashboardPage() {
     setLoading(false);
   }
 
-  function getPunchConfirmTimeLabel(): string {
-    return new Date(nowTick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function getScheduledEndLabel(): string | null {
-    if (!activeSession?.scheduledEndLocal) return null;
-    const parts = activeSession.scheduledEndLocal.split('T');
-    if (parts.length < 2) return null;
-    return parts[1]?.slice(0, 5) || null;
-  }
-
-  function getScheduledStartLabel(): string | null {
-    if (!activeSession?.scheduledStartLocal) return null;
-    const parts = activeSession.scheduledStartLocal.split('T');
-    if (parts.length < 2) return null;
-    return parts[1]?.slice(0, 5) || null;
-  }
-
-  function openPunchConfirm(action: 'on' | 'off'): void {
-    setPunchConfirmAction(action);
-  }
-
-  async function confirmPunchAction(): Promise<void> {
-    const action = punchConfirmAction;
-    if (!action) return;
-    setPunchConfirmAction(null);
-    await runAction(
-      action === 'on' ? '/attendance/on' : '/attendance/off',
-      action === 'on' ? undefined : getPunchOffSyncFields(),
-    );
-  }
 
   function retryFailedQueueActions(): void {
     retryFailedActions();
@@ -1436,30 +1370,6 @@ export default function EmployeeDashboardPage() {
           <section className="split">
             {/* Left column — Actions */}
             <div className="grid">
-              {/* Duty */}
-              <article className="card">
-                <h3>Duty</h3>
-                <div className="action-row">
-                  <button
-                    type="button"
-                    className="punch-btn punch-on"
-                    disabled={(loading && !isOffline) || !!activeSession}
-                    onClick={() => openPunchConfirm('on')}
-                  >
-                    <span className="punch-icon"><PunchIcon mode="ON" /></span>
-                    <span className="punch-label">Punch ON</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="punch-btn punch-off"
-                    disabled={(loading && !isOffline) || !activeSession}
-                    onClick={() => openPunchConfirm('off')}
-                  >
-                    <span className="punch-icon"><PunchIcon mode="OFF" /></span>
-                    <span className="punch-label">Punch OFF</span>
-                  </button>
-                </div>
-              </article>
 
               {me?.role === 'CHEF' ? (
                 <article className="card">
@@ -1734,56 +1644,6 @@ export default function EmployeeDashboardPage() {
             </div>
           </section>
 
-          {punchConfirmAction ? (
-            <div
-              className="modal-overlay"
-              onClick={(event) => {
-                if (event.target === event.currentTarget) {
-                  setPunchConfirmAction(null);
-                }
-              }}
-            >
-              <div className="modal shortcut-confirm-modal">
-                <h3>{punchConfirmAction === 'on' ? 'Confirm Punch ON' : 'Confirm Punch OFF'}</h3>
-                <p style={{ marginBottom: '0.35rem' }}>
-                  Are you sure you want to {punchConfirmAction === 'on' ? 'punch ON' : 'punch OFF'}?
-                </p>
-                <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                  Actual recorded time will be <strong>{getPunchConfirmTimeLabel()}</strong>
-                  {serverTimeZone ? ` (${serverTimeZone})` : ''}.
-                </p>
-                {punchConfirmAction === 'off' && getScheduledEndLabel() ? (
-                  <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                    Scheduled shift end: <strong>{getScheduledEndLabel()}</strong>.
-                  </p>
-                ) : null}
-                {punchConfirmAction === 'on' && getScheduledStartLabel() ? (
-                  <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                    Scheduled shift start: <strong>{getScheduledStartLabel()}</strong>.
-                  </p>
-                ) : null}
-                <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-                  Press <kbd>Enter</kbd> to confirm or <kbd>Esc</kbd> to cancel.
-                </p>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="button button-ghost"
-                    onClick={() => setPunchConfirmAction(null)}
-                  >
-                    Cancel (Esc)
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={() => void confirmPunchAction()}
-                  >
-                    Confirm (Enter)
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
 
           {shortcutConfirmPolicy ? (
             <div
