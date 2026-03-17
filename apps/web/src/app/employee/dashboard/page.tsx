@@ -24,6 +24,7 @@ import {
 } from '@/lib/action-queue';
 import { MeUser } from '@/types/auth';
 import { LeaderDashboard } from '@/components/leader-dashboard';
+import { BreakChips } from '@/components/break-chips';
 
 
 type DutySession = {
@@ -521,7 +522,7 @@ export default function EmployeeDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!me || me.role === 'ADMIN' || me.role === 'DRIVER') return;
+    if (!me || me.role === 'DRIVER') return;
     void loadPublicBreakBoard(true);
 
     const timer = window.setInterval(() => {
@@ -1077,7 +1078,7 @@ export default function EmployeeDashboardPage() {
   const [requestUpdates, setRequestUpdates] = useState<RequestUpdate[]>([]);
 
   useEffect(() => {
-    if (!me || me.role === 'DRIVER' || me.role === 'ADMIN') return;
+    if (!me || me.role === 'DRIVER') return;
     const lastSeen = localStorage.getItem(LAST_SEEN_KEY) || '1970-01-01T00:00:00Z';
     const poll = async () => {
       if (document.hidden) return;
@@ -1480,21 +1481,14 @@ export default function EmployeeDashboardPage() {
                       </div>
                     </div>
                   ) : (
-                    <>
-                      {breakBlockedReason ? (
-                        <div className="alert alert-warning">{breakBlockedReason}</div>
-                      ) : null}
-                      <div className="break-chips-layout">
-                        {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
-                        {bottomRowPolicies.length > 0 ? (
-                          <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div>
-                        ) : null}
-                        {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
-                        {policies.length === 0 ? (
-                          <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p>
-                        ) : null}
-                      </div>
-                    </>
+                    <BreakChips
+                      topPolicies={topRowPolicies}
+                      bottomPolicies={bottomRowPolicies}
+                      extraPolicies={extraPolicies}
+                      disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
+                      blockReason={breakBlockedReason}
+                      onStart={openBreakStartConfirm}
+                    />
                   )}
                 </article>
               ) : null}
