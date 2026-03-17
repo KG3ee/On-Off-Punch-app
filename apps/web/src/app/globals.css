@@ -849,6 +849,10 @@ tbody tr:hover {
   padding: 0.25rem 0 0.25rem 0.625rem;
 }
 
+.break-section.break-section-short {
+  border-left-color: rgba(96, 165, 250, 0.55);
+}
+
 .break-section.break-section-meals {
   border-left-color: rgba(251, 191, 36, 0.45);
 }
