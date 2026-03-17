@@ -9,7 +9,7 @@ import { MobileBlockedNotice, useIsMobileClient } from '@/components/mobile-bloc
 import { NotificationBell } from '@/components/notification-bell';
 import { ensurePushSubscription, markNotificationRead, unsubscribePushSubscription } from '@/lib/notifications';
 import { MeUser, UserRole } from '@/types/auth';
-import { AdminPunchWidget } from '@/components/admin-punch-banner';
+import { PunchWidget } from '@/components/punch-widget';
 
 type NavItem = {
   href: string;
@@ -407,7 +407,7 @@ export function AppShell({
           <div className="shell-header-actions">
             {headerAction}
             {showNotificationBell ? <NotificationBell /> : null}
-            {admin ? <AdminPunchWidget /> : null}
+            {me ? <PunchWidget /> : null}
             <ProfileAvatar me={me} admin={admin} currentPath={currentPath} />
           </div>
         </div>

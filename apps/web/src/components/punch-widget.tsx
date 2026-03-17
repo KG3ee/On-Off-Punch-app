@@ -9,7 +9,7 @@ type DutySession = {
   status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
 };
 
-export function AdminPunchWidget() {
+export function PunchWidget() {
   const [sessions, setSessions] = useState<DutySession[]>([]);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -72,7 +72,7 @@ export function AdminPunchWidget() {
     const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const action = path === '/attendance/on' ? 'Punch ON' : 'Punch OFF';
     return window.confirm(
-      `${action} confirmation\\n\\nActual recorded time will be ${timeLabel}.\\n\\nDo you want to continue?`,
+      `${action} confirmation\n\nActual recorded time will be ${timeLabel}.\n\nDo you want to continue?`,
     );
   }
 

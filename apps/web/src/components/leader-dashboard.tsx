@@ -2,28 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarName } from '@/components/avatar-name';
+import { BreakChips } from '@/components/break-chips';
 import { apiFetch } from '@/lib/api';
 
 /* ── Break constants (mirrors employee dashboard) ── */
 const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
 const BOTTOM_BREAK_CODES = ['cf+1', 'cf+2', 'cf+3'] as const;
 const FIXED_BREAK_CODES: ReadonlySet<string> = new Set([...TOP_BREAK_CODES, ...BOTTOM_BREAK_CODES]);
-const BREAK_EMOJI_MAP: Record<string, string> = {
-  wc: '🚽',
-  bwc: '💩',
-  cy: '🚬',
-  'cf+1': '🥐',
-  'cf+2': '🍛',
-  'cf+3': '🍽️',
-};
-const BREAK_SHORTCUT_CODE_TO_LABEL: Record<string, string> = {
-  bwc: 'B',
-  wc: 'W',
-  cy: 'C',
-  'cf+1': '1',
-  'cf+2': '2',
-  'cf+3': '3',
-};
 const BREAK_SHORTCUT_KEY_TO_CODE: Record<string, string> = {
   b: 'bwc',
   w: 'wc',
@@ -237,18 +222,6 @@ const VIOLATION_REASON_LABEL: Record<ViolationReason, string> = {
   OTHER: 'Other',
 };
 
-function PunchIcon({ mode }: { mode: 'ON' | 'OFF' }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
-      {mode === 'ON' ? (
-        <line x1="12" y1="4" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      ) : (
-        <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      )}
-    </svg>
-  );
-}
 
 export function LeaderDashboard({
   activeSession,
@@ -533,27 +506,6 @@ export function LeaderDashboard({
     setShortcutConfirmPolicy(policy);
   }
 
-  function renderPolicyButton(policy: BreakPolicy) {
-    const normalizedCode = policy.code.toLowerCase();
-    const emoji = BREAK_EMOJI_MAP[normalizedCode] || '☕';
-    const shortcutLabel = BREAK_SHORTCUT_CODE_TO_LABEL[normalizedCode];
-    return (
-      <button
-        key={policy.id}
-        type="button"
-        className="button-chip"
-        disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
-        onClick={() => openBreakStartConfirm(policy)}
-        title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/session${shortcutLabel ? ` · Shortcut ${shortcutLabel}` : ''}`}
-      >
-        {shortcutLabel ? <span className="chip-shortcut" aria-hidden="true">{shortcutLabel}</span> : null}
-        <span className="chip-emoji">{emoji}</span>
-        <span className="chip-code">{policy.code.toUpperCase()} · {policy.expectedDurationMinutes}m</span>
-        <span className="chip-name">{policy.name}</span>
-      </button>
-    );
-  }
-
   // Keyboard shortcuts while break is active: Space => End break, Esc => Cancel break (within 2 min)
   useEffect(() => {
     if (!activeBreak) return;
@@ -635,43 +587,6 @@ export function LeaderDashboard({
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
 
-      {/* ═══ 1. PUNCH STRIP ═══ */}
-      <div className="dash-punch-strip">
-        <button
-          type="button"
-          className="punch-btn punch-on"
-          disabled={(loading && !isOffline) || !!activeSession}
-          onClick={() => void runAction('/attendance/on')}
-          style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
-        >
-          <span className="punch-icon" style={{ width: '1.1rem', height: '1.1rem' }}><PunchIcon mode="ON" /></span>
-          <span className="punch-label" style={{ fontSize: '0.7rem' }}>ON</span>
-        </button>
-
-        <div className="dash-punch-status">
-          {activeSession ? (
-            <>
-              <span className="status-dot active" />
-              <span style={{ fontWeight: 700, color: 'var(--ok)', fontSize: '1rem' }}>{fmtDur(activeDutyMinutes)}</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>on duty</span>
-            </>
-          ) : (
-            <span style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>Off Duty</span>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="punch-btn punch-off"
-          disabled={(loading && !isOffline) || !activeSession}
-          onClick={() => void runAction('/attendance/off')}
-          style={{ padding: '0.5rem 1rem', flexDirection: 'row', gap: '0.375rem' }}
-        >
-          <span className="punch-icon" style={{ width: '1.1rem', height: '1.1rem' }}><PunchIcon mode="OFF" /></span>
-          <span className="punch-label" style={{ fontSize: '0.7rem' }}>OFF</span>
-        </button>
-      </div>
-
       {/* ═══ 1b. PERSONAL BREAKS ═══ */}
       <article className="card">
         <h3>Breaks</h3>
@@ -693,17 +608,14 @@ export function LeaderDashboard({
             </div>
           </div>
         ) : (
-          <>
-            {breakBlockedReason ? (
-              <div className="alert alert-warning">{breakBlockedReason}</div>
-            ) : null}
-            <div className="break-chips-layout">
-              {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
-              {bottomRowPolicies.length > 0 ? <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div> : null}
-              {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
-              {policies.length === 0 ? <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p> : null}
-            </div>
-          </>
+          <BreakChips
+            topPolicies={topRowPolicies}
+            bottomPolicies={bottomRowPolicies}
+            extraPolicies={extraPolicies}
+            disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
+            blockReason={breakBlockedReason}
+            onStart={openBreakStartConfirm}
+          />
         )}
         {breakSessions.filter(b => b.dutySessionId === activeSession?.id).length > 0 ? (
           <div className="table-wrap" style={{ marginTop: '0.75rem' }}>

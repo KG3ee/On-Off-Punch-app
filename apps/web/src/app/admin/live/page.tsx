@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { AvatarName } from '@/components/avatar-name';
+import { BreakChips } from '@/components/break-chips';
 import { apiFetch } from '@/lib/api';
 import {
   clearSynced,
@@ -17,12 +18,7 @@ import {
 const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
 const BOTTOM_BREAK_CODES = ['cf+1', 'cf+2', 'cf+3'] as const;
 const FIXED_BREAK_CODES: ReadonlySet<string> = new Set([...TOP_BREAK_CODES, ...BOTTOM_BREAK_CODES]);
-const BREAK_EMOJI_MAP: Record<string, string> = {
-  wc: '🚽', bwc: '💩', cy: '🚬', 'cf+1': '🥐', 'cf+2': '🍛', 'cf+3': '🍽️',
-};
-const BREAK_SHORTCUT_CODE_TO_LABEL: Record<string, string> = {
-  bwc: 'B', wc: 'W', cy: 'C', 'cf+1': '1', 'cf+2': '2', 'cf+3': '3',
-};
+
 const BREAK_SHORTCUT_KEY_TO_CODE: Record<string, string> = {
   b: 'bwc',
   w: 'wc',
@@ -574,27 +570,6 @@ export default function AdminLivePage() {
     setShortcutConfirmPolicy(policy);
   }
 
-  function renderPolicyButton(policy: BreakPolicy) {
-    const code = policy.code.toLowerCase();
-    const emoji = BREAK_EMOJI_MAP[code] || '☕';
-    const shortcutLabel = BREAK_SHORTCUT_CODE_TO_LABEL[code];
-    return (
-      <button
-        key={policy.id}
-        type="button"
-        className="button-chip"
-        disabled={(personalLoading && !isOffline) || !activeSession || !!activeBreak}
-        onClick={() => openBreakStartConfirm(policy)}
-        title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/session`}
-      >
-        {shortcutLabel ? <span className="chip-shortcut" aria-hidden="true">{shortcutLabel}</span> : null}
-        <span className="chip-emoji">{emoji}</span>
-        <span className="chip-code">{policy.code.toUpperCase()} · {policy.expectedDurationMinutes}m</span>
-        <span className="chip-name">{policy.name}</span>
-      </button>
-    );
-  }
-
   /* ── Monitoring load ── */
   useEffect(() => {
     setNowTick(Date.now());
@@ -761,13 +736,14 @@ export default function AdminLivePage() {
               </div>
             ) : (
               <>
-                {breakBlockedReason ? <div className="alert alert-warning">{breakBlockedReason}</div> : null}
-                <div className="break-chips-layout">
-                  {topRowPolicies.length > 0 ? <div className="chips-row">{topRowPolicies.map(renderPolicyButton)}</div> : null}
-                  {bottomRowPolicies.length > 0 ? <div className="chips-row chips-row-bottom">{bottomRowPolicies.map(renderPolicyButton)}</div> : null}
-                  {extraPolicies.length > 0 ? <div className="chips-grid">{extraPolicies.map(renderPolicyButton)}</div> : null}
-                  {policies.length === 0 ? <p style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>No break policies available</p> : null}
-                </div>
+                <BreakChips
+                  topPolicies={topRowPolicies}
+                  bottomPolicies={bottomRowPolicies}
+                  extraPolicies={extraPolicies}
+                  disabled={(personalLoading && !isOffline) || !activeSession || !!activeBreak}
+                  blockReason={breakBlockedReason}
+                  onStart={openBreakStartConfirm}
+                />
               </>
             )}
 
