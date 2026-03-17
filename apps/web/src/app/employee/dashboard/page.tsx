@@ -1580,7 +1580,7 @@ export default function EmployeeDashboardPage() {
               <article className="card">
                 <h3>Current Session</h3>
                 <div className="table-wrap">
-                  <table>
+                  <table className="table-card-mobile">
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -1593,14 +1593,14 @@ export default function EmployeeDashboardPage() {
                     <tbody>
                       {activeSession ? (
                         <tr>
-                          <td className="mono">{activeSession.shiftDate}</td>
-                          <td className="mono">{fmtTime(activeSession.punchedOnAt)}</td>
-                          <td className="mono">{activeSession.punchedOffAt ? fmtTime(activeSession.punchedOffAt) : '—'}</td>
-                          <td>
+                          <td className="mono" data-label="Date">{activeSession.shiftDate}</td>
+                          <td className="mono" data-label="On">{fmtTime(activeSession.punchedOnAt)}</td>
+                          <td className="mono" data-label="Off">{activeSession.punchedOffAt ? fmtTime(activeSession.punchedOffAt) : '—'}</td>
+                          <td data-label="Status">
                             <span className={`tag ${activeSession.status === 'ACTIVE' ? 'ok' : ''}`}>{activeSession.status}</span>
                           </td>
                           {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-                            <td>{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
+                            <td data-label="Late">{activeSession.lateMinutes > 0 ? <span className="tag danger">{activeSession.lateMinutes}m</span> : '—'}</td>
                           ) : null}
                         </tr>
                       ) : (
