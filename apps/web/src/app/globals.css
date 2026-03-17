@@ -845,18 +845,12 @@ tbody tr:hover {
 
 /* ── Break section bands ── */
 .break-section {
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  padding: 0.5rem 0.625rem 0.625rem;
-}
-
-.break-section.break-section-short {
-  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid var(--line);
+  padding: 0.25rem 0 0.25rem 0.625rem;
 }
 
 .break-section.break-section-meals {
-  background: rgba(251, 191, 36, 0.04);
-  border-color: rgba(251, 191, 36, 0.18);
+  border-left-color: rgba(251, 191, 36, 0.45);
 }
 
 .break-section-header {
