@@ -897,29 +897,6 @@ export default function EmployeeDashboardPage() {
     setShortcutConfirmPolicy(policy);
   }
 
-  function renderPolicyButton(policy: BreakPolicy) {
-    const normalizedCode = policy.code.toLowerCase();
-    const emoji = BREAK_EMOJI_MAP[normalizedCode] || '☕';
-    const shortcutLabel = BREAK_SHORTCUT_CODE_TO_LABEL[normalizedCode];
-    return (
-      <button
-        key={policy.id}
-        type="button"
-        className="button-chip"
-        disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
-        onClick={() => openBreakStartConfirm(policy)}
-        title={`${policy.name} — ${policy.expectedDurationMinutes}m, limit ${policy.dailyLimit}/session${shortcutLabel ? ` · Shortcut ${shortcutLabel}` : ''}`}
-      >
-        {shortcutLabel ? (
-          <span className="chip-shortcut" aria-hidden="true">{shortcutLabel}</span>
-        ) : null}
-        <span className="chip-emoji">{emoji}</span>
-        <span className="chip-code">{policy.code.toUpperCase()} · {policy.expectedDurationMinutes}m</span>
-        <span className="chip-name">{policy.name}</span>
-      </button>
-    );
-  }
-
   useEffect(() => {
     if (error || actionMessage) {
       setNotificationsOpen(true);
