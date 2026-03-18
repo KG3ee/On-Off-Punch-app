@@ -15,6 +15,7 @@ RUN npm run build --workspace @modern-punch/core \
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 ENV PORT=4000
 
