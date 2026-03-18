@@ -1,6 +1,11 @@
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
+# NEXT_PUBLIC_* vars must be present at build time — they are compiled
+# into the client JS bundle by Next.js and cannot be changed at runtime.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
