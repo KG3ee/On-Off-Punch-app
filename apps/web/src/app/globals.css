@@ -1737,6 +1737,12 @@ main > .shell {
   z-index: 30;
   animation: fadeIn 120ms ease-out;
   overflow: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.noti-dropdown.noti-closing {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .noti-dropdown-header {
@@ -1745,6 +1751,28 @@ main > .shell {
   justify-content: space-between;
   padding: 0.625rem 0.75rem;
   border-bottom: 1px solid var(--line);
+}
+
+.noti-clear-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition);
+  white-space: nowrap;
+}
+
+.noti-clear-btn:hover {
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.noti-clear-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .noti-empty {
