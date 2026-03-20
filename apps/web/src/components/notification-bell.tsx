@@ -33,6 +33,7 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [items, setItems] = useState<UserNotification[]>([]);
   const ref = useRef<HTMLDivElement>(null);
+  const openRef = useRef(false);
   const router = useRouter();
 
   const refreshUnread = async () => {
@@ -56,12 +57,20 @@ export function NotificationBell() {
     }
   };
 
+  // Keep openRef in sync so the polling interval can check it without
+  // being re-registered every time `open` changes.
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  // Single stable interval — does not re-run when `open` changes,
+  // preventing refreshUnread() from racing with openBell().
   useEffect(() => {
     void refreshUnread();
     const timer = window.setInterval(() => {
       if (!document.hidden) {
         void refreshUnread();
-        if (open) {
+        if (openRef.current) {
           void refreshList();
         }
       }
@@ -70,8 +79,7 @@ export function NotificationBell() {
     return () => {
       window.clearInterval(timer);
     };
-    // open intentionally included to refresh list while dropdown is visible
-  }, [open]);
+  }, []);
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
@@ -84,10 +92,12 @@ export function NotificationBell() {
   }, []);
 
   const openBell = async () => {
+    // Optimistically zero the badge before any async work so the
+    // polling interval cannot race and restore the old count.
     setOpen(true);
+    setUnreadCount(0);
     await markAllNotificationsRead().catch(() => undefined);
     await refreshList();
-    setUnreadCount(0);
   };
 
   const toggleBell = () => {
