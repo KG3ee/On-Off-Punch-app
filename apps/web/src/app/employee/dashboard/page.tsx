@@ -306,6 +306,7 @@ export default function EmployeeDashboardPage() {
   const notiFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settledActionIdsRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
+  const attendanceRefreshRef = useRef<() => void>(() => undefined);
 
   function showToast(
     tone: DashboardToast['tone'],
@@ -748,6 +749,17 @@ export default function EmployeeDashboardPage() {
       else if (ep === 'summary') setMonthlySummary(r.value as MonthlySummary);
     });
   }
+
+  attendanceRefreshRef.current = () => {
+    void loadTargeted(['sessions', 'breaks', 'summary']);
+    void loadData({ background: true });
+  };
+
+  useEffect(() => {
+    const handleAttendanceRefresh = () => attendanceRefreshRef.current();
+    window.addEventListener('attendance:refresh', handleAttendanceRefresh);
+    return () => window.removeEventListener('attendance:refresh', handleAttendanceRefresh);
+  }, []);
 
   function getActiveSessionSyncFields(): Record<string, unknown> {
     if (!activeSession) return {};

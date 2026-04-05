@@ -252,6 +252,7 @@ export default function AdminLivePage() {
   const [shortcutConfirmPolicy, setShortcutConfirmPolicy] = useState<BreakPolicy | null>(null);
   const settledIdsRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
+  const attendanceRefreshRef = useRef<() => void>(() => undefined);
 
   function showToast(
     tone: DashboardToast['tone'],
@@ -368,6 +369,10 @@ export default function AdminLivePage() {
     if (!background) setPersonalLoading(false);
   }
 
+  attendanceRefreshRef.current = () => {
+    void loadPersonal(true);
+  };
+
   function getActiveSessionSyncFields(): Record<string, unknown> {
     if (!activeSession) return {};
     if (isClientRefId(activeSession.id)) {
@@ -418,6 +423,12 @@ export default function AdminLivePage() {
     });
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const handleAttendanceRefresh = () => attendanceRefreshRef.current();
+    window.addEventListener('attendance:refresh', handleAttendanceRefresh);
+    return () => window.removeEventListener('attendance:refresh', handleAttendanceRefresh);
   }, []);
 
   /* ── Online/Offline ── */

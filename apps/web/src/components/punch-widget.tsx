@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
 
 type DutySession = {
@@ -59,17 +60,24 @@ export function PunchWidget() {
     return h > 0 ? `${h}h${r > 0 ? ` ${r}m` : ''}` : `${r}m`;
   }
 
-  const punch = useCallback(async (path: string) => {
+  const punch = useCallback(async (path: '/attendance/on' | '/attendance/off') => {
     setLoading(true);
     setAnimState('processing');
+    setLastAction(path === '/attendance/on' ? 'on' : 'off');
     try {
-      await apiFetch(path, {
+      const payload = await apiFetch<DutySession>(path, {
         method: 'POST',
         body: JSON.stringify({ clientTimestamp: new Date().toISOString() })
       });
-      setAnimState('success');
-      setLastAction(path === '/attendance/on' ? 'on' : 'off');
+      setSessions((current) => {
+        if (path === '/attendance/on') {
+          return [payload, ...current.filter((session) => session.id !== payload.id && session.status !== 'ACTIVE')];
+        }
+        return current.map((session) => (session.id === payload.id ? payload : session));
+      });
       await load();
+      window.dispatchEvent(new CustomEvent('attendance:refresh', { detail: { path } }));
+      setAnimState('success');
       
       // Trigger haptic feedback if available
       if (navigator.vibrate) {
@@ -129,6 +137,63 @@ export function PunchWidget() {
 
   const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const actionLabel = pendingAction === '/attendance/on' ? 'Punch ON' : pendingAction === '/attendance/off' ? 'Punch OFF' : '';
+  const confirmModal = mounted && showConfirmModal ? createPortal(
+    <div className="modal-overlay" onClick={handleCancel}>
+      <div className="modal punch-confirm-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '1.5rem' }}>
+            {pendingAction === '/attendance/on' ? '▶️' : '⏹️'}
+          </span>
+          {actionLabel} Confirmation
+        </h3>
+        
+        <div style={{
+          padding: '1rem',
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius)',
+          marginBottom: '1rem',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            fontSize: '2rem',
+            fontWeight: 700,
+            color: 'var(--ink)',
+            fontFamily: 'monospace',
+            marginBottom: '0.25rem',
+          }}>
+            {timeLabel}
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', margin: 0 }}>
+            Actual recorded time
+          </p>
+        </div>
+
+        <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '1.5rem' }}>
+          Do you want to continue?
+        </p>
+
+        <div className="modal-footer" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+          <button
+            type="button"
+            className="button button-ghost"
+            onClick={handleCancel}
+            style={{ minWidth: '100px' }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={`button ${pendingAction === '/attendance/on' ? 'button-ok' : 'button-danger'}`}
+            onClick={handleConfirm}
+            style={{ minWidth: '100px', fontWeight: 600 }}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  ) : null;
 
   return (
     <>
@@ -190,63 +255,7 @@ export function PunchWidget() {
         )}
       </div>
 
-      {/* Confirmation Modal */}
-      {showConfirmModal && (
-        <div className="modal-overlay" onClick={handleCancel}>
-          <div className="modal punch-confirm-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '1.5rem' }}>
-                {pendingAction === '/attendance/on' ? '▶️' : '⏹️'}
-              </span>
-              {actionLabel} Confirmation
-            </h3>
-            
-            <div style={{
-              padding: '1rem',
-              background: 'var(--surface)',
-              borderRadius: 'var(--radius)',
-              marginBottom: '1rem',
-              textAlign: 'center',
-            }}>
-              <div style={{
-                fontSize: '2rem',
-                fontWeight: 700,
-                color: 'var(--ink)',
-                fontFamily: 'monospace',
-                marginBottom: '0.25rem',
-              }}>
-                {timeLabel}
-              </div>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', margin: 0 }}>
-                Actual recorded time
-              </p>
-            </div>
-
-            <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '1.5rem' }}>
-              Do you want to continue?
-            </p>
-
-            <div className="modal-footer" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
-              <button
-                type="button"
-                className="button button-ghost"
-                onClick={handleCancel}
-                style={{ minWidth: '100px' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={`button ${pendingAction === '/attendance/on' ? 'button-ok' : 'button-danger'}`}
-                onClick={handleConfirm}
-                style={{ minWidth: '100px', fontWeight: 600 }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {confirmModal}
     </>
   );
 }
