@@ -27,6 +27,7 @@ import { LeaderDashboard } from '@/components/leader-dashboard';
 import { BreakChips } from '@/components/break-chips';
 import { DashboardSkeleton } from '@/components/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { PunchAttendanceConfirmModal } from '@/components/punch-attendance-confirm-modal';
 import type {
   AttendanceRefreshDetail,
   AttendanceRefreshSession,
@@ -307,6 +308,7 @@ export default function EmployeeDashboardPage() {
   const [violationReason, setViolationReason] = useState<ViolationReason>('LEFT_WITHOUT_PUNCH');
   const [violationNote, setViolationNote] = useState('');
   const [violationSubmitting, setViolationSubmitting] = useState(false);
+  const [mobilePunchConfirm, setMobilePunchConfirm] = useState<'on' | 'off' | null>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const notiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notiFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -995,17 +997,23 @@ export default function EmployeeDashboardPage() {
   }
 
   useEffect(() => {
-    if (error || actionMessage) {
-      setNotificationsOpen(true);
-      setNotiClosing(false);
-      if (actionMessage && !error) {
+    const attentionAction =
+      Boolean(actionMessage) &&
+      /queued|will sync|manual retry|waiting to sync|need manual/i.test(actionMessage);
+    const shouldOpen = Boolean(error) || Boolean(warningMessage) || attentionAction;
+    if (!shouldOpen) return;
+
+    setNotificationsOpen(true);
+    setNotiClosing(false);
+    if (!error) {
+      if (notiTimerRef.current) clearTimeout(notiTimerRef.current);
+      notiTimerRef.current = setTimeout(() => startNotiFade(), 4000);
+      return () => {
         if (notiTimerRef.current) clearTimeout(notiTimerRef.current);
-        notiTimerRef.current = setTimeout(() => startNotiFade(), 4000);
-        return () => { if (notiTimerRef.current) clearTimeout(notiTimerRef.current); };
-      }
+      };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [error, actionMessage]);
+  }, [error, warningMessage, actionMessage]);
 
   const [mealSlideX, setMealSlideX] = useState(0);
   const [mealSliding, setMealSliding] = useState(false);
@@ -1457,12 +1465,7 @@ export default function EmployeeDashboardPage() {
                   type="button"
                   className="button button-danger"
                   disabled={loading || actionBusy}
-                  onClick={() => {
-                    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    if (window.confirm(`Punch OFF confirmation\n\nActual recorded time will be ${timeLabel}.\n\nDo you want to continue?`)) {
-                      void runAction('/attendance/off', {});
-                    }
-                  }}
+                  onClick={() => setMobilePunchConfirm('off')}
                 >
                   ⏹ Punch OFF
                 </button>
@@ -1471,12 +1474,7 @@ export default function EmployeeDashboardPage() {
                   type="button"
                   className="button button-ok"
                   disabled={loading || actionBusy}
-                  onClick={() => {
-                    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    if (window.confirm(`Punch ON confirmation\n\nActual recorded time will be ${timeLabel}.\n\nDo you want to continue?`)) {
-                      void runAction('/attendance/on', {});
-                    }
-                  }}
+                  onClick={() => setMobilePunchConfirm('on')}
                 >
                   ▶ Punch ON
                 </button>
@@ -1941,6 +1939,18 @@ export default function EmployeeDashboardPage() {
           ) : null}
         </>
       )}
+
+      <PunchAttendanceConfirmModal
+        open={mobilePunchConfirm !== null}
+        variant={mobilePunchConfirm === 'off' ? 'off' : 'on'}
+        onConfirm={() => {
+          const next = mobilePunchConfirm;
+          setMobilePunchConfirm(null);
+          if (next === 'on') void runAction('/attendance/on', {});
+          if (next === 'off') void runAction('/attendance/off', {});
+        }}
+        onCancel={() => setMobilePunchConfirm(null)}
+      />
     </AppShell>
   );
 }

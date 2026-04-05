@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
+import { PunchAttendanceConfirmModal } from '@/components/punch-attendance-confirm-modal';
 import type {
   AttendanceRefreshDetail,
   PunchOffResult,
@@ -158,85 +158,7 @@ export function PunchWidget() {
     setPendingAction(null);
   }, []);
 
-  // Keyboard shortcut: Enter to confirm, Escape to cancel
-  useEffect(() => {
-    if (!showConfirmModal) return;
-
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleConfirm();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        handleCancel();
-      }
-    }
-
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [handleCancel, handleConfirm, showConfirmModal]);
-
   if (!mounted) return null;
-
-  const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const actionLabel = pendingAction === '/attendance/on' ? 'Punch ON' : pendingAction === '/attendance/off' ? 'Punch OFF' : '';
-  const confirmModal = mounted && showConfirmModal ? createPortal(
-    <div className="modal-overlay" onClick={handleCancel}>
-      <div className="modal punch-confirm-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '1.5rem' }}>
-            {pendingAction === '/attendance/on' ? '▶️' : '⏹️'}
-          </span>
-          {actionLabel} Confirmation
-        </h3>
-        
-        <div style={{
-          padding: '1rem',
-          background: 'var(--surface)',
-          borderRadius: 'var(--radius)',
-          marginBottom: '1rem',
-          textAlign: 'center',
-        }}>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: 700,
-            color: 'var(--ink)',
-            fontFamily: 'monospace',
-            marginBottom: '0.25rem',
-          }}>
-            {timeLabel}
-          </div>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', margin: 0 }}>
-            Actual recorded time
-          </p>
-        </div>
-
-        <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '1.5rem' }}>
-          Do you want to continue?
-        </p>
-
-        <div className="modal-footer" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
-          <button
-            type="button"
-            className="button button-ghost"
-            onClick={handleCancel}
-            style={{ minWidth: '100px' }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className={`button ${pendingAction === '/attendance/on' ? 'button-ok' : 'button-danger'}`}
-            onClick={handleConfirm}
-            style={{ minWidth: '100px', fontWeight: 600 }}
-          >
-            Confirm
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  ) : null;
 
   return (
     <>
@@ -298,7 +220,12 @@ export function PunchWidget() {
         )}
       </div>
 
-      {confirmModal}
+      <PunchAttendanceConfirmModal
+        open={showConfirmModal && Boolean(pendingAction)}
+        variant={pendingAction === '/attendance/off' ? 'off' : 'on'}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </>
   );
 }

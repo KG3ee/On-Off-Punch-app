@@ -420,7 +420,14 @@ export function AppShell({
           <div className="shell-header-actions">
             {headerAction}
             {showNotificationBell ? <NotificationBell /> : null}
-            {me ? <PunchWidget /> : null}
+            {me &&
+            !(
+              isEmployeeView &&
+              pathname === '/employee/dashboard' &&
+              (currentRole === 'MAID' || currentRole === 'CHEF')
+            ) ? (
+              <PunchWidget />
+            ) : null}
             <ProfileAvatar me={me} admin={admin} currentPath={currentPath} />
           </div>
         </div>
