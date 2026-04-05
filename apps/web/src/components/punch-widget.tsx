@@ -3,16 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
+import type {
+  AttendanceRefreshDetail,
+  PunchOffResult,
+} from '@/lib/attendance-events';
 
 type DutySession = {
   id: string;
   punchedOnAt: string;
+  punchedOffAt?: string | null;
   status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
-};
-
-type AttendanceRefreshDetail = {
-  path: '/attendance/on' | '/attendance/off';
-  session: DutySession;
+  isLate?: boolean;
+  lateMinutes?: number;
+  overtimeMinutes?: number;
 };
 
 type PunchAnimationState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
@@ -49,6 +52,33 @@ export function PunchWidget() {
   );
 
   useEffect(() => {
+    function handleAttendanceRefresh(event: Event): void {
+      const detail = (event as CustomEvent<AttendanceRefreshDetail>).detail;
+      if (!detail?.session || !detail.path) return;
+
+      setSessions((current) => {
+        if (detail.path === '/attendance/on') {
+          return [
+            detail.session as DutySession,
+            ...current.filter(
+              (session) => session.id !== detail.session.id && session.status !== 'ACTIVE',
+            ),
+          ];
+        }
+
+        return current.map((session) =>
+          session.id === detail.session.id
+            ? ({ ...session, ...detail.session } as DutySession)
+            : session,
+        );
+      });
+    }
+
+    window.addEventListener('attendance:refresh', handleAttendanceRefresh);
+    return () => window.removeEventListener('attendance:refresh', handleAttendanceRefresh);
+  }, []);
+
+  useEffect(() => {
     if (!active) return;
     const timer = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -70,7 +100,7 @@ export function PunchWidget() {
     setAnimState('processing');
     setLastAction(path === '/attendance/on' ? 'on' : 'off');
     try {
-      const payload = await apiFetch<DutySession>(path, {
+      const payload = await apiFetch<DutySession & Partial<PunchOffResult>>(path, {
         method: 'POST',
         body: JSON.stringify({ clientTimestamp: new Date().toISOString() })
       });
@@ -82,7 +112,11 @@ export function PunchWidget() {
       });
       window.dispatchEvent(
         new CustomEvent<AttendanceRefreshDetail>('attendance:refresh', {
-          detail: { path, session: payload },
+          detail: {
+            path,
+            session: payload,
+            summary: path === '/attendance/off' ? payload.punchOffSummary : undefined,
+          },
         }),
       );
       void load();

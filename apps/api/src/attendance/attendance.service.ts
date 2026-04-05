@@ -361,10 +361,56 @@ export class AttendanceService {
         closedBreaks.push(closedBreak);
       }
 
+      const completedBreaks = await tx.breakSession.findMany({
+        where: {
+          dutySessionId: active.id,
+          status: {
+            in: [BreakSessionStatus.COMPLETED, BreakSessionStatus.AUTO_CLOSED],
+          },
+        },
+        select: {
+          startedAt: true,
+          endedAt: true,
+          actualMinutes: true,
+        },
+      });
+
+      const breakMinutes = completedBreaks.reduce((total, breakSession) => {
+        if (typeof breakSession.actualMinutes === "number") {
+          return total + Math.max(0, breakSession.actualMinutes);
+        }
+
+        if (breakSession.endedAt) {
+          return (
+            total +
+            Math.max(
+              0,
+              localMinuteStampInZone(breakSession.endedAt, timezone) -
+                localMinuteStampInZone(breakSession.startedAt, timezone),
+            )
+          );
+        }
+
+        return total;
+      }, 0);
+
+      const punchOffSummary = {
+        workedMinutes: Math.max(0, workedMinutes - breakMinutes),
+        shiftMinutes: workedMinutes,
+        breakMinutes,
+        overtimeMinutes,
+        lateMinutes: updated.lateMinutes,
+        punchedOnAt: updated.punchedOnAt,
+        punchedOffAt: updated.punchedOffAt ?? now,
+        autoClosedBreakCount: closedBreaks.length,
+      };
+
       const response = {
         ...updated,
         workedMinutes,
+        breakMinutes,
         autoClosedBreakIds: closedBreaks.map((breakSession) => breakSession.id),
+        punchOffSummary,
         dutySessionId: updated.id,
         clientDutySessionRef: identity.clientDutySessionRef ?? null,
         syncStatus: CLIENT_SYNC_STATUS.APPLIED,

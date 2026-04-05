@@ -27,6 +27,11 @@ import { LeaderDashboard } from '@/components/leader-dashboard';
 import { BreakChips } from '@/components/break-chips';
 import { DashboardSkeleton } from '@/components/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import type {
+  AttendanceRefreshDetail,
+  AttendanceRefreshSession,
+  PunchOffResult,
+} from '@/lib/attendance-events';
 
 
 type DutySession = {
@@ -139,11 +144,6 @@ type PublicLiveBoard = {
 };
 
 type ViolationReason = 'LEFT_WITHOUT_PUNCH' | 'UNAUTHORIZED_ABSENCE' | 'OTHER';
-type AttendanceRefreshDetail = {
-  path?: '/attendance/on' | '/attendance/off';
-  session?: DutySession;
-};
-
 const DASHBOARD_CACHE_KEY = 'employee_dashboard_cache_v1';
 const BREAK_OVER_LIMIT_TOAST_SEEN_KEY = 'break_over_limit_toast_seen_v1';
 
@@ -884,6 +884,19 @@ export default function EmployeeDashboardPage() {
         } else {
           setActionMessage('Action completed');
           setTimeout(() => setActionMessage(''), 3000);
+        }
+
+        if ((path === '/attendance/on' || path === '/attendance/off') && result.data) {
+          const payload = result.data as AttendanceRefreshSession & Partial<PunchOffResult>;
+          window.dispatchEvent(
+            new CustomEvent<AttendanceRefreshDetail>('attendance:refresh', {
+              detail: {
+                path,
+                session: payload,
+                summary: path === '/attendance/off' ? payload.punchOffSummary : undefined,
+              },
+            }),
+          );
         }
 
         if (path === '/attendance/on' || path === '/attendance/off') {

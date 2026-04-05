@@ -13,6 +13,11 @@ import {
   getQueueSnapshot,
   QueuedAction,
 } from '@/lib/action-queue';
+import type {
+  AttendanceRefreshDetail,
+  AttendanceRefreshSession,
+  PunchOffResult,
+} from '@/lib/attendance-events';
 
 /* ── Break constants ── */
 const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
@@ -149,11 +154,6 @@ type DashboardToast = {
   tone: 'warning' | 'success' | 'error';
   text: string;
 };
-type AttendanceRefreshDetail = {
-  path?: '/attendance/on' | '/attendance/off';
-  session?: DutySession;
-};
-
 function queueDate(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
@@ -516,6 +516,20 @@ export default function AdminLivePage() {
         setActionMsg('Done');
         setTimeout(() => setActionMsg(''), 3000);
       }
+
+      if ((path === '/attendance/on' || path === '/attendance/off') && result.data) {
+        const payload = result.data as AttendanceRefreshSession & Partial<PunchOffResult>;
+        window.dispatchEvent(
+          new CustomEvent<AttendanceRefreshDetail>('attendance:refresh', {
+            detail: {
+              path,
+              session: payload,
+              summary: path === '/attendance/off' ? payload.punchOffSummary : undefined,
+            },
+          }),
+        );
+      }
+
       if (path.startsWith('/breaks')) {
         const br = await apiFetch<BreakSession[]>('/breaks/me/today').catch(() => null);
         if (br) setBreakSessions(br);

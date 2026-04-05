@@ -9,6 +9,8 @@ import { NotificationBell } from '@/components/notification-bell';
 import { ensurePushSubscription, markNotificationRead, unsubscribePushSubscription } from '@/lib/notifications';
 import { MeUser, UserRole } from '@/types/auth';
 import { PunchWidget } from '@/components/punch-widget';
+import { PunchOffSummaryModal } from '@/components/punch-off-summary-modal';
+import type { AttendanceRefreshDetail, PunchOffSummary } from '@/lib/attendance-events';
 
 type NavItem = {
   href: string;
@@ -221,6 +223,7 @@ export function AppShell({
   const [adminRequestsBadge, setAdminRequestsBadge] = useState(0);
   const [leaderRequestsBadge, setLeaderRequestsBadge] = useState(0);
   const [employeeRequestsBadge, setEmployeeRequestsBadge] = useState(0);
+  const [punchOffSummary, setPunchOffSummary] = useState<PunchOffSummary | null>(null);
   const currentPath = pathname || '/';
   const currentRole = (me?.role || userRole || '') as UserRole | '';
 
@@ -357,6 +360,18 @@ export function AppShell({
       });
   }, [pathname]);
 
+  useEffect(() => {
+    function handleAttendanceRefresh(event: Event): void {
+      const detail = (event as CustomEvent<AttendanceRefreshDetail>).detail;
+      if (detail?.path === '/attendance/off' && detail.summary) {
+        setPunchOffSummary(detail.summary);
+      }
+    }
+
+    window.addEventListener('attendance:refresh', handleAttendanceRefresh);
+    return () => window.removeEventListener('attendance:refresh', handleAttendanceRefresh);
+  }, []);
+
   if (!authChecked) {
     return (
       <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh' }}>
@@ -383,7 +398,8 @@ export function AppShell({
   );
 
   return (
-    <main>
+    <>
+      <main>
       <header className={`shell-header${hasNav ? ' shell-header--with-nav' : ''}`}>
         {/* Top bar: brand + actions */}
         <div className="shell-header-top">
@@ -476,6 +492,8 @@ export function AppShell({
       <div className="shell">
         {children}
       </div>
-    </main>
+      </main>
+      <PunchOffSummaryModal summary={punchOffSummary} onClose={() => setPunchOffSummary(null)} />
+    </>
   );
 }
