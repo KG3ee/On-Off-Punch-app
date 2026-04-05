@@ -942,18 +942,6 @@ tbody tr:last-child td {
   border-bottom-color: var(--brand);
 }
 
-.shell-nav a.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
-  height: 2px;
-  background: var(--brand-gradient);
-  border-radius: var(--radius-full);
-}
-
 .shell-nav a:hover:not(.active) {
   color: var(--ink-2);
   background: rgba(255, 255, 255, 0.02);

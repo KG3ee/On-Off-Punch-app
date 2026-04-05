@@ -374,10 +374,15 @@ export default function EmployeeDashboardPage() {
   }, []);
 
   const serverActiveSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE') || null, [sessions]);
-  const serverActiveBreak = useMemo(
-    () => breakSessions.find((session) => session.status === 'ACTIVE') || null,
-    [breakSessions]
-  );
+  const serverActiveBreak = useMemo(() => {
+    if (!serverActiveSession) return null;
+    return (
+      breakSessions.find(
+        (session) =>
+          session.status === 'ACTIVE' && session.dutySessionId === serverActiveSession.id,
+      ) || null
+    );
+  }, [breakSessions, serverActiveSession]);
 
   const { activeSession, activeBreak } = useMemo(() => {
     const pendingQueue = queueActions

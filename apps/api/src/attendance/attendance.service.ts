@@ -6,6 +6,7 @@ import {
 import {
   formatDateInZone,
   getTimePartsInZone,
+  localMinuteStampInZone,
   minutesNowInZone,
   parseTimeToMinutes,
   resolveEventTime,
@@ -296,6 +297,17 @@ export class AttendanceService {
       active.scheduledEndLocal,
     );
 
+    const activeBreaks = await this.prisma.breakSession.findMany({
+      where: {
+        userId: user.id,
+        dutySessionId: active.id,
+        status: BreakSessionStatus.ACTIVE,
+      },
+      include: {
+        breakPolicy: true,
+      },
+    });
+
     const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.dutySession.update({
         where: { id: active.id },
@@ -307,9 +319,52 @@ export class AttendanceService {
         },
       });
 
+      const closedBreaks = [] as Array<{
+        id: string;
+        userId: string;
+        localDate: string;
+        endedAt: Date | null;
+        expectedDurationMinutes: number;
+        actualMinutes: number | null;
+        breakPolicy: {
+          code: string;
+          name: string;
+        };
+      }>;
+
+      for (const breakSession of activeBreaks) {
+        let breakEndedAt = now;
+        if (breakEndedAt.getTime() < breakSession.startedAt.getTime()) {
+          breakEndedAt = new Date(breakSession.startedAt);
+        }
+
+        const actualMinutes = Math.max(
+          0,
+          localMinuteStampInZone(breakEndedAt, timezone) -
+            localMinuteStampInZone(breakSession.startedAt, timezone),
+        );
+
+        const closedBreak = await tx.breakSession.update({
+          where: { id: breakSession.id },
+          data: {
+            endedAt: breakEndedAt,
+            actualMinutes,
+            isOvertime: actualMinutes > breakSession.expectedDurationMinutes,
+            autoClosed: true,
+            status: BreakSessionStatus.AUTO_CLOSED,
+          },
+          include: {
+            breakPolicy: true,
+          },
+        });
+
+        closedBreaks.push(closedBreak);
+      }
+
       const response = {
         ...updated,
         workedMinutes,
+        autoClosedBreakIds: closedBreaks.map((breakSession) => breakSession.id),
         dutySessionId: updated.id,
         clientDutySessionRef: identity.clientDutySessionRef ?? null,
         syncStatus: CLIENT_SYNC_STATUS.APPLIED,
@@ -326,8 +381,42 @@ export class AttendanceService {
         response,
       });
 
-      return response;
+      return { response, closedBreaks };
     });
+
+    for (const breakSession of result.closedBreaks) {
+      const breakOvertimeMinutes = Math.max(
+        0,
+        (breakSession.actualMinutes || 0) - breakSession.expectedDurationMinutes,
+      );
+
+      if (breakOvertimeMinutes > 0) {
+        await this.deductionsService
+          .recordBreakLateFromBreakSession({
+            breakSessionId: breakSession.id,
+            userId: breakSession.userId,
+            localDate: breakSession.localDate,
+            breakOvertimeMinutes,
+            actorUserId: user.id,
+          })
+          .catch(() => undefined);
+      }
+
+      this.prisma.auditEvent.create({
+        data: {
+          actorUserId: user.id,
+          action: "BREAK_AUTO_CLOSE_ON_PUNCH_OFF",
+          entityType: "BreakSession",
+          entityId: breakSession.id,
+          payload: {
+            code: breakSession.breakPolicy.code,
+            expectedDuration: breakSession.expectedDurationMinutes,
+            actualMinutes: breakSession.actualMinutes,
+            autoClosedAt: breakSession.endedAt?.toISOString() || now.toISOString(),
+          },
+        },
+      }).catch(() => { /* audit failure is non-critical */ });
+    }
 
     // Fire audit non-blocking — does not affect the response
     this.prisma.auditEvent.create({
@@ -335,10 +424,11 @@ export class AttendanceService {
         actorUserId: user.id,
         action: "DUTY_PUNCH_OFF",
         entityType: "DutySession",
-        entityId: result.id,
+        entityId: result.response.id,
         payload: {
           workedMinutes,
           overtimeMinutes,
+          autoClosedBreakIds: result.response.autoClosedBreakIds,
           clientTimestamp: clientTimestamp || null,
           time: {
             ...serializeEventTime(eventTime),
@@ -349,7 +439,7 @@ export class AttendanceService {
       },
     }).catch(() => { /* audit failure is non-critical */ });
 
-    return result;
+    return result.response;
   }
 
   async myTodaySessions(userId: string): Promise<unknown> {

@@ -283,7 +283,15 @@ export default function AdminLivePage() {
   }, []);
 
   const serverActiveSession = useMemo(() => sessions.find(s => s.status === 'ACTIVE') || null, [sessions]);
-  const serverActiveBreak = useMemo(() => breakSessions.find(b => b.status === 'ACTIVE') || null, [breakSessions]);
+  const serverActiveBreak = useMemo(() => {
+    if (!serverActiveSession) return null;
+    return (
+      breakSessions.find(
+        (breakSession) =>
+          breakSession.status === 'ACTIVE' && breakSession.dutySessionId === serverActiveSession.id,
+      ) || null
+    );
+  }, [breakSessions, serverActiveSession]);
 
   const { activeSession, activeBreak } = useMemo(() => {
     const pending = queueActions
