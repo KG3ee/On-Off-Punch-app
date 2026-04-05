@@ -1,6 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AttendanceService } from "./attendance.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ShiftsService } from "../shifts/shifts.service";
+import { DeductionsService } from "../deductions/deductions.service";
+import { ClientSyncService } from "../client-sync/client-sync.service";
 
 const mockPrismaService = {
   dutySession: {
@@ -14,6 +17,12 @@ const mockPrismaService = {
   },
 };
 
+const mockShiftsService = {};
+const mockDeductionsService = {};
+const mockClientSyncService = {
+  findReceiptResponse: jest.fn(),
+};
+
 describe("AttendanceService", () => {
   let service: AttendanceService;
 
@@ -22,6 +31,9 @@ describe("AttendanceService", () => {
       providers: [
         AttendanceService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: ShiftsService, useValue: mockShiftsService },
+        { provide: DeductionsService, useValue: mockDeductionsService },
+        { provide: ClientSyncService, useValue: mockClientSyncService },
       ],
     }).compile();
 
