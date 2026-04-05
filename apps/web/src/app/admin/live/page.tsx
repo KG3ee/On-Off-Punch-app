@@ -595,7 +595,7 @@ export default function AdminLivePage() {
         apiFetch<DriverRequestsSummary>('/admin/driver-requests/summary'),
         apiFetch<RegistrationRequestsSummary>('/admin/registration-requests/summary'),
       ]),
-      apiFetch<PublicLiveBoard>('/attendance/live/public'),
+      apiFetch<PublicLiveBoard>('/attendance/live/board'),
     ]);
 
     if (mainResult.status === 'fulfilled') {

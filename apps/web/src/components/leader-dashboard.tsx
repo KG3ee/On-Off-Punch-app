@@ -280,7 +280,7 @@ export function LeaderDashboard({
         apiFetch<DriverInfo[]>('/leader/drivers'),
         apiFetch<LeaderViolationCase[]>('/leader/violations?limit=200'),
       ]),
-      apiFetch<PublicLiveBoard>('/attendance/live/public'),
+      apiFetch<PublicLiveBoard>('/attendance/live/board'),
     ]);
 
     if (teamResult.status === 'fulfilled') {

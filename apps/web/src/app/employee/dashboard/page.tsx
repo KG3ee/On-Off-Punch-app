@@ -472,7 +472,7 @@ export default function EmployeeDashboardPage() {
 
   const loadPublicBreakBoard = useCallback(async (silent = true) => {
     try {
-      const data = await apiFetch<PublicLiveBoard>('/attendance/live/public');
+      const data = await apiFetch<PublicLiveBoard>('/attendance/live/board');
       setPublicLiveSessions(data.sessions);
     } catch (e) {
       if (!silent) {

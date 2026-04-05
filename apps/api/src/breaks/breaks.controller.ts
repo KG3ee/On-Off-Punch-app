@@ -3,6 +3,7 @@ import { BreakSessionStatus, Role } from "@prisma/client";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { CsrfGuard } from "../common/guards/csrf.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { UsersService } from "../users/users.service";
@@ -12,7 +13,7 @@ import { StartBreakDto } from "./dto/start-break.dto";
 import { EndBreakDto } from "./dto/end-break.dto";
 
 @Controller("breaks")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CsrfGuard)
 export class BreaksController {
   constructor(
     private readonly breaksService: BreaksService,

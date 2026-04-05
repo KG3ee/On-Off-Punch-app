@@ -10,12 +10,13 @@ import { BreakSessionStatus, DutySessionStatus, Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthUser } from '../common/interfaces/auth-user.interface';
 import { LeaderService } from './leader.service';
 
 @Controller('leader')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles(Role.LEADER)
 export class LeaderController {
   constructor(private readonly leaderService: LeaderService) {}

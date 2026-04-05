@@ -11,6 +11,7 @@ import { RegistrationRequestStatus, Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthUser } from '../common/interfaces/auth-user.interface';
 import { ApproveRegistrationRequestDto } from './dto/approve-registration-request.dto';
@@ -28,21 +29,21 @@ export class RegistrationsController {
     return this.registrationsService.createRequest(dto);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(Role.ADMIN)
   @Get('admin/registration-requests')
   async listRequests(@Query() query: ListRegistrationRequestsDto) {
     return this.registrationsService.listRequests(query.status as RegistrationRequestStatus | undefined);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(Role.ADMIN)
   @Get('admin/registration-requests/summary')
   async getSummary() {
     return this.registrationsService.getAdminSummary();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(Role.ADMIN)
   @Post('admin/registration-requests/:id/approve')
   async approveRequest(
@@ -53,7 +54,7 @@ export class RegistrationsController {
     return this.registrationsService.approveRequest(id, dto, actor.sub);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(Role.ADMIN)
   @Post('admin/registration-requests/:id/reject')
   async rejectRequest(

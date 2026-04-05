@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
-import { getAccessToken } from '@/lib/auth';
 
 type ShiftRequestType = 'HALF_DAY_MORNING' | 'HALF_DAY_EVENING' | 'FULL_DAY_OFF' | 'CUSTOM';
 type ViolationReason = 'LEFT_WITHOUT_PUNCH' | 'UNAUTHORIZED_ABSENCE' | 'OTHER';
@@ -399,11 +398,6 @@ function AdminRequestsContent() {
   }
 
   function exportViolationPointsCsv(): void {
-    const token = getAccessToken();
-    if (!token) {
-      setError('Missing authorization token. Please login again.');
-      return;
-    }
     const params = new URLSearchParams();
     const range = getDateFilterRange();
     if (range.from) params.set('from', range.from);
@@ -411,8 +405,12 @@ function AdminRequestsContent() {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
     const url = `${apiBase}/admin/violations/points/export.csv?${params.toString()}`;
 
+    const csrfMatch = typeof document !== 'undefined' ? document.cookie.match(/(?:^|; )csrf_token=([^;]*)/) : null;
+    const csrfToken = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
+
     void fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+      headers: { 'X-CSRF-Token': csrfToken },
     })
       .then(async (response) => {
         if (!response.ok) {

@@ -4,6 +4,8 @@ import { NestFactory } from "@nestjs/core";
 import { ExpressAdapter } from "@nestjs/platform-express";
 import cookieParser = require("cookie-parser");
 import express = require("express");
+import * as helmet from "helmet";
+import { perUserRateLimiter } from "./common/middleware/per-user-rate-limiter";
 import { AppModule } from "./app.module";
 
 type CorsCallback = (err: Error | null, allow?: boolean) => void;
@@ -25,8 +27,12 @@ function parseCorsRules(): string[] {
 
 function isAllowedOrigin(origin: string, rules: string[]): boolean {
   return rules.some((rule) => {
+    // Reject wildcard CORS in all environments
     if (rule === "*") {
-      return true;
+      console.error(
+        "[SECURITY] Wildcard CORS origin (*) is rejected. Set CORS_ORIGIN to specific domains.",
+      );
+      return false;
     }
 
     if (!rule.includes("*")) {
@@ -109,6 +115,15 @@ function createPostRateLimiter(options: {
 function configureApplication(app: INestApplication): void {
   const bodyLimit = process.env.BODY_LIMIT || "2mb";
   const slowRequestMs = Number(process.env.SLOW_REQUEST_LOG_MS || 400);
+
+  // Security headers via Helmet (CSP deferred to edge proxy / Vercel config)
+  app.use(
+    (helmet as any).default({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
   const loginRateLimitMax = parsePositiveInt(
     process.env.AUTH_LOGIN_RATE_LIMIT_MAX,
     8,
@@ -160,6 +175,52 @@ function configureApplication(app: INestApplication): void {
       windowMs: registrationRateLimitWindowMs,
     }),
   );
+
+  // Per-user rate limiting for authenticated mutating endpoints.
+  // These run after cookie parsing so JWT can be decoded for user-ID keying.
+  // Punch/break operations: generous enough for offline queue replay (5s intervals)
+  app.use(
+    "/attendance",
+    perUserRateLimiter({ max: 30, windowMs: 5 * 60 * 1000 }),
+  );
+  app.use(
+    "/breaks",
+    perUserRateLimiter({ max: 30, windowMs: 5 * 60 * 1000 }),
+  );
+  // General mutating endpoints: moderate limits
+  app.use(
+    "/driver-requests",
+    perUserRateLimiter({ max: 40, windowMs: 5 * 60 * 1000 }),
+  );
+  app.use(
+    "/violations",
+    perUserRateLimiter({ max: 30, windowMs: 5 * 60 * 1000 }),
+  );
+  app.use(
+    "/leader",
+    perUserRateLimiter({ max: 60, windowMs: 5 * 60 * 1000 }),
+  );
+  app.use(
+    "/notifications",
+    perUserRateLimiter({ max: 40, windowMs: 5 * 60 * 1000 }),
+  );
+  app.use(
+    "/shifts",
+    perUserRateLimiter({ max: 30, windowMs: 5 * 60 * 1000 }),
+  );
+  app.use(
+    "/teams",
+    perUserRateLimiter({ max: 20, windowMs: 5 * 60 * 1000 }),
+  );
+  app.use(
+    "/me",
+    perUserRateLimiter({ max: 20, windowMs: 5 * 60 * 1000 }),
+  );
+  app.use(
+    "/admin",
+    perUserRateLimiter({ max: 60, windowMs: 5 * 60 * 1000 }),
+  );
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -169,6 +230,14 @@ function configureApplication(app: INestApplication): void {
   );
 
   const corsRules = parseCorsRules();
+
+  // Reject wildcard CORS at startup
+  if (corsRules.includes("*")) {
+    console.error(
+      "[SECURITY] CORS_ORIGIN contains wildcard (*) which is not allowed. Please set specific domain(s).",
+    );
+  }
+
   app.enableCors({
     origin: (origin: string | undefined, callback: CorsCallback) => {
       if (!origin || isAllowedOrigin(origin, corsRules)) {

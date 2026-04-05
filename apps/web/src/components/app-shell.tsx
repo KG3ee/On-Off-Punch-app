@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { clearAuth } from '@/lib/auth';
 import { MobileBlockedNotice, useIsMobileClient } from '@/components/mobile-block';
 import { NotificationBell } from '@/components/notification-bell';
 import { ensurePushSubscription, markNotificationRead, unsubscribePushSubscription } from '@/lib/notifications';
@@ -57,7 +56,6 @@ function ProfileAvatar({ me, admin, currentPath }: { me: MeUser | null; admin: b
     try {
       await apiFetch('/auth/logout', { method: 'POST' });
     } catch { /* ignore */ }
-    clearAuth();
     router.push('/login');
   }
 
@@ -233,7 +231,6 @@ export function AppShell({
         setAuthChecked(true);
       })
       .catch(() => {
-        clearAuth();
         router.replace('/login');
       });
   }, [router]);

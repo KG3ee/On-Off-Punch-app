@@ -3,6 +3,7 @@ import { DutySessionStatus, Role } from "@prisma/client";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { CsrfGuard } from "../common/guards/csrf.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { UsersService } from "../users/users.service";
@@ -10,7 +11,7 @@ import { PunchDto } from "./dto/punch.dto";
 import { AttendanceService } from "./attendance.service";
 
 @Controller("attendance")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CsrfGuard)
 export class AttendanceController {
   constructor(
     private readonly attendanceService: AttendanceService,
@@ -39,8 +40,8 @@ export class AttendanceController {
     return this.attendanceService.getMonthlySummary(authUser.sub);
   }
 
-  @Get("live/public")
-  async getPublicLive() {
+  @Get("live/board")
+  async getLiveBoardData(@CurrentUser() authUser: AuthUser) {
     return this.attendanceService.getPublicLiveBoard();
   }
 

@@ -4,6 +4,7 @@ import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { resolveAuthSessionMaxAgeMs } from "../common/config/session";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
+import { generateCsrfToken } from "../common/utils/csrf";
 import { AuthService } from "./auth.service";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -40,6 +41,7 @@ export class AuthController {
     const result = await this.authService.login(dto);
     const sameSite = parseSameSiteMode();
     const secure = parseSecureFlag(sameSite);
+    const csrfToken = generateCsrfToken();
 
     res.cookie("access_token", result.accessToken, {
       httpOnly: true,
@@ -48,7 +50,15 @@ export class AuthController {
       maxAge: resolveAuthSessionMaxAgeMs(),
     });
 
-    return { user: result.user, accessToken: result.accessToken };
+    // CSRF token cookie (NOT httpOnly — readable by client JS for Double Submit)
+    res.cookie("csrf_token", csrfToken, {
+      httpOnly: false,
+      sameSite,
+      secure,
+      maxAge: resolveAuthSessionMaxAgeMs(),
+    });
+
+    return { user: result.user };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -67,6 +77,12 @@ export class AuthController {
 
     res.clearCookie("access_token", {
       httpOnly: true,
+      sameSite,
+      secure,
+    });
+
+    res.clearCookie("csrf_token", {
+      httpOnly: false,
       sameSite,
       secure,
     });
