@@ -139,6 +139,10 @@ type PublicLiveBoard = {
 };
 
 type ViolationReason = 'LEFT_WITHOUT_PUNCH' | 'UNAUTHORIZED_ABSENCE' | 'OTHER';
+type AttendanceRefreshDetail = {
+  path?: '/attendance/on' | '/attendance/off';
+  session?: DutySession;
+};
 
 const DASHBOARD_CACHE_KEY = 'employee_dashboard_cache_v1';
 const BREAK_OVER_LIMIT_TOAST_SEEN_KEY = 'break_over_limit_toast_seen_v1';
@@ -279,6 +283,8 @@ export default function EmployeeDashboardPage() {
   const [breakSessions, setBreakSessions] = useState<BreakSession[]>([]);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [loading, setLoading] = useState(false);
+  /** True while an online punch/break API call is in flight (does not hide the dashboard). */
+  const [actionBusy, setActionBusy] = useState(false);
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [warningMessage, setWarningMessage] = useState('');
@@ -455,8 +461,9 @@ export default function EmployeeDashboardPage() {
 
   const canStartBreak = useMemo(() => {
     const breakUiEnabled = me?.role !== 'MAID' && me?.role !== 'CHEF';
-    return breakUiEnabled && !!activeSession && !activeBreak && !((loading && !isOffline));
-  }, [activeBreak, activeSession, isOffline, loading, me?.role]);
+    const blocked = (loading || actionBusy) && !isOffline;
+    return breakUiEnabled && !!activeSession && !activeBreak && !blocked;
+  }, [actionBusy, activeBreak, activeSession, isOffline, loading, me?.role]);
 
   // Only show breaks linked to the current active duty session
   const sessionBreaks = useMemo(() => {
@@ -571,6 +578,7 @@ export default function EmployeeDashboardPage() {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (shortcutConfirmPolicy || isTypingTarget(e.target)) return;
+      if (actionBusy && !isOffline) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -584,7 +592,7 @@ export default function EmployeeDashboardPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBreak, canCancelActiveBreak, loading, shortcutConfirmPolicy]);
+  }, [actionBusy, activeBreak, canCancelActiveBreak, isOffline, loading, shortcutConfirmPolicy]);
 
   // Keyboard shortcuts to start break (b/w/c/1/2/3) with confirmation modal
   useEffect(() => {
@@ -671,6 +679,9 @@ export default function EmployeeDashboardPage() {
     const nextSummary = summaryResult.status === 'fulfilled' ? summaryResult.value : (cache?.monthlySummary || null);
 
     if (nextMe?.role === 'DRIVER') {
+      if (!background) {
+        setLoading(false);
+      }
       router.replace('/employee/driver');
       return;
     }
@@ -756,7 +767,31 @@ export default function EmployeeDashboardPage() {
   };
 
   useEffect(() => {
-    const handleAttendanceRefresh = () => attendanceRefreshRef.current();
+    const handleAttendanceRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<AttendanceRefreshDetail>).detail;
+      if (detail?.session && detail.path) {
+        setSessions((current) => {
+          if (detail.path === '/attendance/on') {
+            return [
+              detail.session as DutySession,
+              ...current.filter((session) => session.id !== detail.session?.id && session.status !== 'ACTIVE'),
+            ];
+          }
+
+          return current.map((session) =>
+            session.id === detail.session?.id ? ({ ...session, ...detail.session } as DutySession) : session,
+          );
+        });
+
+        if (detail.path === '/attendance/off') {
+          setBreakSessions((current) =>
+            current.filter((session) => !(session.status === 'ACTIVE' && session.dutySessionId === detail.session?.id)),
+          );
+        }
+      }
+
+      attendanceRefreshRef.current();
+    };
     window.addEventListener('attendance:refresh', handleAttendanceRefresh);
     return () => window.removeEventListener('attendance:refresh', handleAttendanceRefresh);
   }, []);
@@ -808,59 +843,61 @@ export default function EmployeeDashboardPage() {
 
     const knownOffline = !navigator.onLine;
     if (!knownOffline) {
-      setLoading(true);
+      setActionBusy(true);
     }
 
-    const actionBody = buildActionBody(path, body);
-    const result = await runQueuedAction(path, actionBody);
+    try {
+      const actionBody = buildActionBody(path, body);
+      const result = await runQueuedAction(path, actionBody);
 
-    if (result.ok) {
-      if (path === '/breaks/start') {
-        const payload = result.data as BreakStartResult | undefined;
-        if (payload?.syncStatus === 'STALE') {
-          setWarningMessage('This device action was discarded because the server had already recorded the canonical break.');
-          setTimeout(() => setWarningMessage(''), 6000);
-        } else if (payload?.isOverLimit) {
-          const rawCode = payload.breakPolicy?.code || actionBody?.code;
-          const code = typeof rawCode === 'string' && rawCode.trim() ? rawCode.trim() : 'break';
-          const localDate = payload.localDate || queueDate(new Date().toISOString());
-          const usageText =
-            typeof payload.usedCount === 'number' && typeof payload.dailyLimit === 'number'
-              ? ` (${payload.usedCount}/${payload.dailyLimit})`
-              : '';
-          const warningText = `${code.toUpperCase()} is over session limit${usageText}. Break started anyway.`;
+      if (result.ok) {
+        if (path === '/breaks/start') {
+          const payload = result.data as BreakStartResult | undefined;
+          if (payload?.syncStatus === 'STALE') {
+            setWarningMessage('This device action was discarded because the server had already recorded the canonical break.');
+            setTimeout(() => setWarningMessage(''), 6000);
+          } else if (payload?.isOverLimit) {
+            const rawCode = payload.breakPolicy?.code || actionBody?.code;
+            const code = typeof rawCode === 'string' && rawCode.trim() ? rawCode.trim() : 'break';
+            const localDate = payload.localDate || queueDate(new Date().toISOString());
+            const usageText =
+              typeof payload.usedCount === 'number' && typeof payload.dailyLimit === 'number'
+                ? ` (${payload.usedCount}/${payload.dailyLimit})`
+                : '';
+            const warningText = `${code.toUpperCase()} is over session limit${usageText}. Break started anyway.`;
 
-          setWarningMessage(warningText);
-          setTimeout(() => setWarningMessage(''), 6000);
+            setWarningMessage(warningText);
+            setTimeout(() => setWarningMessage(''), 6000);
 
-          if (consumeOverLimitToastToken(code, payload.quotaScopeId, localDate)) {
-            showToast('warning', warningText, 6000);
+            if (consumeOverLimitToastToken(code, payload.quotaScopeId, localDate)) {
+              showToast('warning', warningText, 6000);
+            }
+          } else {
+            setActionMessage('Break started');
+            setTimeout(() => setActionMessage(''), 2500);
           }
         } else {
-          setActionMessage('Break started');
-          setTimeout(() => setActionMessage(''), 2500);
+          setActionMessage('Action completed');
+          setTimeout(() => setActionMessage(''), 3000);
         }
-      } else {
-        setActionMessage('Action completed');
-        setTimeout(() => setActionMessage(''), 3000);
-      }
 
-      if (path === '/attendance/on' || path === '/attendance/off') {
-        await loadTargeted(['sessions', 'breaks', 'summary']);
-      } else if (path.startsWith('/breaks')) {
-        await loadTargeted(['breaks']);
+        if (path === '/attendance/on' || path === '/attendance/off') {
+          await loadTargeted(['sessions', 'breaks', 'summary']);
+        } else if (path.startsWith('/breaks')) {
+          await loadTargeted(['breaks']);
+        } else {
+          await loadData();
+        }
+        loadData({ background: true });
+      } else if (result.queued) {
+        setActionMessage('Action queued — will sync when online.');
+        setTimeout(() => setActionMessage(''), 4000);
       } else {
-        await loadData();
+        setError(result.error || 'Action failed');
       }
-      loadData({ background: true });
-    } else if (result.queued) {
-      setActionMessage('Action queued — will sync when online.');
-      setTimeout(() => setActionMessage(''), 4000);
-    } else {
-      setError(result.error || 'Action failed');
+    } finally {
+      setActionBusy(false);
     }
-
-    setLoading(false);
   }
 
 
@@ -1010,7 +1047,10 @@ export default function EmployeeDashboardPage() {
     return () => clearInterval(id);
   }, [me?.role, mealRequestId]);
 
-  const mealBusy = mealSent || (!!mealDeliveryStatus && mealDeliveryStatus !== 'COMPLETED' && mealDeliveryStatus !== 'REJECTED') || (loading && !isOffline);
+  const mealBusy =
+    mealSent ||
+    (!!mealDeliveryStatus && mealDeliveryStatus !== 'COMPLETED' && mealDeliveryStatus !== 'REJECTED') ||
+    ((loading || actionBusy) && !isOffline);
 
   const handleMealTouchStart = (e: React.TouchEvent) => {
     if (mealBusy) return;
@@ -1356,6 +1396,12 @@ export default function EmployeeDashboardPage() {
         </div>
       ) : null}
 
+      {pendingActions > 0 && !isOffline ? (
+        <div className="alert alert-warning" style={{ marginBottom: '0.75rem' }} role="status">
+          An earlier punch or break is still syncing. New actions may be queued until it finishes. Check notifications if something looks stuck.
+        </div>
+      ) : null}
+
       {/* ── Skeleton Loading State ── */}
       {loading && !sessions.length && !monthlySummary && (
         <DashboardSkeleton kpiCount={4} showBreaks={me?.role !== 'MAID' && me?.role !== 'CHEF'} showSession />
@@ -1371,7 +1417,7 @@ export default function EmployeeDashboardPage() {
           policies={policies}
           breakSessions={breakSessions}
           monthlySummary={monthlySummary}
-          loading={loading}
+          loading={loading || actionBusy}
           isOffline={isOffline}
           runAction={runAction}
         />
@@ -1392,7 +1438,7 @@ export default function EmployeeDashboardPage() {
                 <button
                   type="button"
                   className="button button-danger"
-                  disabled={loading}
+                  disabled={loading || actionBusy}
                   onClick={() => {
                     const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     if (window.confirm(`Punch OFF confirmation\n\nActual recorded time will be ${timeLabel}.\n\nDo you want to continue?`)) {
@@ -1406,7 +1452,7 @@ export default function EmployeeDashboardPage() {
                 <button
                   type="button"
                   className="button button-ok"
-                  disabled={loading}
+                  disabled={loading || actionBusy}
                   onClick={() => {
                     const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     if (window.confirm(`Punch ON confirmation\n\nActual recorded time will be ${timeLabel}.\n\nDo you want to continue?`)) {
@@ -1578,11 +1624,11 @@ export default function EmployeeDashboardPage() {
                       <span className="elapsed">{activeBreakMinutes}m</span>
                       <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
                       <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-                        <button className="button button-ok button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/end', getActiveBreakSyncFields())} title="Space bar">
+                        <button className="button button-ok button-sm" disabled={(loading || actionBusy) && !isOffline} onClick={() => void runAction('/breaks/end', getActiveBreakSyncFields())} title="Space bar">
                           End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
                         </button>
                         {canCancelActiveBreak ? (
-                          <button className="button button-danger button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/cancel', getActiveBreakSyncFields())} title="Escape">
+                          <button className="button button-danger button-sm" disabled={(loading || actionBusy) && !isOffline} onClick={() => void runAction('/breaks/cancel', getActiveBreakSyncFields())} title="Escape">
                             Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
                           </button>
                         ) : null}
@@ -1593,7 +1639,7 @@ export default function EmployeeDashboardPage() {
                       topPolicies={topRowPolicies}
                       bottomPolicies={bottomRowPolicies}
                       extraPolicies={extraPolicies}
-                      disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
+                      disabled={((loading || actionBusy) && !isOffline) || !activeSession || !!activeBreak}
                       blockReason={breakBlockedReason}
                       onStart={openBreakStartConfirm}
                     />

@@ -10,6 +10,11 @@ type DutySession = {
   status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
 };
 
+type AttendanceRefreshDetail = {
+  path: '/attendance/on' | '/attendance/off';
+  session: DutySession;
+};
+
 type PunchAnimationState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
 
 export function PunchWidget() {
@@ -75,8 +80,12 @@ export function PunchWidget() {
         }
         return current.map((session) => (session.id === payload.id ? payload : session));
       });
-      await load();
-      window.dispatchEvent(new CustomEvent('attendance:refresh', { detail: { path } }));
+      window.dispatchEvent(
+        new CustomEvent<AttendanceRefreshDetail>('attendance:refresh', {
+          detail: { path, session: payload },
+        }),
+      );
+      void load();
       setAnimState('success');
       
       // Trigger haptic feedback if available

@@ -149,6 +149,10 @@ type DashboardToast = {
   tone: 'warning' | 'success' | 'error';
   text: string;
 };
+type AttendanceRefreshDetail = {
+  path?: '/attendance/on' | '/attendance/off';
+  session?: DutySession;
+};
 
 function queueDate(iso: string): string {
   const d = new Date(iso);
@@ -426,7 +430,31 @@ export default function AdminLivePage() {
   }, []);
 
   useEffect(() => {
-    const handleAttendanceRefresh = () => attendanceRefreshRef.current();
+    const handleAttendanceRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<AttendanceRefreshDetail>).detail;
+      if (detail?.session && detail.path) {
+        setSessions((current) => {
+          if (detail.path === '/attendance/on') {
+            return [
+              detail.session as DutySession,
+              ...current.filter((session) => session.id !== detail.session?.id && session.status !== 'ACTIVE'),
+            ];
+          }
+
+          return current.map((session) =>
+            session.id === detail.session?.id ? ({ ...session, ...detail.session } as DutySession) : session,
+          );
+        });
+
+        if (detail.path === '/attendance/off') {
+          setBreakSessions((current) =>
+            current.filter((session) => !(session.status === 'ACTIVE' && session.dutySessionId === detail.session?.id)),
+          );
+        }
+      }
+
+      attendanceRefreshRef.current();
+    };
     window.addEventListener('attendance:refresh', handleAttendanceRefresh);
     return () => window.removeEventListener('attendance:refresh', handleAttendanceRefresh);
   }, []);
