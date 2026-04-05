@@ -25,6 +25,8 @@ import {
 import { MeUser } from '@/types/auth';
 import { LeaderDashboard } from '@/components/leader-dashboard';
 import { BreakChips } from '@/components/break-chips';
+import { DashboardSkeleton } from '@/components/skeleton';
+import { EmptyState } from '@/components/empty-state';
 
 
 type DutySession = {
@@ -1251,7 +1253,13 @@ export default function EmployeeDashboardPage() {
             </div>
           </div>
           {notifications.length === 0 ? (
-            <div className="noti-empty">All clear — no notifications</div>
+            <div className="noti-empty">
+              <EmptyState
+                type="no-notifications"
+                title="All clear!"
+                description="No notifications yet"
+              />
+            </div>
           ) : (
             <div className="noti-list">
               {notifications.map(n => (
@@ -1336,8 +1344,13 @@ export default function EmployeeDashboardPage() {
         </div>
       ) : null}
 
+      {/* ── Skeleton Loading State ── */}
+      {loading && !sessions.length && !monthlySummary && (
+        <DashboardSkeleton kpiCount={4} showBreaks={me?.role !== 'MAID' && me?.role !== 'CHEF'} showSession />
+      )}
+
       {/* ── Leader gets a dedicated dashboard ── */}
-      {me?.role === 'LEADER' ? (
+      {!loading && me?.role === 'LEADER' && (
         <LeaderDashboard
           activeSession={activeSession}
           activeDutyMinutes={activeDutyMinutes}
@@ -1350,7 +1363,9 @@ export default function EmployeeDashboardPage() {
           isOffline={isOffline}
           runAction={runAction}
         />
-      ) : (
+      )}
+
+      {!loading && me?.role !== 'LEADER' && (
         <>
           {/* ── Mobile punch card (Driver / Maid / Chef on phone) ── */}
           {(me?.role === 'DRIVER' || me?.role === 'MAID' || me?.role === 'CHEF') ? (
@@ -1396,17 +1411,17 @@ export default function EmployeeDashboardPage() {
           {/* ── Monthly KPI Row (non-Leader) ── */}
           {monthlySummary && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
             <section className="kpi-grid">
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-1">
                 <p className="kpi-label">Month Hours</p>
                 <p className="kpi-value">{fmtDuration(monthlySummary.totalWorkedMinutes)}</p>
               </article>
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-2">
                 <p className="kpi-label">Month Late</p>
                 <p className="kpi-value" style={{ color: monthlySummary.totalLateMinutes > 0 ? 'var(--danger)' : undefined }}>
                   {monthlySummary.totalLateMinutes}m
                 </p>
               </article>
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-3">
                 <p className="kpi-label">Overtime</p>
                 <p className="kpi-value" style={{ color: monthlySummary.totalOvertimeMinutes > 0 ? 'var(--ok)' : undefined }}>
                   {monthlySummary.totalOvertimeMinutes}m
@@ -1417,11 +1432,11 @@ export default function EmployeeDashboardPage() {
 
           {/* ── Today KPI Row (non-Leader) ── */}
           <section className={`kpi-grid${me?.role === 'DRIVER' || me?.role === 'MAID' || me?.role === 'CHEF' ? ' kpi-mobile-first' : ''}`}>
-            <article className="kpi">
+            <article className="kpi card-animate card-animate-delay-1">
               <p className="kpi-label">Sessions</p>
               <p className="kpi-value">{sessions.length}</p>
             </article>
-            <article className="kpi">
+            <article className="kpi card-animate card-animate-delay-2">
               <p className="kpi-label">Duty</p>
               <p className="kpi-value" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 <span className={`status-dot ${activeSession ? 'active' : 'inactive'}`} />
@@ -1429,7 +1444,7 @@ export default function EmployeeDashboardPage() {
               </p>
             </article>
             {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-3">
                 <p className="kpi-label">Break</p>
                 <p className="kpi-value">
                   {activeBreak ? (
@@ -1439,7 +1454,7 @@ export default function EmployeeDashboardPage() {
               </article>
             ) : null}
             {activeSession?.isLate && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-4">
                 <p className="kpi-label">Late</p>
                 <p className="kpi-value" style={{ color: 'var(--danger)' }}>{activeSession.lateMinutes}m</p>
               </article>
@@ -1542,7 +1557,7 @@ export default function EmployeeDashboardPage() {
               ) : null}
 
               {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-                <article className="card">
+                <article className="card card-animate card-animate-delay-2">
                   <h3>Breaks</h3>
                   {activeBreak ? (
                     <div className="break-banner">
@@ -1629,7 +1644,15 @@ export default function EmployeeDashboardPage() {
                           </tr>
                         ))}
                         {publicBreakSessions.length === 0 ? (
-                          <tr><td colSpan={5} className="table-empty">No one is on break right now</td></tr>
+                          <tr>
+                            <td colSpan={5} style={{ padding: 0 }}>
+                              <EmptyState
+                                type="no-one-on-break"
+                                title="No one is on break"
+                                description="Everyone is currently on duty"
+                              />
+                            </td>
+                          </tr>
                         ) : null}
                       </tbody>
                     </table>
@@ -1640,7 +1663,7 @@ export default function EmployeeDashboardPage() {
 
             {/* Right column — Current Session */}
             <div className="grid">
-              <article className="card">
+              <article className="card card-animate card-animate-delay-3">
                 <h3>Current Session</h3>
                 <div className="table-wrap">
                   <table className="table-card-mobile">
@@ -1709,7 +1732,15 @@ export default function EmployeeDashboardPage() {
                           </tr>
                         ))}
                         {sessionBreaks.length === 0 ? (
-                          <tr><td colSpan={5} className="table-empty">{activeSession ? 'No breaks this session' : 'Not on duty'}</td></tr>
+                          <tr>
+                            <td colSpan={5} style={{ padding: 0 }}>
+                              <EmptyState
+                                type={activeSession ? 'no-breaks' : 'no-sessions'}
+                                title={activeSession ? 'No breaks this session' : 'Not on duty'}
+                                description={activeSession ? 'Take a break when you need one' : 'Punch ON to start your session'}
+                              />
+                            </td>
+                          </tr>
                         ) : null}
                       </tbody>
                     </table>
@@ -1834,7 +1865,6 @@ export default function EmployeeDashboardPage() {
           ) : null}
         </>
       )}
-
     </AppShell>
   );
 }

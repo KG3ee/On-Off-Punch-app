@@ -9,11 +9,17 @@ type DutySession = {
   status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
 };
 
+type PunchAnimationState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
+
 export function PunchWidget() {
   const [sessions, setSessions] = useState<DutySession[]>([]);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [nowTick, setNowTick] = useState(0);
+  const [animState, setAnimState] = useState<PunchAnimationState>('idle');
+  const [lastAction, setLastAction] = useState<'on' | 'off' | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'/attendance/on' | '/attendance/off' | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -53,72 +59,194 @@ export function PunchWidget() {
     return h > 0 ? `${h}h${r > 0 ? ` ${r}m` : ''}` : `${r}m`;
   }
 
-  async function punch(path: string) {
+  const punch = useCallback(async (path: string) => {
     setLoading(true);
+    setAnimState('processing');
     try {
       await apiFetch(path, {
         method: 'POST',
         body: JSON.stringify({ clientTimestamp: new Date().toISOString() })
       });
+      setAnimState('success');
+      setLastAction(path === '/attendance/on' ? 'on' : 'off');
       await load();
+      
+      // Trigger haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+
+      // Reset animation after success
+      setTimeout(() => {
+        setAnimState('idle');
+        setLastAction(null);
+      }, 2000);
     } catch {
-      // silent
+      setAnimState('error');
+      setTimeout(() => setAnimState('idle'), 2000);
     } finally {
       setLoading(false);
     }
+  }, [load]);
+
+  function openConfirm(path: '/attendance/on' | '/attendance/off') {
+    setPendingAction(path);
+    setShowConfirmModal(true);
   }
 
-  function confirmPunch(path: '/attendance/on' | '/attendance/off'): boolean {
-    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const action = path === '/attendance/on' ? 'Punch ON' : 'Punch OFF';
-    return window.confirm(
-      `${action} confirmation\n\nActual recorded time will be ${timeLabel}.\n\nDo you want to continue?`,
-    );
-  }
+  const handleConfirm = useCallback(() => {
+    if (pendingAction) {
+      setShowConfirmModal(false);
+      void punch(pendingAction);
+      setPendingAction(null);
+    }
+  }, [pendingAction, punch]);
+
+  const handleCancel = useCallback(() => {
+    setShowConfirmModal(false);
+    setPendingAction(null);
+  }, []);
+
+  // Keyboard shortcut: Enter to confirm, Escape to cancel
+  useEffect(() => {
+    if (!showConfirmModal) return;
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleConfirm();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCancel();
+      }
+    }
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [handleCancel, handleConfirm, showConfirmModal]);
 
   if (!mounted) return null;
 
+  const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const actionLabel = pendingAction === '/attendance/on' ? 'Punch ON' : pendingAction === '/attendance/off' ? 'Punch OFF' : '';
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-      {active ? (
-        <>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            color: 'var(--ok)',
-            whiteSpace: 'nowrap',
-          }}>
-            <span className="status-dot active" />
-            {fmt(mins)}
-          </span>
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {active ? (
+          <>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'var(--ok)',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.3s',
+              transform: animState === 'success' && lastAction === 'off' ? 'scale(1.1)' : 'scale(1)',
+            }}>
+              <span className="status-dot active" />
+              {fmt(mins)}
+            </span>
+            <button
+              type="button"
+              className={`button button-danger button-sm ${animState === 'processing' ? 'processing' : ''}`}
+              disabled={loading || animState === 'processing'}
+              onClick={() => openConfirm('/attendance/off')}
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {animState === 'processing' && lastAction === 'off' ? (
+                <span className="sync-spinner" />
+              ) : (
+                'Punch OFF'
+              )}
+            </button>
+          </>
+        ) : (
           <button
             type="button"
-            className="button button-danger button-sm"
-            disabled={loading}
-            onClick={() => {
-              if (!confirmPunch('/attendance/off')) return;
-              void punch('/attendance/off');
+            className={`button button-ok button-sm ${animState === 'processing' ? 'processing' : ''}`}
+            disabled={loading || animState === 'processing'}
+            onClick={() => openConfirm('/attendance/on')}
+            style={{
+              position: 'relative',
+              overflow: 'hidden',
+              transition: 'all 0.3s',
+              transform: animState === 'success' && lastAction === 'on' ? 'scale(1.05)' : 'scale(1)',
             }}
           >
-            Punch OFF
+            {animState === 'processing' && lastAction === 'on' ? (
+              <span className="sync-spinner" />
+            ) : animState === 'success' && lastAction === 'on' ? (
+              '✓'
+            ) : (
+              'Punch ON'
+            )}
           </button>
-        </>
-      ) : (
-        <button
-          type="button"
-          className="button button-ok button-sm"
-          disabled={loading}
-          onClick={() => {
-            if (!confirmPunch('/attendance/on')) return;
-            void punch('/attendance/on');
-          }}
-        >
-          Punch ON
-        </button>
+        )}
+      </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="modal-overlay" onClick={handleCancel}>
+          <div className="modal punch-confirm-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.5rem' }}>
+                {pendingAction === '/attendance/on' ? '▶️' : '⏹️'}
+              </span>
+              {actionLabel} Confirmation
+            </h3>
+            
+            <div style={{
+              padding: '1rem',
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius)',
+              marginBottom: '1rem',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: 700,
+                color: 'var(--ink)',
+                fontFamily: 'monospace',
+                marginBottom: '0.25rem',
+              }}>
+                {timeLabel}
+              </div>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', margin: 0 }}>
+                Actual recorded time
+              </p>
+            </div>
+
+            <p style={{ fontSize: '0.875rem', color: 'var(--ink-2)', marginBottom: '1.5rem' }}>
+              Do you want to continue?
+            </p>
+
+            <div className="modal-footer" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+              <button
+                type="button"
+                className="button button-ghost"
+                onClick={handleCancel}
+                style={{ minWidth: '100px' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={`button ${pendingAction === '/attendance/on' ? 'button-ok' : 'button-danger'}`}
+                onClick={handleConfirm}
+                style={{ minWidth: '100px', fontWeight: 600 }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
