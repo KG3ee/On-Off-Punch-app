@@ -1039,12 +1039,30 @@ tbody tr:last-child td {
   margin-top: var(--space-1);
 }
 
+/* ── Generic .grid (e.g. admin deductions policy columns via inline gridTemplateColumns) ── */
+.grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
 /* ── Split layout ── */
 .split {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.625rem;
   align-items: start;
+}
+
+/*
+ * Vertical stacks inside `.split` (each column may hold multiple cards).
+ * Use class `split-col-stack` or the <SplitColumnStack> component — not a generic `.grid` name.
+ * `.split > .grid` kept for backwards compatibility only.
+ */
+.split > .split-col-stack,
+.split > .grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 /* ── Action area ── */

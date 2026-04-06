@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { SplitColumnStack } from '@/components/layout/split-column-stack';
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
@@ -79,18 +80,18 @@ export function DashboardSkeleton({
       {/* Main Layout Skeleton */}
       <div className="split">
         {/* Left Column */}
-        <div className="grid">
+        <SplitColumnStack>
           {showBreaks && (
             <SkeletonCard className="card-animate card-animate-delay-2" />
           )}
-        </div>
+        </SplitColumnStack>
 
         {/* Right Column */}
-        <div className="grid">
+        <SplitColumnStack>
           {showSession && (
             <SkeletonCard className="card-animate card-animate-delay-3" />
           )}
-        </div>
+        </SplitColumnStack>
       </div>
     </>
   );

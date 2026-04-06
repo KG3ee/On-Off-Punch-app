@@ -69,6 +69,11 @@ Local URLs:
 - API health: `http://localhost:4000/health` (or `http://localhost:4001/health` if `PORT` is unset)
 - Web: `http://localhost:3000`
 
+## Web UI layout (`apps/web`)
+- **Split columns:** A `.split` section is a two-column grid. When a column contains **multiple cards stacked vertically**, wrap them in `<SplitColumnStack>` (or the `split-col-stack` class). Do not use a bare `div` with `className="grid"` for that pattern — the global `.grid` utility is a real **CSS Grid** (`display: grid`; used e.g. on admin deductions with inline `gridTemplateColumns`).
+- **New layout classes:** If you introduce a class name in TSX, add the matching rule in `apps/web/src/app/globals.css` in the same change (or reuse an existing primitive). Grep for `className="…"` before merging if you are unsure.
+- **Optional hardening:** Visual or Playwright smoke tests on key pages catch accidental layout regressions; the repo does not require them yet.
+
 ## Seed Notes
 - `SEED_ADMIN_USERNAME` defaults to `admin`.
 - `SEED_ADMIN_PASSWORD` is required and must be at least 12 characters.

@@ -27,6 +27,7 @@ import { LeaderDashboard } from '@/components/leader-dashboard';
 import { BreakChips } from '@/components/break-chips';
 import { DashboardSkeleton } from '@/components/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { SplitColumnStack } from '@/components/layout/split-column-stack';
 import { PunchAttendanceConfirmModal } from '@/components/punch-attendance-confirm-modal';
 import type {
   AttendanceRefreshDetail,
@@ -1543,7 +1544,7 @@ export default function EmployeeDashboardPage() {
           {/* ── Main Layout (non-Leader) ── */}
           <section className="split">
             {/* Left column — Actions */}
-            <div className="grid">
+            <SplitColumnStack>
 
               {me?.role === 'CHEF' ? (
                 <article className="card">
@@ -1738,10 +1739,10 @@ export default function EmployeeDashboardPage() {
                   </div>
                 </article>
               ) : null}
-            </div>
+            </SplitColumnStack>
 
             {/* Right column — Current Session */}
-            <div className="grid">
+            <SplitColumnStack>
               <article className="card card-animate card-animate-delay-3">
                 <h3>Current Session</h3>
                 <div className="table-wrap">
@@ -1826,7 +1827,7 @@ export default function EmployeeDashboardPage() {
                   </div>
                 </article>
               ) : null}
-            </div>
+            </SplitColumnStack>
           </section>
 
 
