@@ -33,6 +33,8 @@ import type {
   AttendanceRefreshSession,
   PunchOffResult,
 } from '@/lib/attendance-events';
+import { isTypingTarget } from '@/lib/is-typing-target';
+import { useModalKeyboard } from '@/hooks/use-modal-keyboard';
 
 
 type DutySession = {
@@ -234,13 +236,6 @@ function queueDate(iso: string): string {
     return new Date().toISOString().slice(0, 10);
   }
   return date.toISOString().slice(0, 10);
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  if (!element) return false;
-  const tag = element.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || element.isContentEditable;
 }
 
 function loadOverLimitToastSeen(): Record<string, true> {
@@ -637,9 +632,10 @@ export default function EmployeeDashboardPage() {
     if (!shortcutConfirmPolicy) return;
 
     function handleConfirmKeys(e: KeyboardEvent) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (isTypingTarget(e.target)) return;
 
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.repeat) {
         e.preventDefault();
         const policy = shortcutConfirmPolicy;
         if (!policy) return;
@@ -659,6 +655,15 @@ export default function EmployeeDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shortcutConfirmPolicy]);
 
+  useModalKeyboard({
+    open: showViolationModal,
+    onCancel: () => {
+      if (!violationSubmitting) setShowViolationModal(false);
+    },
+    onConfirm: () => void submitViolationReport(),
+    confirmDisabled: !violationAccusedUserId || violationSubmitting,
+    submitWhenTyping: 'input-only',
+  });
 
   async function loadData(options?: { background?: boolean }): Promise<void> {
     const background = options?.background ?? false;

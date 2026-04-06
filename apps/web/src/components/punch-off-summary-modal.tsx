@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalKeyboard } from '@/hooks/use-modal-keyboard';
 import type { PunchOffSummary } from '@/lib/attendance-events';
 
 function formatMinutes(totalMinutes: number): string {
@@ -30,19 +30,13 @@ export function PunchOffSummaryModal({
   summary: PunchOffSummary | null;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    if (!summary) return;
-
-    function handleKeyDown(event: KeyboardEvent): void {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, summary]);
+  const open = !!summary;
+  useModalKeyboard({
+    open,
+    onCancel: onClose,
+    onConfirm: onClose,
+    submitWhenTyping: 'never',
+  });
 
   if (!summary || typeof document === 'undefined') return null;
 

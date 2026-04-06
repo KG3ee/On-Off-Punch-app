@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalKeyboard } from '@/hooks/use-modal-keyboard';
 
 export type PunchAttendanceConfirmVariant = 'on' | 'off';
 
@@ -39,22 +40,12 @@ export function PunchAttendanceConfirmModal({
   const isOn = variant === 'on';
   const actionLabel = isOn ? 'Punch ON' : 'Punch OFF';
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        onConfirm();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancel();
-      }
-    }
-
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [open, onConfirm, onCancel]);
+  useModalKeyboard({
+    open,
+    onCancel,
+    onConfirm,
+    submitWhenTyping: 'never',
+  });
 
   if (!open || typeof document === 'undefined') return null;
 

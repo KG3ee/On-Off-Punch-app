@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
+import { useModalKeyboard } from '@/hooks/use-modal-keyboard';
 
 type ShiftRequestType = 'HALF_DAY_MORNING' | 'HALF_DAY_EVENING' | 'FULL_DAY_OFF' | 'CUSTOM';
 type ViolationReason = 'LEFT_WITHOUT_PUNCH' | 'UNAUTHORIZED_ABSENCE' | 'OTHER';
@@ -131,13 +132,6 @@ const DRIVER_AVAIL_CONFIG: Record<string, { emoji: string; label: string; color:
   OFFLINE:   { emoji: '🏠', label: 'Off Duty',  color: 'var(--danger)', bg: 'rgba(239,68,68,0.12)' },
 };
 
-function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  if (!element) return false;
-  const tag = element.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || element.isContentEditable;
-}
-
 export default function AdminRequestsPage() {
   return <Suspense><AdminRequestsContent /></Suspense>;
 }
@@ -225,31 +219,44 @@ function AdminRequestsContent() {
     return () => clearInterval(timer);
   }, [load]);
 
-  useEffect(() => {
-    if (!driverApproveTarget) return;
+  const requestsModalLayer = driverApproveTarget
+    ? 'driver'
+    : showObservedViolationModal
+      ? 'observed'
+      : selectedViolation
+        ? 'finalize'
+        : null;
 
-    function handleApproveModalKeys(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setDriverApproveTarget(null);
-        setSelectedDriverId('');
-        return;
-      }
+  useModalKeyboard({
+    open: requestsModalLayer === 'driver',
+    onCancel: () => {
+      setDriverApproveTarget(null);
+      setSelectedDriverId('');
+    },
+    onConfirm: () => void confirmDriverApprove(),
+    confirmDisabled: !!driverActionId || !selectedDriverId,
+    submitWhenTyping: 'input-only',
+  });
 
-      if (e.key !== 'Enter' || e.repeat) return;
-      if (isTypingTarget(e.target)) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-      }
-      if (driverActionId || !selectedDriverId) return;
+  useModalKeyboard({
+    open: requestsModalLayer === 'observed',
+    onCancel: () => {
+      if (!violationActionId) setShowObservedViolationModal(false);
+    },
+    onConfirm: () => void submitObservedViolation(),
+    confirmDisabled: !observedAccusedUserId || !!violationActionId,
+    submitWhenTyping: 'input-only',
+  });
 
-      e.preventDefault();
-      void confirmDriverApprove();
-    }
-
-    window.addEventListener('keydown', handleApproveModalKeys);
-    return () => window.removeEventListener('keydown', handleApproveModalKeys);
-  }, [driverActionId, driverApproveTarget, selectedDriverId, confirmDriverApprove]);
+  useModalKeyboard({
+    open: requestsModalLayer === 'finalize',
+    onCancel: () => {
+      if (!violationActionId) setSelectedViolation(null);
+    },
+    onConfirm: () => void finalizeViolationCase(),
+    confirmDisabled: !!violationActionId,
+    submitWhenTyping: 'input-only',
+  });
 
   async function rejectRequest(id: string) {
     setError(''); setMessage('');

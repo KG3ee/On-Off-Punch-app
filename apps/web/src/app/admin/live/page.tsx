@@ -18,6 +18,8 @@ import type {
   AttendanceRefreshSession,
   PunchOffResult,
 } from '@/lib/attendance-events';
+import { isTypingTarget } from '@/lib/is-typing-target';
+import { useModalKeyboard } from '@/hooks/use-modal-keyboard';
 
 /* ── Break constants ── */
 const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
@@ -157,13 +159,6 @@ type DashboardToast = {
 function queueDate(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  if (!element) return false;
-  const tag = element.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || element.isContentEditable;
 }
 
 function loadOverLimitToastSeen(): Record<string, true> {
@@ -601,31 +596,27 @@ export default function AdminLivePage() {
     return () => window.removeEventListener('keydown', handleBreakStartShortcut);
   }, [canStartBreak, policies, shortcutConfirmPolicy]);
 
-  // Confirmation modal controls: Enter confirms, Escape cancels
-  useEffect(() => {
-    if (!shortcutConfirmPolicy) return;
+  useModalKeyboard({
+    open: !!shortcutConfirmPolicy,
+    onCancel: () => setShortcutConfirmPolicy(null),
+    onConfirm: () => {
+      const policy = shortcutConfirmPolicy;
+      if (!policy) return;
+      setShortcutConfirmPolicy(null);
+      void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() });
+    },
+    submitWhenTyping: 'never',
+  });
 
-    function handleConfirmKeys(e: KeyboardEvent) {
-      if (isTypingTarget(e.target)) return;
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const policy = shortcutConfirmPolicy;
-        if (!policy) return;
-        setShortcutConfirmPolicy(null);
-        void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() });
-        return;
-      }
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setShortcutConfirmPolicy(null);
-      }
-    }
-
-    window.addEventListener('keydown', handleConfirmKeys);
-    return () => window.removeEventListener('keydown', handleConfirmKeys);
-  }, [shortcutConfirmPolicy]);
+  useModalKeyboard({
+    open: showObservedModal,
+    onCancel: () => {
+      if (!violationActionId) setShowObservedModal(false);
+    },
+    onConfirm: () => void submitObservedViolation(),
+    confirmDisabled: !observedAccusedUserId || !!violationActionId,
+    submitWhenTyping: 'input-only',
+  });
 
   function openBreakStartConfirm(policy: BreakPolicy): void {
     setShortcutConfirmPolicy(policy);

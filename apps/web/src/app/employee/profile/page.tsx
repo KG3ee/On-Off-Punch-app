@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
+import { isTypingTarget } from '@/lib/is-typing-target';
 import { MeUser } from '@/types/auth';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -92,6 +93,8 @@ function ProfileContent() {
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (isTypingTarget(e.target)) return;
       e.preventDefault();
       goBack();
     }

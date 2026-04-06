@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { AppShell } from '@/components/app-shell';
 import { AvatarName } from '@/components/avatar-name';
 import { apiFetch } from '@/lib/api';
+import { shouldBlockEnterConfirm } from '@/lib/is-typing-target';
 
 type Team = { id: string; name: string; shiftStartTime?: string | null; shiftEndTime?: string | null };
 
@@ -93,13 +94,6 @@ function todayStr(): string {
 
 function inferCrossesMidnight(startTime: string, endTime: string): boolean {
   return endTime <= startTime;
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  if (!element) return false;
-  const tag = element.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || element.isContentEditable;
 }
 
 export default function AdminUsersPage() {
@@ -330,16 +324,14 @@ function AdminUsersContent() {
     }
 
     function handleModalKeys(e: KeyboardEvent) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         closeActiveModal();
         return;
       }
       if (e.key !== 'Enter' || e.repeat) return;
-      if (isTypingTarget(e.target)) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-      }
+      if (shouldBlockEnterConfirm(e.target, 'input-only')) return;
       e.preventDefault();
       submitActiveModal();
     }

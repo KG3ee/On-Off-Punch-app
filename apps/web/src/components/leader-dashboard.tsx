@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarName } from '@/components/avatar-name';
 import { BreakChips } from '@/components/break-chips';
 import { apiFetch } from '@/lib/api';
+import { isTypingTarget } from '@/lib/is-typing-target';
+import { useModalKeyboard } from '@/hooks/use-modal-keyboard';
 
 /* ── Break constants (mirrors employee dashboard) ── */
 const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
@@ -179,13 +181,6 @@ type LeaderViolationCase = {
     team?: { id: string; name: string } | null;
   };
 };
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  if (!element) return false;
-  const tag = element.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || element.isContentEditable;
-}
 
 /* ── Props from parent dashboard ── */
 export type LeaderDashboardProps = {
@@ -556,31 +551,27 @@ export function LeaderDashboard({
     return () => window.removeEventListener('keydown', handleBreakStartShortcut);
   }, [canStartBreak, policies, shortcutConfirmPolicy]);
 
-  // Confirmation modal controls: Enter confirms, Escape cancels
-  useEffect(() => {
-    if (!shortcutConfirmPolicy) return;
+  useModalKeyboard({
+    open: !!shortcutConfirmPolicy,
+    onCancel: () => setShortcutConfirmPolicy(null),
+    onConfirm: () => {
+      const policy = shortcutConfirmPolicy;
+      if (!policy) return;
+      setShortcutConfirmPolicy(null);
+      void runAction('/breaks/start', { code: policy.code });
+    },
+    submitWhenTyping: 'never',
+  });
 
-    function handleConfirmKeys(e: KeyboardEvent) {
-      if (isTypingTarget(e.target)) return;
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const policy = shortcutConfirmPolicy;
-        if (!policy) return;
-        setShortcutConfirmPolicy(null);
-        void runAction('/breaks/start', { code: policy.code });
-        return;
-      }
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setShortcutConfirmPolicy(null);
-      }
-    }
-
-    window.addEventListener('keydown', handleConfirmKeys);
-    return () => window.removeEventListener('keydown', handleConfirmKeys);
-  }, [shortcutConfirmPolicy, runAction]);
+  useModalKeyboard({
+    open: showObservedModal,
+    onCancel: () => {
+      if (!violationActionId) setShowObservedModal(false);
+    },
+    onConfirm: () => void submitObservedViolation(),
+    confirmDisabled: !observedAccusedUserId || !!violationActionId,
+    submitWhenTyping: 'input-only',
+  });
 
   return (
     <div className="dash-layout">

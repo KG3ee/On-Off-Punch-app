@@ -59,11 +59,17 @@ export class BreaksService {
     });
   }
 
+  /** Breaks for dashboard: calendar-today, any active break, plus all breaks on still-active duty (night shift past midnight). */
   async myTodayBreaks(userId: string) {
-    const localDate = formatDateInZone(
-      new Date(),
-      process.env.APP_TIMEZONE || "Asia/Dubai",
-    );
+    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
+    const localDate = formatDateInZone(new Date(), timezone);
+
+    const activeDutyIds = (
+      await this.prisma.dutySession.findMany({
+        where: { userId, status: DutySessionStatus.ACTIVE },
+        select: { id: true },
+      })
+    ).map((row) => row.id);
 
     return this.prisma.breakSession.findMany({
       where: {
@@ -71,6 +77,9 @@ export class BreaksService {
         OR: [
           { localDate },
           { status: BreakSessionStatus.ACTIVE },
+          ...(activeDutyIds.length > 0
+            ? [{ dutySessionId: { in: activeDutyIds } }]
+            : []),
         ],
       },
       select: {
