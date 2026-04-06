@@ -3,7 +3,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { apiFetch } from '@/lib/api';
-import { getAccessToken } from '@/lib/auth';
 
 type DeductionCategory = 'PUNCH_LATE' | 'BREAK_LATE';
 
@@ -339,18 +338,17 @@ export default function AdminDeductionsPage() {
   }
 
   function exportCsv() {
-    const token = getAccessToken();
-    if (!token) {
-      setError('Missing authorization token. Please login again.');
-      return;
-    }
-
     const params = buildParams(false);
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
     const url = `${apiBase}/admin/deductions/export.csv?${params.toString()}`;
 
+    // Read CSRF token from cookie for this request
+    const csrfMatch = typeof document !== 'undefined' ? document.cookie.match(/(?:^|; )csrf_token=([^;]*)/) : null;
+    const csrfToken = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
+
     void fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+      headers: { 'X-CSRF-Token': csrfToken },
     })
       .then(async (response) => {
         if (!response.ok) {

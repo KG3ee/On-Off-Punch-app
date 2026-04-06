@@ -1,13 +1,14 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { AuthUser } from '../common/interfaces/auth-user.interface';
 import { CreateSubscriptionDto, DeleteSubscriptionDto } from './dto/create-subscription.dto';
 import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CsrfGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 

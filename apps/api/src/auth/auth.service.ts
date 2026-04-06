@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, UnauthorizedException, HttpException, HttpStatus } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { compare } from "bcryptjs";
 import { resolveJwtSecret } from "../common/config/jwt-secret";
 import { resolveAuthSessionTtlSeconds } from "../common/config/session";
+import { getLockoutInfo, recordFailedLogin, resetLoginFailures } from "../common/services/login-lockout";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { UsersService } from "../users/users.service";
 import { ChangePasswordDto } from "./dto/change-password.dto";
@@ -16,15 +17,37 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
+    const normalizedUsername = dto.username.toLowerCase().trim();
+
+    // Check if account is currently locked out
+    const lockoutInfo = getLockoutInfo(normalizedUsername);
+    if (lockoutInfo) {
+      throw new HttpException(
+        "Account temporarily locked due to too many failed login attempts. Please try again later.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = await this.usersService.findByUsernameForAuth(dto.username);
     if (!user || !user.isActive) {
+      recordFailedLogin(normalizedUsername);
       throw new UnauthorizedException("Invalid username or password");
     }
 
     const passwordOk = await compare(dto.password, user.passwordHash);
     if (!passwordOk) {
+      const nowLocked = recordFailedLogin(normalizedUsername);
+      if (nowLocked) {
+        throw new HttpException(
+          "Account temporarily locked due to too many failed login attempts. Please try again later.",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
       throw new UnauthorizedException("Invalid username or password");
     }
+
+    // Success — reset the failure counter
+    resetLoginFailures(normalizedUsername);
 
     const accessToken = await this.signToken({
       sub: user.id,

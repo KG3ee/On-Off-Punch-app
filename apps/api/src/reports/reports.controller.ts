@@ -3,13 +3,14 @@ import { Role } from "@prisma/client";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { CsrfGuard } from "../common/guards/csrf.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { GenerateMonthlyReportDto } from "./dto/generate-monthly-report.dto";
 import { ReportsService } from "./reports.service";
 
 @Controller("admin/reports")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles(Role.ADMIN)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}

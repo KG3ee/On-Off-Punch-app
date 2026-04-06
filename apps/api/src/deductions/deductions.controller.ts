@@ -14,6 +14,7 @@ import { Response } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthUser } from '../common/interfaces/auth-user.interface';
 import { DeductionsService } from './deductions.service';
@@ -22,7 +23,7 @@ import { ListDeductionFilterDto } from './dto/list-deduction-filter.dto';
 import { UpdateDeductionPolicyDto } from './dto/update-deduction-policy.dto';
 
 @Controller('admin/deductions')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
 @Roles(Role.ADMIN)
 export class DeductionsController {
   constructor(private readonly deductionsService: DeductionsService) {}

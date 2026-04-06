@@ -3,6 +3,7 @@ import { Role, DriverStatus } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthUser } from '../common/interfaces/auth-user.interface';
 import { CreateDriverRequestDto } from './dto/create-driver-request.dto';
@@ -11,54 +12,50 @@ import { RejectDriverRequestDto } from './dto/reject-driver-request.dto';
 import { DriverRequestsService } from './driver-requests.service';
 
 @Controller()
+@UseGuards(JwtAuthGuard, CsrfGuard)
 export class DriverRequestsController {
   constructor(private readonly driverRequestsService: DriverRequestsService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Post('driver-requests')
   async create(@CurrentUser() authUser: AuthUser, @Body() dto: CreateDriverRequestDto) {
     return this.driverRequestsService.create(authUser.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('driver-requests/me')
   async listMyRequests(@CurrentUser() authUser: AuthUser) {
     return this.driverRequestsService.listMyRequests(authUser.sub);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('driver-requests/me/summary')
   async getMySummary(@CurrentUser() authUser: AuthUser) {
     return this.driverRequestsService.getMySummary(authUser.sub);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get('admin/driver-requests')
   async listAllRequests() {
     return this.driverRequestsService.listAllRequests();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get('admin/driver-requests/summary')
   async getAdminSummary() {
     return this.driverRequestsService.getAdminSummary();
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('driver-requests/available')
   async listAvailableForDrivers(@CurrentUser() authUser: AuthUser) {
     return this.driverRequestsService.listAvailableForDrivers(authUser.sub);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('driver-requests/my-assignments')
   async listMyAssignments(@CurrentUser() authUser: AuthUser) {
     return this.driverRequestsService.listMyAssignments(authUser.sub);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/driver-requests/:id/approve')
   async approve(
@@ -69,7 +66,7 @@ export class DriverRequestsController {
     return this.driverRequestsService.approve(id, authUser.sub, dto.adminNote, dto.driverId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/driver-requests/:id/reject')
   async reject(
@@ -80,19 +77,16 @@ export class DriverRequestsController {
     return this.driverRequestsService.reject(id, authUser.sub, dto.adminNote);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('driver-requests/:id/accept')
   async accept(@CurrentUser() authUser: AuthUser, @Param('id') id: string) {
     return this.driverRequestsService.accept(id, authUser.sub);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('driver-requests/:id/complete')
   async complete(@CurrentUser() authUser: AuthUser, @Param('id') id: string) {
     return this.driverRequestsService.complete(id, authUser.sub);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('driver-requests/status')
   async setStatus(@CurrentUser() authUser: AuthUser, @Body() dto: { status: DriverStatus }) {
     return this.driverRequestsService.setDriverStatus(authUser.sub, dto.status);

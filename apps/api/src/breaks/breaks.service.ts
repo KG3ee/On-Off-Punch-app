@@ -59,11 +59,17 @@ export class BreaksService {
     });
   }
 
+  /** Breaks for dashboard: calendar-today, any active break, plus all breaks on still-active duty (night shift past midnight). */
   async myTodayBreaks(userId: string) {
-    const localDate = formatDateInZone(
-      new Date(),
-      process.env.APP_TIMEZONE || "Asia/Dubai",
-    );
+    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
+    const localDate = formatDateInZone(new Date(), timezone);
+
+    const activeDutyIds = (
+      await this.prisma.dutySession.findMany({
+        where: { userId, status: DutySessionStatus.ACTIVE },
+        select: { id: true },
+      })
+    ).map((row) => row.id);
 
     return this.prisma.breakSession.findMany({
       where: {
@@ -71,6 +77,9 @@ export class BreaksService {
         OR: [
           { localDate },
           { status: BreakSessionStatus.ACTIVE },
+          ...(activeDutyIds.length > 0
+            ? [{ dutySessionId: { in: activeDutyIds } }]
+            : []),
         ],
       },
       select: {
@@ -259,11 +268,19 @@ export class BreaksService {
         : "BREAK_START_BEFORE_DUTY_START_CLAMPED";
     }
 
-    const [activeBreak, priorSamePolicyBreaks] = await Promise.all([
+    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
+
+    let [activeBreak, priorSamePolicyBreaks] = await Promise.all([
       this.prisma.breakSession.findFirst({
         where: { userId: user.id, status: BreakSessionStatus.ACTIVE },
         include: {
           breakPolicy: true,
+          dutySession: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
         },
         orderBy: {
           startedAt: "desc",
@@ -289,6 +306,63 @@ export class BreaksService {
         },
       }),
     ]);
+
+    if (
+      activeBreak &&
+      (activeBreak.dutySessionId !== activeDuty.id ||
+        activeBreak.dutySession?.status !== DutySessionStatus.ACTIVE)
+    ) {
+      let endedAt = now;
+      if (endedAt.getTime() < activeBreak.startedAt.getTime()) {
+        endedAt = new Date(activeBreak.startedAt);
+      }
+
+      const actualMinutes = Math.max(
+        0,
+        localMinuteStampInZone(endedAt, timezone) -
+          localMinuteStampInZone(activeBreak.startedAt, timezone),
+      );
+
+      const closedBreak = await this.prisma.breakSession.update({
+        where: { id: activeBreak.id },
+        data: {
+          endedAt,
+          actualMinutes,
+          isOvertime: actualMinutes > activeBreak.expectedDurationMinutes,
+          autoClosed: true,
+          status: BreakSessionStatus.AUTO_CLOSED,
+        },
+        include: {
+          breakPolicy: true,
+          dutySession: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      this.prisma.auditEvent.create({
+        data: {
+          actorUserId: user.id,
+          action: "BREAK_AUTO_CLOSE_ORPHANED",
+          entityType: "BreakSession",
+          entityId: closedBreak.id,
+          payload: {
+            priorDutySessionId: activeBreak.dutySessionId,
+            replacementDutySessionId: activeDuty.id,
+            code: closedBreak.breakPolicy.code,
+            actualMinutes,
+          },
+        },
+      }).catch(() => { /* audit failure is non-critical */ });
+
+      activeBreak = null;
+      priorSamePolicyBreaks = priorSamePolicyBreaks.map((breakSession) =>
+        breakSession.id === closedBreak.id ? closedBreak : breakSession,
+      );
+    }
 
     if (activeBreak) {
       if (
@@ -326,7 +400,6 @@ export class BreaksService {
       return response;
     }
 
-    const timezone = process.env.APP_TIMEZONE || "Asia/Dubai";
     const localDate = formatDateInZone(now, timezone);
     const usedCount = priorSamePolicyBreaks.length;
     const isOverLimit = usedCount >= policy.dailyLimit;

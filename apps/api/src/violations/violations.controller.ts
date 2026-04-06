@@ -13,6 +13,7 @@ import { Response } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthUser } from '../common/interfaces/auth-user.interface';
 import { CreateObservedViolationDto } from './dto/create-observed-violation.dto';
@@ -24,7 +25,7 @@ import { TriageViolationDto } from './dto/triage-violation.dto';
 import { ViolationsService } from './violations.service';
 
 @Controller()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CsrfGuard)
 export class ViolationsController {
   constructor(private readonly violationsService: ViolationsService) {}
 

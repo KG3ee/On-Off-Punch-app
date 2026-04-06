@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthUser } from '../common/interfaces/auth-user.interface';
 import { UsersService } from '../users/users.service';
@@ -13,55 +14,55 @@ import { CreateShiftChangeRequestDto } from './dto/create-shift-change-request.d
 import { ShiftsService } from './shifts.service';
 
 @Controller()
+@UseGuards(JwtAuthGuard, CsrfGuard)
 export class ShiftsController {
   constructor(
     private readonly shiftsService: ShiftsService,
     private readonly usersService: UsersService
   ) { }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get('admin/shift-presets')
   async listPresets() {
     return this.shiftsService.listPresets();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/shift-presets')
   async createPreset(@Body() dto: CreateShiftPresetDto) {
     return this.shiftsService.createPreset(dto);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Delete('admin/shift-presets/:id')
   async deletePreset(@Param('id') id: string) {
     return this.shiftsService.deletePreset(id);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get('admin/shift-assignments')
   async listAssignments() {
     return this.shiftsService.listAssignments();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/shift-assignments')
   async createAssignment(@Body() dto: CreateShiftAssignmentDto) {
     return this.shiftsService.createAssignment(dto);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/shift-overrides')
   async createOverride(@Body() dto: CreateShiftOverrideDto) {
     return this.shiftsService.createOverride(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('shifts/current')
   async getCurrentShift(@CurrentUser() authUser: AuthUser) {
     const user = await this.usersService.getOrThrow(authUser.sub);
@@ -69,47 +70,43 @@ export class ShiftsController {
     return resolved;
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('shifts/presets')
   async listPublicPresets() {
     return this.shiftsService.listPresets();
   }
-  @UseGuards(JwtAuthGuard)
   @Post('shifts/requests')
   async createRequest(@CurrentUser() authUser: AuthUser, @Body() dto: CreateShiftChangeRequestDto) {
     const user = await this.usersService.getOrThrow(authUser.sub);
     return this.shiftsService.createRequest(user.id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('shifts/requests/me')
   async listMyRequests(@CurrentUser() authUser: AuthUser) {
     const user = await this.usersService.getOrThrow(authUser.sub);
     return this.shiftsService.listRequests(false, user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('shifts/requests/me/summary')
   async getMyRequestSummary(@CurrentUser() authUser: AuthUser) {
     const user = await this.usersService.getOrThrow(authUser.sub);
     return this.shiftsService.getMyRequestSummary(user.id);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get('admin/requests')
   async listAllRequests() {
     return this.shiftsService.listRequests(true);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get('admin/requests/summary')
   async getRequestSummary() {
     return this.shiftsService.getAdminRequestSummary();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/requests/:id/approve')
   async approveRequest(
@@ -119,7 +116,7 @@ export class ShiftsController {
     return this.shiftsService.approveRequest(id, authUser.sub);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('admin/requests/:id/reject')
   async rejectRequest(@CurrentUser() authUser: AuthUser, @Param('id') id: string) {

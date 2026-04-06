@@ -13,6 +13,13 @@ import {
   getQueueSnapshot,
   QueuedAction,
 } from '@/lib/action-queue';
+import type {
+  AttendanceRefreshDetail,
+  AttendanceRefreshSession,
+  PunchOffResult,
+} from '@/lib/attendance-events';
+import { isTypingTarget } from '@/lib/is-typing-target';
+import { useModalKeyboard } from '@/hooks/use-modal-keyboard';
 
 /* ── Break constants ── */
 const TOP_BREAK_CODES = ['bwc', 'wc', 'cy'] as const;
@@ -149,17 +156,9 @@ type DashboardToast = {
   tone: 'warning' | 'success' | 'error';
   text: string;
 };
-
 function queueDate(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  if (!element) return false;
-  const tag = element.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || element.isContentEditable;
 }
 
 function loadOverLimitToastSeen(): Record<string, true> {
@@ -252,6 +251,7 @@ export default function AdminLivePage() {
   const [shortcutConfirmPolicy, setShortcutConfirmPolicy] = useState<BreakPolicy | null>(null);
   const settledIdsRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
+  const attendanceRefreshRef = useRef<() => void>(() => undefined);
 
   function showToast(
     tone: DashboardToast['tone'],
@@ -278,7 +278,15 @@ export default function AdminLivePage() {
   }, []);
 
   const serverActiveSession = useMemo(() => sessions.find(s => s.status === 'ACTIVE') || null, [sessions]);
-  const serverActiveBreak = useMemo(() => breakSessions.find(b => b.status === 'ACTIVE') || null, [breakSessions]);
+  const serverActiveBreak = useMemo(() => {
+    if (!serverActiveSession) return null;
+    return (
+      breakSessions.find(
+        (breakSession) =>
+          breakSession.status === 'ACTIVE' && breakSession.dutySessionId === serverActiveSession.id,
+      ) || null
+    );
+  }, [breakSessions, serverActiveSession]);
 
   const { activeSession, activeBreak } = useMemo(() => {
     const pending = queueActions
@@ -368,6 +376,10 @@ export default function AdminLivePage() {
     if (!background) setPersonalLoading(false);
   }
 
+  attendanceRefreshRef.current = () => {
+    void loadPersonal(true);
+  };
+
   function getActiveSessionSyncFields(): Record<string, unknown> {
     if (!activeSession) return {};
     if (isClientRefId(activeSession.id)) {
@@ -420,6 +432,36 @@ export default function AdminLivePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const handleAttendanceRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<AttendanceRefreshDetail>).detail;
+      if (detail?.session && detail.path) {
+        setSessions((current) => {
+          if (detail.path === '/attendance/on') {
+            return [
+              detail.session as DutySession,
+              ...current.filter((session) => session.id !== detail.session?.id && session.status !== 'ACTIVE'),
+            ];
+          }
+
+          return current.map((session) =>
+            session.id === detail.session?.id ? ({ ...session, ...detail.session } as DutySession) : session,
+          );
+        });
+
+        if (detail.path === '/attendance/off') {
+          setBreakSessions((current) =>
+            current.filter((session) => !(session.status === 'ACTIVE' && session.dutySessionId === detail.session?.id)),
+          );
+        }
+      }
+
+      attendanceRefreshRef.current();
+    };
+    window.addEventListener('attendance:refresh', handleAttendanceRefresh);
+    return () => window.removeEventListener('attendance:refresh', handleAttendanceRefresh);
+  }, []);
+
   /* ── Online/Offline ── */
   useEffect(() => {
     setIsOffline(!navigator.onLine);
@@ -469,6 +511,20 @@ export default function AdminLivePage() {
         setActionMsg('Done');
         setTimeout(() => setActionMsg(''), 3000);
       }
+
+      if ((path === '/attendance/on' || path === '/attendance/off') && result.data) {
+        const payload = result.data as AttendanceRefreshSession & Partial<PunchOffResult>;
+        window.dispatchEvent(
+          new CustomEvent<AttendanceRefreshDetail>('attendance:refresh', {
+            detail: {
+              path,
+              session: payload,
+              summary: path === '/attendance/off' ? payload.punchOffSummary : undefined,
+            },
+          }),
+        );
+      }
+
       if (path.startsWith('/breaks')) {
         const br = await apiFetch<BreakSession[]>('/breaks/me/today').catch(() => null);
         if (br) setBreakSessions(br);
@@ -540,31 +596,27 @@ export default function AdminLivePage() {
     return () => window.removeEventListener('keydown', handleBreakStartShortcut);
   }, [canStartBreak, policies, shortcutConfirmPolicy]);
 
-  // Confirmation modal controls: Enter confirms, Escape cancels
-  useEffect(() => {
-    if (!shortcutConfirmPolicy) return;
+  useModalKeyboard({
+    open: !!shortcutConfirmPolicy,
+    onCancel: () => setShortcutConfirmPolicy(null),
+    onConfirm: () => {
+      const policy = shortcutConfirmPolicy;
+      if (!policy) return;
+      setShortcutConfirmPolicy(null);
+      void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() });
+    },
+    submitWhenTyping: 'never',
+  });
 
-    function handleConfirmKeys(e: KeyboardEvent) {
-      if (isTypingTarget(e.target)) return;
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const policy = shortcutConfirmPolicy;
-        if (!policy) return;
-        setShortcutConfirmPolicy(null);
-        void runAction('/breaks/start', { code: policy.code, ...getActiveSessionSyncFields() });
-        return;
-      }
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setShortcutConfirmPolicy(null);
-      }
-    }
-
-    window.addEventListener('keydown', handleConfirmKeys);
-    return () => window.removeEventListener('keydown', handleConfirmKeys);
-  }, [shortcutConfirmPolicy]);
+  useModalKeyboard({
+    open: showObservedModal,
+    onCancel: () => {
+      if (!violationActionId) setShowObservedModal(false);
+    },
+    onConfirm: () => void submitObservedViolation(),
+    confirmDisabled: !observedAccusedUserId || !!violationActionId,
+    submitWhenTyping: 'input-only',
+  });
 
   function openBreakStartConfirm(policy: BreakPolicy): void {
     setShortcutConfirmPolicy(policy);
@@ -595,7 +647,7 @@ export default function AdminLivePage() {
         apiFetch<DriverRequestsSummary>('/admin/driver-requests/summary'),
         apiFetch<RegistrationRequestsSummary>('/admin/registration-requests/summary'),
       ]),
-      apiFetch<PublicLiveBoard>('/attendance/live/public'),
+      apiFetch<PublicLiveBoard>('/attendance/live/board'),
     ]);
 
     if (mainResult.status === 'fulfilled') {

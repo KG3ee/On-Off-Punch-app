@@ -1,20 +1,31 @@
-import { getAccessToken } from '@/lib/auth';
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
 
 type ApiFetchOptions = RequestInit & {
   skipAuth?: boolean;
 };
 
+/**
+ * Read the CSRF token from the csrf_token cookie (set by the backend at login).
+ * Returns an empty string if the cookie is not present.
+ */
+function getCsrfToken(): string {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
-  const token = options.skipAuth ? '' : getAccessToken();
 
   if (!headers.has('Content-Type') && options.body) {
     headers.set('Content-Type', 'application/json');
   }
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
+
+  // Attach CSRF token header for all non-skipped requests.
+  // The backend verifies this only for cookie-authenticated mutating requests.
+  const csrfToken = options.skipAuth ? '' : getCsrfToken();
+  if (csrfToken && !headers.has('X-CSRF-Token')) {
+    headers.set('X-CSRF-Token', csrfToken);
   }
 
   const response = await fetch(`${API_BASE}${path}`, {

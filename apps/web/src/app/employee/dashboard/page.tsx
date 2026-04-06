@@ -25,6 +25,16 @@ import {
 import { MeUser } from '@/types/auth';
 import { LeaderDashboard } from '@/components/leader-dashboard';
 import { BreakChips } from '@/components/break-chips';
+import { DashboardSkeleton } from '@/components/skeleton';
+import { EmptyState } from '@/components/empty-state';
+import { PunchAttendanceConfirmModal } from '@/components/punch-attendance-confirm-modal';
+import type {
+  AttendanceRefreshDetail,
+  AttendanceRefreshSession,
+  PunchOffResult,
+} from '@/lib/attendance-events';
+import { isTypingTarget } from '@/lib/is-typing-target';
+import { useModalKeyboard } from '@/hooks/use-modal-keyboard';
 
 
 type DutySession = {
@@ -137,7 +147,6 @@ type PublicLiveBoard = {
 };
 
 type ViolationReason = 'LEFT_WITHOUT_PUNCH' | 'UNAUTHORIZED_ABSENCE' | 'OTHER';
-
 const DASHBOARD_CACHE_KEY = 'employee_dashboard_cache_v1';
 const BREAK_OVER_LIMIT_TOAST_SEEN_KEY = 'break_over_limit_toast_seen_v1';
 
@@ -229,13 +238,6 @@ function queueDate(iso: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  if (!element) return false;
-  const tag = element.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || element.isContentEditable;
-}
-
 function loadOverLimitToastSeen(): Record<string, true> {
   if (typeof window === 'undefined') return {};
   try {
@@ -277,6 +279,8 @@ export default function EmployeeDashboardPage() {
   const [breakSessions, setBreakSessions] = useState<BreakSession[]>([]);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [loading, setLoading] = useState(false);
+  /** True while an online punch/break API call is in flight (does not hide the dashboard). */
+  const [actionBusy, setActionBusy] = useState(false);
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [warningMessage, setWarningMessage] = useState('');
@@ -299,11 +303,13 @@ export default function EmployeeDashboardPage() {
   const [violationReason, setViolationReason] = useState<ViolationReason>('LEFT_WITHOUT_PUNCH');
   const [violationNote, setViolationNote] = useState('');
   const [violationSubmitting, setViolationSubmitting] = useState(false);
+  const [mobilePunchConfirm, setMobilePunchConfirm] = useState<'on' | 'off' | null>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const notiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notiFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settledActionIdsRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
+  const attendanceRefreshRef = useRef<() => void>(() => undefined);
 
   function showToast(
     tone: DashboardToast['tone'],
@@ -365,10 +371,15 @@ export default function EmployeeDashboardPage() {
   }, []);
 
   const serverActiveSession = useMemo(() => sessions.find((s) => s.status === 'ACTIVE') || null, [sessions]);
-  const serverActiveBreak = useMemo(
-    () => breakSessions.find((session) => session.status === 'ACTIVE') || null,
-    [breakSessions]
-  );
+  const serverActiveBreak = useMemo(() => {
+    if (!serverActiveSession) return null;
+    return (
+      breakSessions.find(
+        (session) =>
+          session.status === 'ACTIVE' && session.dutySessionId === serverActiveSession.id,
+      ) || null
+    );
+  }, [breakSessions, serverActiveSession]);
 
   const { activeSession, activeBreak } = useMemo(() => {
     const pendingQueue = queueActions
@@ -452,8 +463,9 @@ export default function EmployeeDashboardPage() {
 
   const canStartBreak = useMemo(() => {
     const breakUiEnabled = me?.role !== 'MAID' && me?.role !== 'CHEF';
-    return breakUiEnabled && !!activeSession && !activeBreak && !((loading && !isOffline));
-  }, [activeBreak, activeSession, isOffline, loading, me?.role]);
+    const blocked = (loading || actionBusy) && !isOffline;
+    return breakUiEnabled && !!activeSession && !activeBreak && !blocked;
+  }, [actionBusy, activeBreak, activeSession, isOffline, loading, me?.role]);
 
   // Only show breaks linked to the current active duty session
   const sessionBreaks = useMemo(() => {
@@ -472,7 +484,7 @@ export default function EmployeeDashboardPage() {
 
   const loadPublicBreakBoard = useCallback(async (silent = true) => {
     try {
-      const data = await apiFetch<PublicLiveBoard>('/attendance/live/public');
+      const data = await apiFetch<PublicLiveBoard>('/attendance/live/board');
       setPublicLiveSessions(data.sessions);
     } catch (e) {
       if (!silent) {
@@ -568,6 +580,7 @@ export default function EmployeeDashboardPage() {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (shortcutConfirmPolicy || isTypingTarget(e.target)) return;
+      if (actionBusy && !isOffline) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -581,7 +594,7 @@ export default function EmployeeDashboardPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBreak, canCancelActiveBreak, loading, shortcutConfirmPolicy]);
+  }, [actionBusy, activeBreak, canCancelActiveBreak, isOffline, loading, shortcutConfirmPolicy]);
 
   // Keyboard shortcuts to start break (b/w/c/1/2/3) with confirmation modal
   useEffect(() => {
@@ -619,9 +632,10 @@ export default function EmployeeDashboardPage() {
     if (!shortcutConfirmPolicy) return;
 
     function handleConfirmKeys(e: KeyboardEvent) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (isTypingTarget(e.target)) return;
 
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.repeat) {
         e.preventDefault();
         const policy = shortcutConfirmPolicy;
         if (!policy) return;
@@ -641,6 +655,15 @@ export default function EmployeeDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shortcutConfirmPolicy]);
 
+  useModalKeyboard({
+    open: showViolationModal,
+    onCancel: () => {
+      if (!violationSubmitting) setShowViolationModal(false);
+    },
+    onConfirm: () => void submitViolationReport(),
+    confirmDisabled: !violationAccusedUserId || violationSubmitting,
+    submitWhenTyping: 'input-only',
+  });
 
   async function loadData(options?: { background?: boolean }): Promise<void> {
     const background = options?.background ?? false;
@@ -668,6 +691,9 @@ export default function EmployeeDashboardPage() {
     const nextSummary = summaryResult.status === 'fulfilled' ? summaryResult.value : (cache?.monthlySummary || null);
 
     if (nextMe?.role === 'DRIVER') {
+      if (!background) {
+        setLoading(false);
+      }
       router.replace('/employee/driver');
       return;
     }
@@ -747,6 +773,41 @@ export default function EmployeeDashboardPage() {
     });
   }
 
+  attendanceRefreshRef.current = () => {
+    void loadTargeted(['sessions', 'breaks', 'summary']);
+    void loadData({ background: true });
+  };
+
+  useEffect(() => {
+    const handleAttendanceRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<AttendanceRefreshDetail>).detail;
+      if (detail?.session && detail.path) {
+        setSessions((current) => {
+          if (detail.path === '/attendance/on') {
+            return [
+              detail.session as DutySession,
+              ...current.filter((session) => session.id !== detail.session?.id && session.status !== 'ACTIVE'),
+            ];
+          }
+
+          return current.map((session) =>
+            session.id === detail.session?.id ? ({ ...session, ...detail.session } as DutySession) : session,
+          );
+        });
+
+        if (detail.path === '/attendance/off') {
+          setBreakSessions((current) =>
+            current.filter((session) => !(session.status === 'ACTIVE' && session.dutySessionId === detail.session?.id)),
+          );
+        }
+      }
+
+      attendanceRefreshRef.current();
+    };
+    window.addEventListener('attendance:refresh', handleAttendanceRefresh);
+    return () => window.removeEventListener('attendance:refresh', handleAttendanceRefresh);
+  }, []);
+
   function getActiveSessionSyncFields(): Record<string, unknown> {
     if (!activeSession) return {};
     if (isClientRefId(activeSession.id)) {
@@ -794,59 +855,74 @@ export default function EmployeeDashboardPage() {
 
     const knownOffline = !navigator.onLine;
     if (!knownOffline) {
-      setLoading(true);
+      setActionBusy(true);
     }
 
-    const actionBody = buildActionBody(path, body);
-    const result = await runQueuedAction(path, actionBody);
+    try {
+      const actionBody = buildActionBody(path, body);
+      const result = await runQueuedAction(path, actionBody);
 
-    if (result.ok) {
-      if (path === '/breaks/start') {
-        const payload = result.data as BreakStartResult | undefined;
-        if (payload?.syncStatus === 'STALE') {
-          setWarningMessage('This device action was discarded because the server had already recorded the canonical break.');
-          setTimeout(() => setWarningMessage(''), 6000);
-        } else if (payload?.isOverLimit) {
-          const rawCode = payload.breakPolicy?.code || actionBody?.code;
-          const code = typeof rawCode === 'string' && rawCode.trim() ? rawCode.trim() : 'break';
-          const localDate = payload.localDate || queueDate(new Date().toISOString());
-          const usageText =
-            typeof payload.usedCount === 'number' && typeof payload.dailyLimit === 'number'
-              ? ` (${payload.usedCount}/${payload.dailyLimit})`
-              : '';
-          const warningText = `${code.toUpperCase()} is over session limit${usageText}. Break started anyway.`;
+      if (result.ok) {
+        if (path === '/breaks/start') {
+          const payload = result.data as BreakStartResult | undefined;
+          if (payload?.syncStatus === 'STALE') {
+            setWarningMessage('This device action was discarded because the server had already recorded the canonical break.');
+            setTimeout(() => setWarningMessage(''), 6000);
+          } else if (payload?.isOverLimit) {
+            const rawCode = payload.breakPolicy?.code || actionBody?.code;
+            const code = typeof rawCode === 'string' && rawCode.trim() ? rawCode.trim() : 'break';
+            const localDate = payload.localDate || queueDate(new Date().toISOString());
+            const usageText =
+              typeof payload.usedCount === 'number' && typeof payload.dailyLimit === 'number'
+                ? ` (${payload.usedCount}/${payload.dailyLimit})`
+                : '';
+            const warningText = `${code.toUpperCase()} is over session limit${usageText}. Break started anyway.`;
 
-          setWarningMessage(warningText);
-          setTimeout(() => setWarningMessage(''), 6000);
+            setWarningMessage(warningText);
+            setTimeout(() => setWarningMessage(''), 6000);
 
-          if (consumeOverLimitToastToken(code, payload.quotaScopeId, localDate)) {
-            showToast('warning', warningText, 6000);
+            if (consumeOverLimitToastToken(code, payload.quotaScopeId, localDate)) {
+              showToast('warning', warningText, 6000);
+            }
+          } else {
+            setActionMessage('Break started');
+            setTimeout(() => setActionMessage(''), 2500);
           }
         } else {
-          setActionMessage('Break started');
-          setTimeout(() => setActionMessage(''), 2500);
+          setActionMessage('Action completed');
+          setTimeout(() => setActionMessage(''), 3000);
         }
-      } else {
-        setActionMessage('Action completed');
-        setTimeout(() => setActionMessage(''), 3000);
-      }
 
-      if (path === '/attendance/on' || path === '/attendance/off') {
-        await loadTargeted(['sessions', 'breaks', 'summary']);
-      } else if (path.startsWith('/breaks')) {
-        await loadTargeted(['breaks']);
+        if ((path === '/attendance/on' || path === '/attendance/off') && result.data) {
+          const payload = result.data as AttendanceRefreshSession & Partial<PunchOffResult>;
+          window.dispatchEvent(
+            new CustomEvent<AttendanceRefreshDetail>('attendance:refresh', {
+              detail: {
+                path,
+                session: payload,
+                summary: path === '/attendance/off' ? payload.punchOffSummary : undefined,
+              },
+            }),
+          );
+        }
+
+        if (path === '/attendance/on' || path === '/attendance/off') {
+          await loadTargeted(['sessions', 'breaks', 'summary']);
+        } else if (path.startsWith('/breaks')) {
+          await loadTargeted(['breaks']);
+        } else {
+          await loadData();
+        }
+        loadData({ background: true });
+      } else if (result.queued) {
+        setActionMessage('Action queued — will sync when online.');
+        setTimeout(() => setActionMessage(''), 4000);
       } else {
-        await loadData();
+        setError(result.error || 'Action failed');
       }
-      loadData({ background: true });
-    } else if (result.queued) {
-      setActionMessage('Action queued — will sync when online.');
-      setTimeout(() => setActionMessage(''), 4000);
-    } else {
-      setError(result.error || 'Action failed');
+    } finally {
+      setActionBusy(false);
     }
-
-    setLoading(false);
   }
 
 
@@ -926,17 +1002,23 @@ export default function EmployeeDashboardPage() {
   }
 
   useEffect(() => {
-    if (error || actionMessage) {
-      setNotificationsOpen(true);
-      setNotiClosing(false);
-      if (actionMessage && !error) {
+    const attentionAction =
+      Boolean(actionMessage) &&
+      /queued|will sync|manual retry|waiting to sync|need manual/i.test(actionMessage);
+    const shouldOpen = Boolean(error) || Boolean(warningMessage) || attentionAction;
+    if (!shouldOpen) return;
+
+    setNotificationsOpen(true);
+    setNotiClosing(false);
+    if (!error) {
+      if (notiTimerRef.current) clearTimeout(notiTimerRef.current);
+      notiTimerRef.current = setTimeout(() => startNotiFade(), 4000);
+      return () => {
         if (notiTimerRef.current) clearTimeout(notiTimerRef.current);
-        notiTimerRef.current = setTimeout(() => startNotiFade(), 4000);
-        return () => { if (notiTimerRef.current) clearTimeout(notiTimerRef.current); };
-      }
+      };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [error, actionMessage]);
+  }, [error, warningMessage, actionMessage]);
 
   const [mealSlideX, setMealSlideX] = useState(0);
   const [mealSliding, setMealSliding] = useState(false);
@@ -996,7 +1078,10 @@ export default function EmployeeDashboardPage() {
     return () => clearInterval(id);
   }, [me?.role, mealRequestId]);
 
-  const mealBusy = mealSent || (!!mealDeliveryStatus && mealDeliveryStatus !== 'COMPLETED' && mealDeliveryStatus !== 'REJECTED') || (loading && !isOffline);
+  const mealBusy =
+    mealSent ||
+    (!!mealDeliveryStatus && mealDeliveryStatus !== 'COMPLETED' && mealDeliveryStatus !== 'REJECTED') ||
+    ((loading || actionBusy) && !isOffline);
 
   const handleMealTouchStart = (e: React.TouchEvent) => {
     if (mealBusy) return;
@@ -1251,7 +1336,13 @@ export default function EmployeeDashboardPage() {
             </div>
           </div>
           {notifications.length === 0 ? (
-            <div className="noti-empty">All clear — no notifications</div>
+            <div className="noti-empty">
+              <EmptyState
+                type="no-notifications"
+                title="All clear!"
+                description="No notifications yet"
+              />
+            </div>
           ) : (
             <div className="noti-list">
               {notifications.map(n => (
@@ -1336,8 +1427,19 @@ export default function EmployeeDashboardPage() {
         </div>
       ) : null}
 
+      {pendingActions > 0 && !isOffline ? (
+        <div className="alert alert-warning" style={{ marginBottom: '0.75rem' }} role="status">
+          An earlier punch or break is still syncing. New actions may be queued until it finishes. Check notifications if something looks stuck.
+        </div>
+      ) : null}
+
+      {/* ── Skeleton Loading State ── */}
+      {loading && !sessions.length && !monthlySummary && (
+        <DashboardSkeleton kpiCount={4} showBreaks={me?.role !== 'MAID' && me?.role !== 'CHEF'} showSession />
+      )}
+
       {/* ── Leader gets a dedicated dashboard ── */}
-      {me?.role === 'LEADER' ? (
+      {!loading && me?.role === 'LEADER' && (
         <LeaderDashboard
           activeSession={activeSession}
           activeDutyMinutes={activeDutyMinutes}
@@ -1346,11 +1448,13 @@ export default function EmployeeDashboardPage() {
           policies={policies}
           breakSessions={breakSessions}
           monthlySummary={monthlySummary}
-          loading={loading}
+          loading={loading || actionBusy}
           isOffline={isOffline}
           runAction={runAction}
         />
-      ) : (
+      )}
+
+      {!loading && me?.role !== 'LEADER' && (
         <>
           {/* ── Mobile punch card (Driver / Maid / Chef on phone) ── */}
           {(me?.role === 'DRIVER' || me?.role === 'MAID' || me?.role === 'CHEF') ? (
@@ -1365,13 +1469,8 @@ export default function EmployeeDashboardPage() {
                 <button
                   type="button"
                   className="button button-danger"
-                  disabled={loading}
-                  onClick={() => {
-                    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    if (window.confirm(`Punch OFF confirmation\n\nActual recorded time will be ${timeLabel}.\n\nDo you want to continue?`)) {
-                      void runAction('/attendance/off', {});
-                    }
-                  }}
+                  disabled={loading || actionBusy}
+                  onClick={() => setMobilePunchConfirm('off')}
                 >
                   ⏹ Punch OFF
                 </button>
@@ -1379,13 +1478,8 @@ export default function EmployeeDashboardPage() {
                 <button
                   type="button"
                   className="button button-ok"
-                  disabled={loading}
-                  onClick={() => {
-                    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    if (window.confirm(`Punch ON confirmation\n\nActual recorded time will be ${timeLabel}.\n\nDo you want to continue?`)) {
-                      void runAction('/attendance/on', {});
-                    }
-                  }}
+                  disabled={loading || actionBusy}
+                  onClick={() => setMobilePunchConfirm('on')}
                 >
                   ▶ Punch ON
                 </button>
@@ -1396,17 +1490,17 @@ export default function EmployeeDashboardPage() {
           {/* ── Monthly KPI Row (non-Leader) ── */}
           {monthlySummary && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
             <section className="kpi-grid">
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-1">
                 <p className="kpi-label">Month Hours</p>
                 <p className="kpi-value">{fmtDuration(monthlySummary.totalWorkedMinutes)}</p>
               </article>
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-2">
                 <p className="kpi-label">Month Late</p>
                 <p className="kpi-value" style={{ color: monthlySummary.totalLateMinutes > 0 ? 'var(--danger)' : undefined }}>
                   {monthlySummary.totalLateMinutes}m
                 </p>
               </article>
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-3">
                 <p className="kpi-label">Overtime</p>
                 <p className="kpi-value" style={{ color: monthlySummary.totalOvertimeMinutes > 0 ? 'var(--ok)' : undefined }}>
                   {monthlySummary.totalOvertimeMinutes}m
@@ -1417,11 +1511,11 @@ export default function EmployeeDashboardPage() {
 
           {/* ── Today KPI Row (non-Leader) ── */}
           <section className={`kpi-grid${me?.role === 'DRIVER' || me?.role === 'MAID' || me?.role === 'CHEF' ? ' kpi-mobile-first' : ''}`}>
-            <article className="kpi">
+            <article className="kpi card-animate card-animate-delay-1">
               <p className="kpi-label">Sessions</p>
               <p className="kpi-value">{sessions.length}</p>
             </article>
-            <article className="kpi">
+            <article className="kpi card-animate card-animate-delay-2">
               <p className="kpi-label">Duty</p>
               <p className="kpi-value" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 <span className={`status-dot ${activeSession ? 'active' : 'inactive'}`} />
@@ -1429,7 +1523,7 @@ export default function EmployeeDashboardPage() {
               </p>
             </article>
             {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-3">
                 <p className="kpi-label">Break</p>
                 <p className="kpi-value">
                   {activeBreak ? (
@@ -1439,7 +1533,7 @@ export default function EmployeeDashboardPage() {
               </article>
             ) : null}
             {activeSession?.isLate && me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-              <article className="kpi">
+              <article className="kpi card-animate card-animate-delay-4">
                 <p className="kpi-label">Late</p>
                 <p className="kpi-value" style={{ color: 'var(--danger)' }}>{activeSession.lateMinutes}m</p>
               </article>
@@ -1542,7 +1636,7 @@ export default function EmployeeDashboardPage() {
               ) : null}
 
               {me?.role !== 'MAID' && me?.role !== 'CHEF' ? (
-                <article className="card">
+                <article className="card card-animate card-animate-delay-2">
                   <h3>Breaks</h3>
                   {activeBreak ? (
                     <div className="break-banner">
@@ -1551,11 +1645,11 @@ export default function EmployeeDashboardPage() {
                       <span className="elapsed">{activeBreakMinutes}m</span>
                       <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>/ {activeBreak.expectedDurationMinutes}m</span>
                       <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
-                        <button className="button button-ok button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/end', getActiveBreakSyncFields())} title="Space bar">
+                        <button className="button button-ok button-sm" disabled={(loading || actionBusy) && !isOffline} onClick={() => void runAction('/breaks/end', getActiveBreakSyncFields())} title="Space bar">
                           End <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>␣</kbd>
                         </button>
                         {canCancelActiveBreak ? (
-                          <button className="button button-danger button-sm" disabled={loading && !isOffline} onClick={() => void runAction('/breaks/cancel', getActiveBreakSyncFields())} title="Escape">
+                          <button className="button button-danger button-sm" disabled={(loading || actionBusy) && !isOffline} onClick={() => void runAction('/breaks/cancel', getActiveBreakSyncFields())} title="Escape">
                             Cancel <kbd style={{ fontSize: '0.6rem', opacity: 0.7, marginLeft: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }}>Esc</kbd>
                           </button>
                         ) : null}
@@ -1566,7 +1660,7 @@ export default function EmployeeDashboardPage() {
                       topPolicies={topRowPolicies}
                       bottomPolicies={bottomRowPolicies}
                       extraPolicies={extraPolicies}
-                      disabled={(loading && !isOffline) || !activeSession || !!activeBreak}
+                      disabled={((loading || actionBusy) && !isOffline) || !activeSession || !!activeBreak}
                       blockReason={breakBlockedReason}
                       onStart={openBreakStartConfirm}
                     />
@@ -1629,7 +1723,15 @@ export default function EmployeeDashboardPage() {
                           </tr>
                         ))}
                         {publicBreakSessions.length === 0 ? (
-                          <tr><td colSpan={5} className="table-empty">No one is on break right now</td></tr>
+                          <tr>
+                            <td colSpan={5} style={{ padding: 0 }}>
+                              <EmptyState
+                                type="no-one-on-break"
+                                title="No one is on break"
+                                description="Everyone is currently on duty"
+                              />
+                            </td>
+                          </tr>
                         ) : null}
                       </tbody>
                     </table>
@@ -1640,7 +1742,7 @@ export default function EmployeeDashboardPage() {
 
             {/* Right column — Current Session */}
             <div className="grid">
-              <article className="card">
+              <article className="card card-animate card-animate-delay-3">
                 <h3>Current Session</h3>
                 <div className="table-wrap">
                   <table className="table-card-mobile">
@@ -1709,7 +1811,15 @@ export default function EmployeeDashboardPage() {
                           </tr>
                         ))}
                         {sessionBreaks.length === 0 ? (
-                          <tr><td colSpan={5} className="table-empty">{activeSession ? 'No breaks this session' : 'Not on duty'}</td></tr>
+                          <tr>
+                            <td colSpan={5} style={{ padding: 0 }}>
+                              <EmptyState
+                                type={activeSession ? 'no-breaks' : 'no-sessions'}
+                                title={activeSession ? 'No breaks this session' : 'Not on duty'}
+                                description={activeSession ? 'Take a break when you need one' : 'Punch ON to start your session'}
+                              />
+                            </td>
+                          </tr>
                         ) : null}
                       </tbody>
                     </table>
@@ -1835,6 +1945,17 @@ export default function EmployeeDashboardPage() {
         </>
       )}
 
+      <PunchAttendanceConfirmModal
+        open={mobilePunchConfirm !== null}
+        variant={mobilePunchConfirm === 'off' ? 'off' : 'on'}
+        onConfirm={() => {
+          const next = mobilePunchConfirm;
+          setMobilePunchConfirm(null);
+          if (next === 'on') void runAction('/attendance/on', {});
+          if (next === 'off') void runAction('/attendance/off', {});
+        }}
+        onCancel={() => setMobilePunchConfirm(null)}
+      />
     </AppShell>
   );
 }
